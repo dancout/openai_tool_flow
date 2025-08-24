@@ -1,3 +1,5 @@
+> **IMPORTANT:** This task was completed on a previous run. Please refer to the existing scaffold and example files for further development.
+
 You are GitHub’s coding agent. Scaffold a Dart package called `openai_toolflow` with the following requirements:
 
 ## Project Usage Context
