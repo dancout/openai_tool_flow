@@ -3,8 +3,10 @@ import 'package:meta/meta.dart';
 import 'audit_function.dart';
 import 'issue.dart';
 import 'openai_config.dart';
+import 'step_config.dart';
 import 'tool_call_step.dart';
 import 'tool_result.dart';
+import 'typed_interfaces.dart';
 
 /// Manages ordered execution of tool call steps with internal state management.
 /// 
@@ -12,6 +14,8 @@ import 'tool_result.dart';
 /// - Executes steps in order
 /// - Manages internal state across steps
 /// - Collects issues from audits
+/// - Supports per-step audit configuration
+/// - Implements retry logic with configurable attempts
 /// - Provides structured results at the end
 class ToolFlow {
   /// Configuration for OpenAI API access
@@ -20,8 +24,13 @@ class ToolFlow {
   /// Ordered list of tool call steps to execute
   final List<ToolCallStep> steps;
   
-  /// Optional audit functions to run after each step
+  /// Optional audit functions to run after each step (legacy)
+  /// Use stepConfigs for more granular control
   final List<AuditFunction> audits;
+
+  /// Per-step configuration for audits and retry behavior
+  /// Key is step index (0-based), value is configuration for that step
+  final Map<int, StepConfig> stepConfigs;
   
   /// Internal state accumulated across steps
   final Map<String, dynamic> _state = {};
@@ -34,6 +43,7 @@ class ToolFlow {
     required this.config,
     required this.steps,
     this.audits = const [],
+    this.stepConfigs = const {},
   });
 
   /// Executes the tool flow with the given input
@@ -48,36 +58,80 @@ class ToolFlow {
 
     for (int i = 0; i < steps.length; i++) {
       final step = steps[i];
-      try {
-        final result = await _executeStep(step, i);
-        _results.add(result);
+      final stepConfig = stepConfigs.getConfigForStep(i);
+      
+      ToolResult? stepResult;
+      bool stepPassed = false;
+      int attemptCount = 0;
+      final maxRetries = stepConfig.getEffectiveMaxRetries(step.maxRetries);
+      
+      // Retry loop for this step
+      while (attemptCount <= maxRetries && !stepPassed) {
+        attemptCount++;
+        
+        try {
+          // Execute the step
+          stepResult = await _executeStep(step, i, attemptCount - 1);
+          
+          // Run audits if configured for this step
+          if (stepConfig.hasAudits || audits.isNotEmpty) {
+            final shouldRunAudits = !stepConfig.auditOnlyFinalAttempt || 
+                                  attemptCount > maxRetries ||
+                                  attemptCount == 1; // Always run on first attempt
+            
+            if (shouldRunAudits) {
+              stepResult = await _runAuditsForStep(stepResult, stepConfig, i);
+            }
+          }
+          
+          // Check if step passed criteria
+          final allIssues = stepResult.issues;
+          stepPassed = stepConfig.passedCriteria(allIssues);
+          
+          if (!stepPassed && attemptCount <= maxRetries) {
+            // Log retry attempt
+            print('Step $i attempt $attemptCount failed. ${stepConfig.getFailureReason(allIssues)}. Retrying...');
+          }
+          
+        } catch (e) {
+          // Create an error result
+          stepResult = ToolResult(
+            toolName: step.toolName,
+            input: _buildStepInput(step, i),
+            output: {'error': e.toString()},
+            issues: [
+              Issue(
+                id: 'error_${step.toolName}_${i}_attempt_$attemptCount',
+                severity: IssueSeverity.critical,
+                description: 'Tool execution failed: $e',
+                context: {
+                  'step': i,
+                  'attempt': attemptCount,
+                  'toolName': step.toolName,
+                  'model': step.model,
+                },
+                suggestions: ['Check tool configuration and input parameters'],
+                round: attemptCount - 1,
+              ),
+            ],
+          );
+          stepPassed = false;
+        }
+      }
+      
+      // Add the final result
+      if (stepResult != null) {
+        _results.add(stepResult);
         
         // Update state with step results
-        _state['step_${i}_result'] = result.toJson();
-        _state.addAll(result.output);
-        
-      } catch (e) {
-        // Create an error result
-        final errorResult = ToolResult(
-          toolName: step.toolName,
-          input: _buildStepInput(step, i),
-          output: {'error': e.toString()},
-          issues: [
-            Issue(
-              id: 'error_${step.toolName}_$i',
-              severity: IssueSeverity.critical,
-              description: 'Tool execution failed: $e',
-              context: {
-                'step': i,
-                'toolName': step.toolName,
-                'model': step.model,
-              },
-              suggestions: ['Check tool configuration and input parameters'],
-            ),
-          ],
-        );
-        _results.add(errorResult);
-        break; // Stop execution on error
+        _state['step_${i}_result'] = stepResult.toJson();
+        _state.addAll(stepResult.output);
+      }
+      
+      // Check if we should stop on failure
+      if (!stepPassed && stepConfig.stopOnFailure) {
+        print('Step $i failed after $maxRetries retries. Stopping flow execution.');
+        break;
       }
     }
 
@@ -89,28 +143,94 @@ class ToolFlow {
   }
 
   /// Executes a single step
-  Future<ToolResult> _executeStep(ToolCallStep step, int stepIndex) async {
+  Future<ToolResult> _executeStep(ToolCallStep step, int stepIndex, int round) async {
     final stepInput = _buildStepInput(step, stepIndex);
+    
+    // Add round information to input
+    stepInput['_round'] = round;
+    stepInput['_previous_issues'] = step.issues.map((issue) => issue.toJson()).toList();
     
     // For now, we'll create a mock response since we don't want to make actual OpenAI calls
     // In a real implementation, this would call the OpenAI API
     final response = await _mockToolCall(step, stepInput);
     
-    // Create initial result
-    var result = ToolResult(
+    // Try to create typed interfaces if available
+    ToolInput? typedInput;
+    ToolOutput? typedOutput;
+    
+    try {
+      // Attempt to create typed output if registry has a creator
+      typedOutput = ToolOutputRegistry.create(step.toolName, response);
+    } catch (e) {
+      // If typed creation fails, continue with untyped result
+    }
+    
+    // Create initial result without issues (audits will add them)
+    final result = ToolResult(
       toolName: step.toolName,
       input: stepInput,
       output: response,
       issues: [],
+      typedInput: typedInput,
+      typedOutput: typedOutput,
     );
 
-    // Run audits on the result
-    for (final audit in audits) {
-      final auditIssues = audit.run(result);
-      result = result.withAdditionalIssues(auditIssues);
+    return result;
+  }
+
+  /// Runs audits for a specific step
+  Future<ToolResult> _runAuditsForStep(
+    ToolResult result, 
+    StepConfig stepConfig, 
+    int stepIndex,
+  ) async {
+    var auditedResult = result;
+    
+    // Run step-specific audits first
+    for (final audit in stepConfig.audits) {
+      final auditIssues = audit.run(auditedResult);
+      // Add round information to audit issues
+      final roundedIssues = auditIssues.map((issue) => Issue(
+        id: issue.id,
+        severity: issue.severity,
+        description: issue.description,
+        context: issue.context,
+        suggestions: issue.suggestions,
+        round: int.tryParse(result.input['_round']?.toString() ?? '0') ?? 0,
+        relatedData: {
+          'step_index': stepIndex,
+          'audit_name': audit.name,
+          'tool_output': result.output,
+        },
+      )).toList();
+      
+      auditedResult = auditedResult.withAdditionalIssues(roundedIssues);
+    }
+    
+    // Run legacy global audits if no step-specific audits are configured
+    if (!stepConfig.hasAudits) {
+      for (final audit in audits) {
+        final auditIssues = audit.run(auditedResult);
+        // Add round information to audit issues
+        final roundedIssues = auditIssues.map((issue) => Issue(
+          id: issue.id,
+          severity: issue.severity,
+          description: issue.description,
+          context: issue.context,
+          suggestions: issue.suggestions,
+          round: int.tryParse(result.input['_round']?.toString() ?? '0') ?? 0,
+          relatedData: {
+            'step_index': stepIndex,
+            'audit_name': audit.name,
+            'tool_output': result.output,
+          },
+        )).toList();
+        
+        auditedResult = auditedResult.withAdditionalIssues(roundedIssues);
+      }
     }
 
-    return result;
+    return auditedResult;
   }
 
   /// Builds input for a step based on current state and step parameters
