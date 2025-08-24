@@ -27,6 +27,15 @@
 
 ## State Handling
 The `ToolFlow` orchestrator manages:
+
+## Design Principles
+
+- **Strict Schemas, Extensible by Subclassing**: All core classes (`ToolResult`, `Issue`) enforce required fields but allow super projects to add custom fields via subclassing. The pipeline forwards all fields using `toJson()`, ensuring no data loss.
+- **Separation of Concerns**: Auditing logic is not implemented in this package. Instead, developers subclass `AuditFunction` and provide their own audit logic.
+- **Configurable and Secure**: API keys and model defaults are loaded from environment variables or `.env` files using `OpenAIConfig`.
+- **Model Flexibility**: Each tool call step can specify its own model and parameters, supporting future OpenAI model changes.
+- **Structured Outputs**: Every step returns a `ToolResult` with a predictable schema, never raw OpenAI responses.
+- **Pipeline Chaining**: The package enables chaining tool calls and audits, passing structured issues between steps.
 - Passing outputs from one step into the next
 - Collecting issues from audits
 - Providing structured results at the end

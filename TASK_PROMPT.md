@@ -24,5 +24,15 @@ This project is intended to be published as a package on [pub.dev](https://pub.d
 - **Models**: Support specifying different OpenAI models (`gpt-4.1`, `gpt-5`, etc.) and their unique params (e.g., `temperature`, `max_tokens` vs `max_completion_tokens`).
 - **Example**: Provide `example/usage.dart` showing how to chain tool calls (like extracting a color palette from an image and running audits).
 
+## Design Principles
+
+Refer to the following files for further context and examples:
+- `COLOR_THEME_EXAMPLE.md`
+- `CONTEXTUAL_COLOR_THEME_EXAMPLE.md`
+- `DESIGN.md`
+- `ISSUE_SCHEMA.md`
+- `README.md`
+##
+
 Also create the following files:
 - `example/usage.dart` (sample pipeline)
