@@ -5,7 +5,7 @@ I need your help with the following content:
 - There are some ambiguous directions that you can interpret freely.
 
 ### Miscellaneous
-- Use the `ADR_TEMPLATE.md` file to generate decisions you've made about the below requested changes
+- Use the `ADR_TEMPLATE.md` file to generate decisions records you've made about the below requested changes
     - Documenting your decisions is critical for future requested updates so that we understand why certain decisions were made
     - You should name the ADR file(s) accordingly, or better yet put them in a named directory, so that it is clear that they came from this request of changes
 
