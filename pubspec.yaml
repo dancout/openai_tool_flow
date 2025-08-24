@@ -4,7 +4,7 @@ version: 0.1.0
 repository: https://github.com/dancout/openai_tool_flow
 
 environment:
-  sdk: ^3.9.1
+  sdk: ^3.8.1
 
 # Add regular dependencies here.
 dependencies:

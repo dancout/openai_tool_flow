@@ -9,6 +9,11 @@ I need your help with the following content:
     - Documenting your decisions is critical for future requested updates so that we understand why certain decisions were made
     - You should name the ADR file(s) accordingly, or better yet put them in a named directory, so that it is clear that they came from this request of changes
 
+### Pubspec
+- I moved the dart version down from 3.9.1 to 3.8.1.
+    - Please let me know if this was an issue, or if it absolutely needs to be at the higher dart version for this package to work.
+        - If so, update the dart min version back to 3.9.1 and update why in an ADR.
+    - The context is that I'm running flutter v3.32.8 locally, and it has dart 3.8.1 installed
 
 ### ToolCallStep
 - Should accept a List of `Issue` objects instead of just `Map<String, dynamic>`, possibly by passing both `params` and `issues`.
