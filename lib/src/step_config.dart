@@ -41,7 +41,7 @@ class StepConfig {
   const StepConfig.withAudits(List<AuditFunction> audits) : this(audits: audits);
 
   /// Creates a StepConfig with no audits (skip audit phase)
-  const StepConfig.noAudits() : this(audits: []);
+  const StepConfig.noAudits() : this(audits: const []);
 
   /// Creates a StepConfig with custom retry configuration
   const StepConfig.withRetries({

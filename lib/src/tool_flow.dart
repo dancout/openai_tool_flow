@@ -1,4 +1,6 @@
 import 'package:meta/meta.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 
 import 'audit_function.dart';
 import 'issue.dart';
@@ -31,6 +33,9 @@ class ToolFlow {
   /// Per-step configuration for audits and retry behavior
   /// Key is step index (0-based), value is configuration for that step
   final Map<int, StepConfig> stepConfigs;
+
+  /// Whether to use mock responses for testing (defaults to false for real API calls)
+  final bool useMockResponses;
   
   /// Internal state accumulated across steps
   final Map<String, dynamic> _state = {};
@@ -44,6 +49,7 @@ class ToolFlow {
     required this.steps,
     this.audits = const [],
     this.stepConfigs = const {},
+    this.useMockResponses = false,
   });
 
   /// Executes the tool flow with the given input
@@ -150,9 +156,10 @@ class ToolFlow {
     stepInput['_round'] = round;
     stepInput['_previous_issues'] = step.issues.map((issue) => issue.toJson()).toList();
     
-    // For now, we'll create a mock response since we don't want to make actual OpenAI calls
-    // In a real implementation, this would call the OpenAI API
-    final response = await _mockToolCall(step, stepInput);
+    // Execute either real API call or mock response depending on configuration
+    final response = useMockResponses 
+        ? await _getMockResponse(step, stepInput)
+        : await _executeToolCall(step, stepInput);
     
     // Try to create typed interfaces if available
     ToolInput? typedInput;
@@ -251,10 +258,250 @@ class ToolFlow {
     return input;
   }
 
-  /// Mock tool call implementation
+  /// Makes an actual OpenAI API call for tool execution
   /// 
-  /// In a real implementation, this would make HTTP calls to OpenAI API
-  Future<Map<String, dynamic>> _mockToolCall(
+  /// This method constructs the proper OpenAI API request with tool definitions
+  /// and processes the response to extract tool call results.
+  Future<Map<String, dynamic>> _executeToolCall(
+    ToolCallStep step,
+    Map<String, dynamic> input,
+  ) async {
+    final client = http.Client();
+    
+    try {
+      // Build the OpenAI API request
+      final requestBody = _buildOpenAIRequest(step, input);
+      
+      final response = await client.post(
+        Uri.parse('${config.baseUrl}/chat/completions'),
+        headers: {
+          'Authorization': 'Bearer ${config.apiKey}',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode(requestBody),
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('OpenAI API error: ${response.statusCode} - ${response.body}');
+      }
+
+      final responseData = jsonDecode(response.body) as Map<String, dynamic>;
+      
+      // Extract tool call result from OpenAI response
+      return _extractToolCallResult(responseData, step.toolName);
+      
+    } finally {
+      client.close();
+    }
+  }
+
+  /// Builds the OpenAI API request payload
+  Map<String, dynamic> _buildOpenAIRequest(ToolCallStep step, Map<String, dynamic> input) {
+    // Create tool definition based on step configuration
+    final toolDefinition = _buildToolDefinition(step, input);
+    
+    // Create the system message describing the tool flow context
+    final systemMessage = _buildSystemMessage(step, input);
+    
+    // Create the user message with the actual input
+    final userMessage = _buildUserMessage(step, input);
+
+    return {
+      'model': step.model,
+      'messages': [
+        {'role': 'system', 'content': systemMessage},
+        {'role': 'user', 'content': userMessage},
+      ],
+      'tools': [toolDefinition],
+      'tool_choice': {'type': 'function', 'function': {'name': step.toolName}},
+      'temperature': config.defaultTemperature ?? 0.7,
+      'max_tokens': config.defaultMaxTokens ?? 1000,
+    };
+  }
+
+  /// Builds the tool definition for OpenAI API
+  Map<String, dynamic> _buildToolDefinition(ToolCallStep step, Map<String, dynamic> input) {
+    return {
+      'type': 'function',
+      'function': {
+        'name': step.toolName,
+        'description': _getToolDescription(step.toolName),
+        'parameters': _getToolParameters(step.toolName, input),
+      },
+    };
+  }
+
+  /// Gets a description for the tool based on its name
+  String _getToolDescription(String toolName) {
+    switch (toolName) {
+      case 'extract_palette':
+        return 'Extract a color palette from an image by analyzing its colors and returning the most representative colors.';
+      case 'refine_colors':
+        return 'Refine and improve a set of colors by adjusting for contrast, accessibility, and visual harmony.';
+      case 'generate_theme':
+        return 'Generate a complete color theme from a refined color palette, including primary, secondary, accent, and background colors.';
+      default:
+        return 'Execute the $toolName tool with the provided parameters.';
+    }
+  }
+
+  /// Gets the parameter schema for the tool
+  Map<String, dynamic> _getToolParameters(String toolName, Map<String, dynamic> input) {
+    switch (toolName) {
+      case 'extract_palette':
+        return {
+          'type': 'object',
+          'properties': {
+            'imagePath': {
+              'type': 'string',
+              'description': 'Path to the image file to analyze'
+            },
+            'maxColors': {
+              'type': 'integer',
+              'description': 'Maximum number of colors to extract',
+              'minimum': 1,
+              'maximum': 20,
+              'default': 8
+            },
+            'minSaturation': {
+              'type': 'number',
+              'description': 'Minimum saturation level for colors (0.0 to 1.0)',
+              'minimum': 0.0,
+              'maximum': 1.0,
+              'default': 0.3
+            },
+            'userPreferences': {
+              'type': 'object',
+              'description': 'Additional user preferences for color extraction'
+            }
+          },
+          'required': ['imagePath']
+        };
+      case 'refine_colors':
+        return {
+          'type': 'object',
+          'properties': {
+            'colors': {
+              'type': 'array',
+              'items': {'type': 'string'},
+              'description': 'Array of hex color codes to refine'
+            },
+            'enhance_contrast': {
+              'type': 'boolean',
+              'description': 'Whether to enhance contrast between colors',
+              'default': true
+            },
+            'target_accessibility': {
+              'type': 'string',
+              'enum': ['A', 'AA', 'AAA'],
+              'description': 'Target accessibility level',
+              'default': 'AA'
+            }
+          },
+          'required': ['colors']
+        };
+      case 'generate_theme':
+        return {
+          'type': 'object',
+          'properties': {
+            'refined_colors': {
+              'type': 'array',
+              'items': {'type': 'string'},
+              'description': 'Array of refined hex color codes to use for theme generation'
+            },
+            'theme_style': {
+              'type': 'string',
+              'description': 'Style of the theme (modern, classic, vibrant, minimal, etc.)',
+              'default': 'modern'
+            }
+          },
+          'required': ['refined_colors']
+        };
+      default:
+        // Generic parameter schema for unknown tools
+        return {
+          'type': 'object',
+          'properties': {},
+          'additionalProperties': true
+        };
+    }
+  }
+
+  /// Builds the system message for context
+  String _buildSystemMessage(ToolCallStep step, Map<String, dynamic> input) {
+    final contextInfo = input.containsKey('_round') && input['_round'] > 0
+        ? 'This is retry attempt ${input['_round'] + 1}.'
+        : 'This is the first attempt.';
+    
+    final previousIssues = input['_previous_issues'] as List<dynamic>? ?? [];
+    final issuesContext = previousIssues.isNotEmpty
+        ? ' Previous issues to address: ${previousIssues.map((i) => i['description']).join(', ')}'
+        : '';
+
+    return '''You are a specialized tool executor for the ${step.toolName} function. 
+$contextInfo$issuesContext
+
+Please execute the requested tool function and return the result in the expected format. 
+Be precise and follow the tool's parameter schema exactly.''';
+  }
+
+  /// Builds the user message with input parameters
+  String _buildUserMessage(ToolCallStep step, Map<String, dynamic> input) {
+    // Filter out internal parameters
+    final cleanInput = Map<String, dynamic>.from(input);
+    cleanInput.removeWhere((key, _) => key.startsWith('_'));
+    
+    return 'Please execute ${step.toolName} with the following parameters: ${jsonEncode(cleanInput)}';
+  }
+
+  /// Extracts the tool call result from OpenAI response
+  Map<String, dynamic> _extractToolCallResult(Map<String, dynamic> response, String expectedToolName) {
+    try {
+      final choices = response['choices'] as List<dynamic>?;
+      if (choices == null || choices.isEmpty) {
+        throw Exception('No choices in OpenAI response');
+      }
+
+      final firstChoice = choices[0] as Map<String, dynamic>;
+      final message = firstChoice['message'] as Map<String, dynamic>?;
+      if (message == null) {
+        throw Exception('No message in OpenAI response choice');
+      }
+
+      final toolCalls = message['tool_calls'] as List<dynamic>?;
+      if (toolCalls == null || toolCalls.isEmpty) {
+        throw Exception('No tool calls in OpenAI response message');
+      }
+
+      final toolCall = toolCalls[0] as Map<String, dynamic>;
+      final function = toolCall['function'] as Map<String, dynamic>?;
+      if (function == null) {
+        throw Exception('No function in OpenAI tool call');
+      }
+
+      final functionName = function['name'] as String?;
+      if (functionName != expectedToolName) {
+        throw Exception('Expected tool $expectedToolName but got $functionName');
+      }
+
+      final argumentsString = function['arguments'] as String?;
+      if (argumentsString == null) {
+        throw Exception('No arguments in OpenAI function call');
+      }
+
+      final arguments = jsonDecode(argumentsString) as Map<String, dynamic>;
+      return arguments;
+
+    } catch (e) {
+      throw Exception('Failed to parse OpenAI response: $e');
+    }
+  }
+
+  /// Gets mock response for testing purposes only
+  /// 
+  /// This method is only used when useMockResponses is true,
+  /// allowing tests to run without making actual API calls.
+  Future<Map<String, dynamic>> _getMockResponse(
     ToolCallStep step,
     Map<String, dynamic> input,
   ) async {

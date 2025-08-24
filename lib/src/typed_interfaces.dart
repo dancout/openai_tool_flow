@@ -3,6 +3,9 @@
 /// Provides type safety and validation for tool call parameters
 /// while maintaining backward compatibility with Map-based interface.
 abstract class ToolInput {
+  /// Allows const constructors in subclasses
+  const ToolInput();
+
   /// Converts this input to a Map for tool call processing
   Map<String, dynamic> toMap();
 
@@ -25,6 +28,9 @@ abstract class ToolInput {
 /// Provides type safety for tool results while maintaining
 /// backward compatibility with Map-based interface.
 abstract class ToolOutput {
+  /// Allows const constructors in subclasses  
+  const ToolOutput();
+
   /// Converts this output to a Map for serialization
   Map<String, dynamic> toMap();
 

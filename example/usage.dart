@@ -291,12 +291,14 @@ void demonstrateStepConfigUsage() {
     ColorQualityAuditFunction(),
     ColorDiversityAuditFunction(),
   ]);
+  print('Step 1: ${step1Config.audits.length} audits configured');
   
   // Step with custom retry configuration
   final step2Config = StepConfig.withRetries(
     maxRetries: 5,
     audits: [ColorQualityAuditFunction()],
   );
+  print('Step 2: Max retries = ${step2Config.maxRetries}');
   
   // Step with custom pass/fail criteria
   final step3Config = StepConfig.withCustomCriteria(
@@ -310,9 +312,11 @@ void demonstrateStepConfigUsage() {
     },
     failureReason: (issues) => 'Too many high-severity issues: ${issues.length}',
   );
+  print('Step 3: Has custom criteria = ${step3Config.customPassCriteria != null}');
   
   // Step with no audits
   final step4Config = StepConfig.noAudits();
+  print('Step 4: Has audits = ${step4Config.hasAudits}');
   
-  print('Step config examples created successfully');
+  print('Step config examples demonstrated successfully');
 }
