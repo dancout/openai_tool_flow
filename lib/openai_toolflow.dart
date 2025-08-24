@@ -1,0 +1,16 @@
+/// A Dart package for orchestrating OpenAI tool calls with audits.
+///
+/// This package enables developers to define a pipeline of tool calls where:
+/// - Each tool call can pass structured outputs or issues to later steps
+/// - Audit functions can generate issues that feed back into the pipeline
+/// - Model parameters can be customized per call
+/// - State is managed internally across tool calls
+/// - All data structures are strict but extensible via subclassing
+library;
+
+export 'src/audit_function.dart';
+export 'src/issue.dart';
+export 'src/openai_config.dart';
+export 'src/tool_call_step.dart';
+export 'src/tool_flow.dart';
+export 'src/tool_result.dart';
