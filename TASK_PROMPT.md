@@ -34,5 +34,12 @@ Refer to the following files for further context and examples:
 - `README.md`
 ##
 
+Use the following helper file templates as you complete your work:
+- ADR_TEMPLATE.md
+    - Architectural decision record for keeping track of decisions you make about how to structure anything in the package or plan
+- IMPLEMENTATION_PLAN_TEMPLATE.md
+    - Used to plan specific tasks for accomplishing a feature.
+    - Use this to break out features into atomic, verifiable tasks.
+
 Also create the following files:
 - `example/usage.dart` (sample pipeline)
