@@ -1,0 +1,16 @@
+name: openai_toolflow
+description: A Dart package for orchestrating OpenAI tool calls with audits. Enables chaining tool calls where each step can pass structured outputs or issues to later steps.
+version: 0.1.0
+repository: https://github.com/dancout/openai_tool_flow
+
+environment:
+  sdk: ^3.8.1
+
+# Add regular dependencies here.
+dependencies:
+  http: ^1.1.0
+  meta: ^1.10.0
+
+dev_dependencies:
+  lints: ^6.0.0
+  test: ^1.25.6
