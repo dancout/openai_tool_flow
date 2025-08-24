@@ -1,4 +1,5 @@
 import 'issue.dart';
+import 'typed_interfaces.dart';
 
 /// Structured output of a tool call step.
 /// 
@@ -19,23 +20,40 @@ class ToolResult {
   /// Issues identified during tool execution or subsequent audits
   final List<Issue> issues;
 
+  /// Optional strongly-typed input (when available)
+  final ToolInput? typedInput;
+
+  /// Optional strongly-typed output (when available)
+  final ToolOutput? typedOutput;
+
   /// Creates a ToolResult with required fields
   const ToolResult({
     required this.toolName,
     required this.input,
     required this.output,
     this.issues = const [],
+    this.typedInput,
+    this.typedOutput,
   });
 
   /// Creates a ToolResult from a JSON map
   factory ToolResult.fromJson(Map<String, dynamic> json) {
+    final toolName = json['toolName'] as String;
+    final output = Map<String, dynamic>.from(json['output'] as Map);
+    
+    // Try to create typed output if registry has a creator for this tool
+    final typedOutput = ToolOutputRegistry.hasTypedOutput(toolName)
+        ? ToolOutputRegistry.create(toolName, output)
+        : null;
+
     return ToolResult(
-      toolName: json['toolName'] as String,
+      toolName: toolName,
       input: Map<String, dynamic>.from(json['input'] as Map),
-      output: Map<String, dynamic>.from(json['output'] as Map),
+      output: output,
       issues: (json['issues'] as List?)
           ?.map((issueJson) => Issue.fromJson(issueJson as Map<String, dynamic>))
           .toList() ?? [],
+      typedOutput: typedOutput,
     );
   }
 
@@ -49,6 +67,8 @@ class ToolResult {
       'input': input,
       'output': output,
       'issues': issues.map((issue) => issue.toJson()).toList(),
+      if (typedInput != null) 'typedInput': typedInput!.toMap(),
+      if (typedOutput != null) 'typedOutput': typedOutput!.toMap(),
     };
   }
 
@@ -59,6 +79,23 @@ class ToolResult {
       input: input,
       output: output,
       issues: [...issues, ...newIssues],
+      typedInput: typedInput,
+      typedOutput: typedOutput,
+    );
+  }
+
+  /// Creates a copy of this ToolResult with typed interfaces
+  ToolResult withTypedInterfaces({
+    ToolInput? typedInput,
+    ToolOutput? typedOutput,
+  }) {
+    return ToolResult(
+      toolName: toolName,
+      input: input,
+      output: output,
+      issues: issues,
+      typedInput: typedInput ?? this.typedInput,
+      typedOutput: typedOutput ?? this.typedOutput,
     );
   }
 

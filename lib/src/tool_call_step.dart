@@ -1,6 +1,9 @@
+import 'issue.dart';
+
 /// Defines a single tool call step in a ToolFlow.
 /// 
-/// Contains the tool name, OpenAI model to use, and parameters for the call.
+/// Contains the tool name, OpenAI model to use, parameters for the call,
+/// and configuration for issues and retries.
 class ToolCallStep {
   /// Name of the tool to call
   final String toolName;
@@ -11,11 +14,21 @@ class ToolCallStep {
   /// Parameters to pass to the model/tool
   final Map<String, dynamic> params;
 
+  /// Issues that have been identified in previous attempts
+  /// Helps provide context for retry attempts
+  final List<Issue> issues;
+
+  /// Maximum number of retry attempts for this step
+  /// Defaults to 3 attempts
+  final int maxRetries;
+
   /// Creates a ToolCallStep
   const ToolCallStep({
     required this.toolName,
     required this.model,
     this.params = const {},
+    this.issues = const [],
+    this.maxRetries = 3,
   });
 
   /// Creates a ToolCallStep from a JSON map
@@ -24,6 +37,10 @@ class ToolCallStep {
       toolName: json['toolName'] as String,
       model: json['model'] as String,
       params: Map<String, dynamic>.from(json['params'] as Map? ?? {}),
+      issues: (json['issues'] as List?)
+          ?.map((issueJson) => Issue.fromJson(issueJson as Map<String, dynamic>))
+          .toList() ?? [],
+      maxRetries: json['maxRetries'] as int? ?? 3,
     );
   }
 
@@ -33,6 +50,8 @@ class ToolCallStep {
       'toolName': toolName,
       'model': model,
       'params': params,
+      'issues': issues.map((issue) => issue.toJson()).toList(),
+      'maxRetries': maxRetries,
     };
   }
 
@@ -41,17 +60,21 @@ class ToolCallStep {
     String? toolName,
     String? model,
     Map<String, dynamic>? params,
+    List<Issue>? issues,
+    int? maxRetries,
   }) {
     return ToolCallStep(
       toolName: toolName ?? this.toolName,
       model: model ?? this.model,
       params: params ?? this.params,
+      issues: issues ?? this.issues,
+      maxRetries: maxRetries ?? this.maxRetries,
     );
   }
 
   @override
   String toString() {
-    return 'ToolCallStep(toolName: $toolName, model: $model)';
+    return 'ToolCallStep(toolName: $toolName, model: $model, maxRetries: $maxRetries)';
   }
 
   @override
@@ -60,9 +83,10 @@ class ToolCallStep {
     return other is ToolCallStep &&
         other.toolName == toolName &&
         other.model == model &&
-        other.params.toString() == params.toString();
+        other.params.toString() == params.toString() &&
+        other.maxRetries == maxRetries;
   }
 
   @override
-  int get hashCode => Object.hash(toolName, model, params);
+  int get hashCode => Object.hash(toolName, model, params, maxRetries);
 }

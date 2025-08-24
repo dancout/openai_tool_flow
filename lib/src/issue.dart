@@ -20,6 +20,14 @@ class Issue {
   /// List of suggested resolutions
   final List<String> suggestions;
 
+  /// The round/run number when this issue was identified
+  /// Helps track issues across retry attempts
+  final int round;
+
+  /// Optional related data that caused or is associated with this issue
+  /// Can include input/output snapshots or other relevant context
+  final Map<String, dynamic>? relatedData;
+
   /// Creates an Issue with required fields
   const Issue({
     required this.id,
@@ -27,6 +35,8 @@ class Issue {
     required this.description,
     required this.context,
     required this.suggestions,
+    this.round = 0,
+    this.relatedData,
   });
 
   /// Creates an Issue from a JSON map
@@ -37,6 +47,10 @@ class Issue {
       description: json['description'] as String,
       context: Map<String, dynamic>.from(json['context'] as Map),
       suggestions: List<String>.from(json['suggestions'] as List),
+      round: json['round'] as int? ?? 0,
+      relatedData: json['relatedData'] != null 
+          ? Map<String, dynamic>.from(json['relatedData'] as Map)
+          : null,
     );
   }
 
@@ -51,6 +65,8 @@ class Issue {
       'description': description,
       'context': context,
       'suggestions': suggestions,
+      'round': round,
+      if (relatedData != null) 'relatedData': relatedData,
     };
   }
 
