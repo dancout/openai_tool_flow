@@ -163,10 +163,20 @@ void main() {
   });
 
   group('ToolFlow', () {
-    test('should execute simple flow', () async {
+    test('should execute simple flow with mock service', () async {
       final config = OpenAIConfig(
         apiKey: 'test-key',
         defaultModel: 'gpt-4',
+      );
+
+      // Create mock service with predefined responses
+      final mockService = MockOpenAiToolService(
+        responses: {
+          'extract_palette': {
+            'colors': ['#FF5733', '#33FF57', '#3357FF'],
+            'confidence': 0.85,
+          },
+        },
       );
 
       final flow = ToolFlow(
@@ -178,7 +188,7 @@ void main() {
             params: {'max_colors': 3},
           ),
         ],
-        useMockResponses: true, // Enable mock mode for testing
+        openAiService: mockService,
       );
 
       final result = await flow.run(input: {'imagePath': 'test.jpg'});
@@ -186,6 +196,8 @@ void main() {
       expect(result.results.length, equals(1));
       expect(result.results.first.toolName, equals('extract_palette'));
       expect(result.finalOutput, isNotNull);
+      expect(result.finalOutput!['colors'], isNotNull);
+      expect(result.getResultByToolName('extract_palette'), isNotNull);
     });
 
     test('should collect issues from audits', () async {
@@ -207,16 +219,18 @@ void main() {
         ],
       );
 
+      final mockService = MockOpenAiToolService();
+
       final flow = ToolFlow(
         config: config,
         steps: [
           ToolCallStep(
             toolName: 'extract_palette',
             model: 'gpt-4',
+            stepConfig: StepConfig(audits: [audit]),
           ),
         ],
-        audits: [audit],
-        useMockResponses: true, // Enable mock mode for testing
+        openAiService: mockService,
       );
 
       final result = await flow.run();
@@ -224,6 +238,113 @@ void main() {
       expect(result.hasIssues, isTrue);
       expect(result.allIssues.length, equals(1));
       expect(result.allIssues.first.description, equals('Test audit issue'));
+    });
+
+    test('should support tool name-based result retrieval', () async {
+      final config = OpenAIConfig(
+        apiKey: 'test-key',
+        defaultModel: 'gpt-4',
+      );
+
+      final mockService = MockOpenAiToolService(
+        responses: {
+          'extract_palette': {'colors': ['#FF0000', '#00FF00']},
+          'refine_colors': {'refined_colors': ['#FF5733', '#33FF57']},
+        },
+      );
+
+      final flow = ToolFlow(
+        config: config,
+        steps: [
+          ToolCallStep(
+            toolName: 'extract_palette',
+            model: 'gpt-4',
+          ),
+          ToolCallStep(
+            toolName: 'refine_colors',
+            model: 'gpt-4',
+          ),
+        ],
+        openAiService: mockService,
+      );
+
+      final result = await flow.run();
+
+      expect(result.results.length, equals(2));
+      
+      // Test tool name-based retrieval
+      final paletteResult = result.getResultByToolName('extract_palette');
+      expect(paletteResult, isNotNull);
+      expect(paletteResult!.toolName, equals('extract_palette'));
+      
+      final refineResult = result.getResultByToolName('refine_colors');
+      expect(refineResult, isNotNull);
+      expect(refineResult!.toolName, equals('refine_colors'));
+      
+      // Test non-existent tool
+      expect(result.getResultByToolName('nonexistent'), isNull);
+      
+      // Test multiple tool retrieval
+      final multipleResults = result.getResultsByToolNames(['extract_palette', 'refine_colors']);
+      expect(multipleResults.length, equals(2));
+    });
+
+    test('should support issue forwarding between steps', () async {
+      final config = OpenAIConfig(
+        apiKey: 'test-key',
+        defaultModel: 'gpt-4',
+      );
+
+      // Create an audit that generates issues
+      final audit = SimpleAuditFunction(
+        name: 'color_audit',
+        auditFunction: (result) => [
+          Issue(
+            id: 'color-issue',
+            severity: IssueSeverity.low,
+            description: 'Color needs adjustment',
+            context: {'color': result.output['colors']?.first ?? 'unknown'},
+            suggestions: ['Increase saturation'],
+          )
+        ],
+      );
+
+      final mockService = MockOpenAiToolService(
+        responses: {
+          'extract_palette': {'colors': ['#FF0000']},
+          'refine_colors': {'refined_colors': ['#FF5733']},
+        },
+      );
+
+      final flow = ToolFlow(
+        config: config,
+        steps: [
+          ToolCallStep(
+            toolName: 'extract_palette',
+            model: 'gpt-4',
+            stepConfig: StepConfig(audits: [audit]),
+          ),
+          ToolCallStep(
+            toolName: 'refine_colors',
+            model: 'gpt-4',
+            stepConfig: StepConfig(
+              forwardingConfigs: [
+                ForwardingConfig.issuesOnly(0), // Forward issues from step 0
+              ],
+            ),
+          ),
+        ],
+        openAiService: mockService,
+      );
+
+      final result = await flow.run();
+
+      expect(result.results.length, equals(2));
+      expect(result.allIssues.length, equals(1)); // One issue from first step
+      
+      // Check that second step received forwarded issues
+      final secondStepResult = result.results[1];
+      expect(secondStepResult.input.containsKey('_forwarded_issues_extract_palette'), isTrue);
     });
   });
 }
