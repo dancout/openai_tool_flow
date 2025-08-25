@@ -1,5 +1,6 @@
 import 'package:openai_toolflow/openai_toolflow.dart';
 import 'package:test/test.dart';
+import '../example/audit_functions.dart';
 
 void main() {
   group('Issue', () {
@@ -177,6 +178,7 @@ void main() {
             params: {'max_colors': 3},
           ),
         ],
+        useMockResponses: true, // Enable mock mode for testing
       );
 
       final result = await flow.run(input: {'imagePath': 'test.jpg'});
@@ -214,6 +216,7 @@ void main() {
           ),
         ],
         audits: [audit],
+        useMockResponses: true, // Enable mock mode for testing
       );
 
       final result = await flow.run();

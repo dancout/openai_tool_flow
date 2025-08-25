@@ -6,11 +6,14 @@
 /// - Model parameters can be customized per call
 /// - State is managed internally across tool calls
 /// - All data structures are strict but extensible via subclassing
+/// - Strongly-typed interfaces available alongside generic maps
 library;
 
 export 'src/audit_function.dart';
 export 'src/issue.dart';
 export 'src/openai_config.dart';
+export 'src/step_config.dart';
 export 'src/tool_call_step.dart';
 export 'src/tool_flow.dart';
 export 'src/tool_result.dart';
+export 'src/typed_interfaces.dart';

@@ -14,21 +14,30 @@ abstract class AuditFunction {
   /// This method should be implemented by subclasses to provide
   /// domain-specific audit logic.
   List<Issue> run(ToolResult result);
-}
 
-/// A simple audit function that can be created with a function
-class SimpleAuditFunction extends AuditFunction {
-  @override
-  final String name;
-  
-  final List<Issue> Function(ToolResult) _auditFunction;
+  /// Determines if the audit criteria are met for the given issues
+  /// 
+  /// This method can be overridden by subclasses to provide custom
+  /// pass/fail logic. By default, it passes if there are no critical issues.
+  /// 
+  /// Returns true if criteria are met (audit passes), false otherwise.
+  bool passedCriteria(List<Issue> issues) {
+    // Default implementation: pass if no critical issues
+    return !issues.any((issue) => issue.severity == IssueSeverity.critical);
+  }
 
-  /// Creates a simple audit function with a name and audit function
-  SimpleAuditFunction({
-    required this.name,
-    required List<Issue> Function(ToolResult) auditFunction,
-  }) : _auditFunction = auditFunction;
-
-  @override
-  List<Issue> run(ToolResult result) => _auditFunction(result);
+  /// Gets the reason for failure if criteria are not met
+  /// 
+  /// This method can be overridden to provide detailed failure reasons.
+  /// Only called when passedCriteria returns false.
+  String getFailureReason(List<Issue> issues) {
+    final criticalIssues = issues.where((issue) => issue.severity == IssueSeverity.critical).toList();
+    
+    if (criticalIssues.isNotEmpty) {
+      final descriptions = criticalIssues.map((issue) => issue.description).join(', ');
+      return 'Critical issues found: $descriptions';
+    }
+    
+    return 'Custom criteria not met';
+  }
 }
