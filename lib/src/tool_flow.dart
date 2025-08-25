@@ -1,6 +1,7 @@
-import 'package:meta/meta.dart';
 import 'dart:convert';
+
 import 'package:http/http.dart' as http;
+import 'package:meta/meta.dart';
 
 import 'audit_function.dart';
 import 'issue.dart';
@@ -11,7 +12,7 @@ import 'tool_result.dart';
 import 'typed_interfaces.dart';
 
 /// Manages ordered execution of tool call steps with internal state management.
-/// 
+///
 /// The ToolFlow orchestrator:
 /// - Executes steps in order
 /// - Manages internal state across steps
@@ -22,10 +23,10 @@ import 'typed_interfaces.dart';
 class ToolFlow {
   /// Configuration for OpenAI API access
   final OpenAIConfig config;
-  
+
   /// Ordered list of tool call steps to execute
   final List<ToolCallStep> steps;
-  
+
   /// Optional audit functions to run after each step (legacy)
   /// Use stepConfigs for more granular control
   final List<AuditFunction> audits;
@@ -36,10 +37,10 @@ class ToolFlow {
 
   /// Whether to use mock responses for testing (defaults to false for real API calls)
   final bool useMockResponses;
-  
+
   /// Internal state accumulated across steps
   final Map<String, dynamic> _state = {};
-  
+
   /// Results from completed steps
   final List<ToolResult> _results = [];
 
@@ -53,11 +54,9 @@ class ToolFlow {
   });
 
   /// Executes the tool flow with the given input
-  /// 
+  ///
   /// Returns a ToolFlowResult containing all step results and final state
-  Future<ToolFlowResult> run({
-    Map<String, dynamic> input = const {},
-  }) async {
+  Future<ToolFlowResult> run({Map<String, dynamic> input = const {}}) async {
     _state.clear();
     _results.clear();
     _state.addAll(input);
@@ -65,40 +64,42 @@ class ToolFlow {
     for (int i = 0; i < steps.length; i++) {
       final step = steps[i];
       final stepConfig = stepConfigs.getConfigForStep(i);
-      
+
       ToolResult? stepResult;
       bool stepPassed = false;
       int attemptCount = 0;
       final maxRetries = stepConfig.getEffectiveMaxRetries(step.maxRetries);
-      
+
       // Retry loop for this step
       while (attemptCount <= maxRetries && !stepPassed) {
         attemptCount++;
-        
+
         try {
           // Execute the step
           stepResult = await _executeStep(step, i, attemptCount - 1);
-          
+
           // Run audits if configured for this step
           if (stepConfig.hasAudits || audits.isNotEmpty) {
-            final shouldRunAudits = !stepConfig.auditOnlyFinalAttempt || 
-                                  attemptCount > maxRetries ||
-                                  attemptCount == 1; // Always run on first attempt
-            
+            final shouldRunAudits =
+                !stepConfig.auditOnlyFinalAttempt ||
+                attemptCount > maxRetries ||
+                attemptCount == 1; // Always run on first attempt
+
             if (shouldRunAudits) {
               stepResult = await _runAuditsForStep(stepResult, stepConfig, i);
             }
           }
-          
+
           // Check if step passed criteria
           final allIssues = stepResult.issues;
           stepPassed = stepConfig.passedCriteria(allIssues);
-          
+
           if (!stepPassed && attemptCount <= maxRetries) {
             // Log retry attempt
-            print('Step $i attempt $attemptCount failed. ${stepConfig.getFailureReason(allIssues)}. Retrying...');
+            print(
+              'Step $i attempt $attemptCount failed. ${stepConfig.getFailureReason(allIssues)}. Retrying...',
+            );
           }
-          
         } catch (e) {
           // Create an error result
           stepResult = ToolResult(
@@ -124,19 +125,21 @@ class ToolFlow {
           stepPassed = false;
         }
       }
-      
+
       // Add the final result
       if (stepResult != null) {
         _results.add(stepResult);
-        
+
         // Update state with step results
         _state['step_${i}_result'] = stepResult.toJson();
         _state.addAll(stepResult.output);
       }
-      
+
       // Check if we should stop on failure
       if (!stepPassed && stepConfig.stopOnFailure) {
-        print('Step $i failed after $maxRetries retries. Stopping flow execution.');
+        print(
+          'Step $i failed after $maxRetries retries. Stopping flow execution.',
+        );
         break;
       }
     }
@@ -149,29 +152,35 @@ class ToolFlow {
   }
 
   /// Executes a single step
-  Future<ToolResult> _executeStep(ToolCallStep step, int stepIndex, int round) async {
+  Future<ToolResult> _executeStep(
+    ToolCallStep step,
+    int stepIndex,
+    int round,
+  ) async {
     final stepInput = _buildStepInput(step, stepIndex);
-    
+
     // Add round information to input
     stepInput['_round'] = round;
-    stepInput['_previous_issues'] = step.issues.map((issue) => issue.toJson()).toList();
-    
+    stepInput['_previous_issues'] = step.issues
+        .map((issue) => issue.toJson())
+        .toList();
+
     // Execute either real API call or mock response depending on configuration
-    final response = useMockResponses 
+    final response = useMockResponses
         ? await _getMockResponse(step, stepInput)
         : await _executeToolCall(step, stepInput);
-    
+
     // Try to create typed interfaces if available
     ToolInput? typedInput;
     ToolOutput? typedOutput;
-    
+
     try {
       // Attempt to create typed output if registry has a creator
       typedOutput = ToolOutputRegistry.create(step.toolName, response);
     } catch (e) {
       // If typed creation fails, continue with untyped result
     }
-    
+
     // Create initial result without issues (audits will add them)
     final result = ToolResult(
       toolName: step.toolName,
@@ -187,52 +196,63 @@ class ToolFlow {
 
   /// Runs audits for a specific step
   Future<ToolResult> _runAuditsForStep(
-    ToolResult result, 
-    StepConfig stepConfig, 
+    ToolResult result,
+    StepConfig stepConfig,
     int stepIndex,
   ) async {
     var auditedResult = result;
-    
+
     // Run step-specific audits first
     for (final audit in stepConfig.audits) {
       final auditIssues = audit.run(auditedResult);
       // Add round information to audit issues
-      final roundedIssues = auditIssues.map((issue) => Issue(
-        id: issue.id,
-        severity: issue.severity,
-        description: issue.description,
-        context: issue.context,
-        suggestions: issue.suggestions,
-        round: int.tryParse(result.input['_round']?.toString() ?? '0') ?? 0,
-        relatedData: {
-          'step_index': stepIndex,
-          'audit_name': audit.name,
-          'tool_output': result.output,
-        },
-      )).toList();
-      
+      final roundedIssues = auditIssues
+          .map(
+            (issue) => Issue(
+              id: issue.id,
+              severity: issue.severity,
+              description: issue.description,
+              context: issue.context,
+              suggestions: issue.suggestions,
+              round:
+                  int.tryParse(result.input['_round']?.toString() ?? '0') ?? 0,
+              relatedData: {
+                'step_index': stepIndex,
+                'audit_name': audit.name,
+                'tool_output': result.output,
+              },
+            ),
+          )
+          .toList();
+
       auditedResult = auditedResult.withAdditionalIssues(roundedIssues);
     }
-    
+
     // Run legacy global audits if no step-specific audits are configured
     if (!stepConfig.hasAudits) {
       for (final audit in audits) {
         final auditIssues = audit.run(auditedResult);
         // Add round information to audit issues
-        final roundedIssues = auditIssues.map((issue) => Issue(
-          id: issue.id,
-          severity: issue.severity,
-          description: issue.description,
-          context: issue.context,
-          suggestions: issue.suggestions,
-          round: int.tryParse(result.input['_round']?.toString() ?? '0') ?? 0,
-          relatedData: {
-            'step_index': stepIndex,
-            'audit_name': audit.name,
-            'tool_output': result.output,
-          },
-        )).toList();
-        
+        final roundedIssues = auditIssues
+            .map(
+              (issue) => Issue(
+                id: issue.id,
+                severity: issue.severity,
+                description: issue.description,
+                context: issue.context,
+                suggestions: issue.suggestions,
+                round:
+                    int.tryParse(result.input['_round']?.toString() ?? '0') ??
+                    0,
+                relatedData: {
+                  'step_index': stepIndex,
+                  'audit_name': audit.name,
+                  'tool_output': result.output,
+                },
+              ),
+            )
+            .toList();
+
         auditedResult = auditedResult.withAdditionalIssues(roundedIssues);
       }
     }
@@ -243,23 +263,23 @@ class ToolFlow {
   /// Builds input for a step based on current state and step parameters
   Map<String, dynamic> _buildStepInput(ToolCallStep step, int stepIndex) {
     final input = <String, dynamic>{};
-    
+
     // Add current state
     input.addAll(_state);
-    
+
     // Add step-specific parameters
     input.addAll(step.params);
-    
+
     // Add model configuration
     input['_model'] = step.model;
     input['_temperature'] = config.defaultTemperature;
     input['_max_tokens'] = config.defaultMaxTokens;
-    
+
     return input;
   }
 
   /// Makes an actual OpenAI API call for tool execution
-  /// 
+  ///
   /// This method constructs the proper OpenAI API request with tool definitions
   /// and processes the response to extract tool call results.
   Future<Map<String, dynamic>> _executeToolCall(
@@ -267,11 +287,11 @@ class ToolFlow {
     Map<String, dynamic> input,
   ) async {
     final client = http.Client();
-    
+
     try {
       // Build the OpenAI API request
       final requestBody = _buildOpenAIRequest(step, input);
-      
+
       final response = await client.post(
         Uri.parse('${config.baseUrl}/chat/completions'),
         headers: {
@@ -282,27 +302,31 @@ class ToolFlow {
       );
 
       if (response.statusCode != 200) {
-        throw Exception('OpenAI API error: ${response.statusCode} - ${response.body}');
+        throw Exception(
+          'OpenAI API error: ${response.statusCode} - ${response.body}',
+        );
       }
 
       final responseData = jsonDecode(response.body) as Map<String, dynamic>;
-      
+
       // Extract tool call result from OpenAI response
       return _extractToolCallResult(responseData, step.toolName);
-      
     } finally {
       client.close();
     }
   }
 
   /// Builds the OpenAI API request payload
-  Map<String, dynamic> _buildOpenAIRequest(ToolCallStep step, Map<String, dynamic> input) {
+  Map<String, dynamic> _buildOpenAIRequest(
+    ToolCallStep step,
+    Map<String, dynamic> input,
+  ) {
     // Create tool definition based on step configuration
     final toolDefinition = _buildToolDefinition(step, input);
-    
+
     // Create the system message describing the tool flow context
     final systemMessage = _buildSystemMessage(step, input);
-    
+
     // Create the user message with the actual input
     final userMessage = _buildUserMessage(step, input);
 
@@ -313,14 +337,20 @@ class ToolFlow {
         {'role': 'user', 'content': userMessage},
       ],
       'tools': [toolDefinition],
-      'tool_choice': {'type': 'function', 'function': {'name': step.toolName}},
+      'tool_choice': {
+        'type': 'function',
+        'function': {'name': step.toolName},
+      },
       'temperature': config.defaultTemperature ?? 0.7,
       'max_tokens': config.defaultMaxTokens ?? 1000,
     };
   }
 
   /// Builds the tool definition for OpenAI API
-  Map<String, dynamic> _buildToolDefinition(ToolCallStep step, Map<String, dynamic> input) {
+  Map<String, dynamic> _buildToolDefinition(
+    ToolCallStep step,
+    Map<String, dynamic> input,
+  ) {
     return {
       'type': 'function',
       'function': {
@@ -346,7 +376,10 @@ class ToolFlow {
   }
 
   /// Gets the parameter schema for the tool
-  Map<String, dynamic> _getToolParameters(String toolName, Map<String, dynamic> input) {
+  Map<String, dynamic> _getToolParameters(
+    String toolName,
+    Map<String, dynamic> input,
+  ) {
     switch (toolName) {
       case 'extract_palette':
         return {
@@ -354,28 +387,28 @@ class ToolFlow {
           'properties': {
             'imagePath': {
               'type': 'string',
-              'description': 'Path to the image file to analyze'
+              'description': 'Path to the image file to analyze',
             },
             'maxColors': {
               'type': 'integer',
               'description': 'Maximum number of colors to extract',
               'minimum': 1,
               'maximum': 20,
-              'default': 8
+              'default': 8,
             },
             'minSaturation': {
               'type': 'number',
               'description': 'Minimum saturation level for colors (0.0 to 1.0)',
               'minimum': 0.0,
               'maximum': 1.0,
-              'default': 0.3
+              'default': 0.3,
             },
             'userPreferences': {
               'type': 'object',
-              'description': 'Additional user preferences for color extraction'
-            }
+              'description': 'Additional user preferences for color extraction',
+            },
           },
-          'required': ['imagePath']
+          'required': ['imagePath'],
         };
       case 'refine_colors':
         return {
@@ -384,21 +417,21 @@ class ToolFlow {
             'colors': {
               'type': 'array',
               'items': {'type': 'string'},
-              'description': 'Array of hex color codes to refine'
+              'description': 'Array of hex color codes to refine',
             },
             'enhance_contrast': {
               'type': 'boolean',
               'description': 'Whether to enhance contrast between colors',
-              'default': true
+              'default': true,
             },
             'target_accessibility': {
               'type': 'string',
               'enum': ['A', 'AA', 'AAA'],
               'description': 'Target accessibility level',
-              'default': 'AA'
-            }
+              'default': 'AA',
+            },
           },
-          'required': ['colors']
+          'required': ['colors'],
         };
       case 'generate_theme':
         return {
@@ -407,22 +440,24 @@ class ToolFlow {
             'refined_colors': {
               'type': 'array',
               'items': {'type': 'string'},
-              'description': 'Array of refined hex color codes to use for theme generation'
+              'description':
+                  'Array of refined hex color codes to use for theme generation',
             },
             'theme_style': {
               'type': 'string',
-              'description': 'Style of the theme (modern, classic, vibrant, minimal, etc.)',
-              'default': 'modern'
-            }
+              'description':
+                  'Style of the theme (modern, classic, vibrant, minimal, etc.)',
+              'default': 'modern',
+            },
           },
-          'required': ['refined_colors']
+          'required': ['refined_colors'],
         };
       default:
         // Generic parameter schema for unknown tools
         return {
           'type': 'object',
           'properties': {},
-          'additionalProperties': true
+          'additionalProperties': true,
         };
     }
   }
@@ -432,7 +467,7 @@ class ToolFlow {
     final contextInfo = input.containsKey('_round') && input['_round'] > 0
         ? 'This is retry attempt ${input['_round'] + 1}.'
         : 'This is the first attempt.';
-    
+
     final previousIssues = input['_previous_issues'] as List<dynamic>? ?? [];
     final issuesContext = previousIssues.isNotEmpty
         ? ' Previous issues to address: ${previousIssues.map((i) => i['description']).join(', ')}'
@@ -450,12 +485,15 @@ Be precise and follow the tool's parameter schema exactly.''';
     // Filter out internal parameters
     final cleanInput = Map<String, dynamic>.from(input);
     cleanInput.removeWhere((key, _) => key.startsWith('_'));
-    
+
     return 'Please execute ${step.toolName} with the following parameters: ${jsonEncode(cleanInput)}';
   }
 
   /// Extracts the tool call result from OpenAI response
-  Map<String, dynamic> _extractToolCallResult(Map<String, dynamic> response, String expectedToolName) {
+  Map<String, dynamic> _extractToolCallResult(
+    Map<String, dynamic> response,
+    String expectedToolName,
+  ) {
     try {
       final choices = response['choices'] as List<dynamic>?;
       if (choices == null || choices.isEmpty) {
@@ -481,7 +519,9 @@ Be precise and follow the tool's parameter schema exactly.''';
 
       final functionName = function['name'] as String?;
       if (functionName != expectedToolName) {
-        throw Exception('Expected tool $expectedToolName but got $functionName');
+        throw Exception(
+          'Expected tool $expectedToolName but got $functionName',
+        );
       }
 
       final argumentsString = function['arguments'] as String?;
@@ -491,14 +531,13 @@ Be precise and follow the tool's parameter schema exactly.''';
 
       final arguments = jsonDecode(argumentsString) as Map<String, dynamic>;
       return arguments;
-
     } catch (e) {
       throw Exception('Failed to parse OpenAI response: $e');
     }
   }
 
   /// Gets mock response for testing purposes only
-  /// 
+  ///
   /// This method is only used when useMockResponses is true,
   /// allowing tests to run without making actual API calls.
   Future<Map<String, dynamic>> _getMockResponse(
@@ -507,7 +546,7 @@ Be precise and follow the tool's parameter schema exactly.''';
   ) async {
     // Simulate some processing time
     await Future.delayed(Duration(milliseconds: 100));
-    
+
     // Return mock response based on tool name
     switch (step.toolName) {
       case 'extract_palette':
@@ -516,13 +555,16 @@ Be precise and follow the tool's parameter schema exactly.''';
           'confidence': 0.85,
           'image_analyzed': input['imagePath'] ?? 'unknown',
         };
-      
+
       case 'refine_colors':
         return {
           'refined_colors': ['#E74C3C', '#2ECC71', '#3498DB', '#9B59B6'],
-          'improvements_made': ['contrast adjustment', 'saturation optimization'],
+          'improvements_made': [
+            'contrast adjustment',
+            'saturation optimization',
+          ],
         };
-      
+
       case 'generate_theme':
         return {
           'theme': {
@@ -536,7 +578,7 @@ Be precise and follow the tool's parameter schema exactly.''';
             'model_used': step.model,
           },
         };
-      
+
       default:
         return {
           'message': 'Tool ${step.toolName} executed successfully',
@@ -568,10 +610,10 @@ Be precise and follow the tool's parameter schema exactly.''';
 class ToolFlowResult {
   /// Results from all executed steps
   final List<ToolResult> results;
-  
+
   /// Final state after all steps completed
   final Map<String, dynamic> finalState;
-  
+
   /// All issues collected from all steps
   final List<Issue> allIssues;
 

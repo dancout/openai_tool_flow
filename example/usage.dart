@@ -1,11 +1,12 @@
 /// Example usage of the openai_toolflow package.
-/// 
+///
 /// This example demonstrates how to create a color theme generation pipeline
 /// that extracts colors from an image, refines them, and generates a final theme.
 /// Features strongly-typed interfaces, per-step audits, and retry logic.
 library;
 
 import 'package:openai_toolflow/openai_toolflow.dart';
+
 import 'audit_functions.dart';
 
 void main() async {
@@ -33,22 +34,23 @@ void main() async {
   // Create step configurations with different audits per step
   final stepConfigs = {
     // Step 0: Palette extraction - run diversity audit only
-    0: StepConfig.withAudits([diversityAudit]),
-    
+    0: StepConfig(audits: [diversityAudit]),
+
     // Step 1: Color refinement - run format audit with custom retry logic
     1: StepConfig(
       audits: [colorFormatAudit],
       maxRetries: 5, // Override default retries for this step
       customPassCriteria: (issues) {
         // Custom criteria: pass if no medium or higher issues
-        return !issues.any((issue) => 
-          issue.severity == IssueSeverity.medium ||
-          issue.severity == IssueSeverity.high ||
-          issue.severity == IssueSeverity.critical
+        return !issues.any(
+          (issue) =>
+              issue.severity == IssueSeverity.medium ||
+              issue.severity == IssueSeverity.high ||
+              issue.severity == IssueSeverity.critical,
         );
       },
     ),
-    
+
     // Step 2: Theme generation - no audits, but don't stop flow on failure
     2: StepConfig(
       audits: [],
@@ -58,6 +60,7 @@ void main() async {
 
   // Create the tool flow with strongly-typed inputs
   final flow = ToolFlow(
+    useMockResponses: true,
     config: config,
     steps: [
       // Step 1: Extract base colors from image
@@ -68,14 +71,11 @@ void main() async {
           imagePath: 'assets/sample_image.jpg',
           maxColors: 8,
           minSaturation: 0.3,
-          userPreferences: {
-            'style': 'modern',
-            'mood': 'energetic',
-          },
+          userPreferences: {'style': 'modern', 'mood': 'energetic'},
         ).toMap(),
         maxRetries: 3,
       ),
-      
+
       // Step 2: Refine the extracted colors
       ToolCallStep(
         toolName: 'refine_colors',
@@ -87,15 +87,12 @@ void main() async {
         ).toMap(),
         maxRetries: 2,
       ),
-      
+
       // Step 3: Generate final theme
       ToolCallStep(
         toolName: 'generate_theme',
         model: 'gpt-4',
-        params: {
-          'theme_type': 'material_design',
-          'include_variants': true,
-        },
+        params: {'theme_type': 'material_design', 'include_variants': true},
         maxRetries: 1,
       ),
     ],
@@ -105,24 +102,31 @@ void main() async {
   // Execute the flow
   try {
     print('🚀 Starting color theme generation...\n');
-    
-    final result = await flow.run(input: {
-      'user_preferences': {
-        'style': 'modern',
-        'mood': 'energetic',
+
+    final result = await flow.run(
+      input: {
+        'user_preferences': {'style': 'modern', 'mood': 'energetic'},
       },
-    });
+    );
 
     print('✅ Flow completed!\n');
-    
+
     // Display results with enhanced information
     print('📊 Execution Summary:');
     print('Steps executed: ${result.results.length}');
     print('Total issues found: ${result.allIssues.length}');
-    print('Critical issues: ${result.issuesWithSeverity(IssueSeverity.critical).length}');
-    print('High issues: ${result.issuesWithSeverity(IssueSeverity.high).length}');
-    print('Medium issues: ${result.issuesWithSeverity(IssueSeverity.medium).length}');
-    print('Low issues: ${result.issuesWithSeverity(IssueSeverity.low).length}\n');
+    print(
+      'Critical issues: ${result.issuesWithSeverity(IssueSeverity.critical).length}',
+    );
+    print(
+      'High issues: ${result.issuesWithSeverity(IssueSeverity.high).length}',
+    );
+    print(
+      'Medium issues: ${result.issuesWithSeverity(IssueSeverity.medium).length}',
+    );
+    print(
+      'Low issues: ${result.issuesWithSeverity(IssueSeverity.low).length}\n',
+    );
 
     // Show step results with typed outputs
     for (int i = 0; i < result.results.length; i++) {
@@ -131,21 +135,25 @@ void main() async {
       print('  Output keys: ${stepResult.output.keys.join(', ')}');
       print('  Has typed output: ${stepResult.typedOutput != null}');
       print('  Issues: ${stepResult.issues.length}');
-      
+
       // Show typed output information if available
       if (stepResult.typedOutput != null) {
         print('  Typed output type: ${stepResult.typedOutput.runtimeType}');
       }
-      
+
       if (stepResult.issues.isNotEmpty) {
         for (final issue in stepResult.issues) {
           final roundInfo = issue.round > 0 ? ' (Round ${issue.round})' : '';
-          print('    ⚠️ ${issue.severity.name.toUpperCase()}$roundInfo: ${issue.description}');
-          
+          print(
+            '    ⚠️ ${issue.severity.name.toUpperCase()}$roundInfo: ${issue.description}',
+          );
+
           // Show ColorQualityIssue specific information
           if (issue is ColorQualityIssue) {
             print('      🎨 Problematic color: ${issue.problematicColor}');
-            print('      📊 Quality score: ${issue.qualityScore.toStringAsFixed(2)}');
+            print(
+              '      📊 Quality score: ${issue.qualityScore.toStringAsFixed(2)}',
+            );
           }
         }
       }
@@ -209,7 +217,6 @@ void main() async {
     // Export results as JSON for further processing
     print('📄 Results Summary JSON:');
     print(formatJson(result.toJson()));
-    
   } catch (e) {
     print('❌ Flow execution failed: $e');
   }
@@ -221,12 +228,12 @@ void _registerTypedOutputs() {
     'extract_palette',
     (data) => PaletteExtractionOutput.fromMap(data),
   );
-  
+
   ToolOutputRegistry.register(
     'refine_colors',
     (data) => ColorRefinementOutput.fromMap(data),
   );
-  
+
   ToolOutputRegistry.register(
     'generate_theme',
     (data) => ThemeGenerationOutput.fromMap(data),
@@ -238,7 +245,7 @@ String formatJson(Map<String, dynamic> json) {
   // Simple JSON formatting for demo purposes
   final buffer = StringBuffer();
   buffer.writeln('{');
-  
+
   json.forEach((key, value) {
     buffer.write('  "$key": ');
     if (value is Map) {
@@ -249,16 +256,208 @@ String formatJson(Map<String, dynamic> json) {
       buffer.writeln('"$value",');
     }
   });
-  
+
   buffer.writeln('}');
   return buffer.toString();
+}
+
+/// Example concrete implementation for palette extraction input
+class PaletteExtractionInput extends ToolInput {
+  final String imagePath;
+  final int maxColors;
+  final double minSaturation;
+  final Map<String, dynamic> userPreferences;
+
+  const PaletteExtractionInput({
+    required this.imagePath,
+    this.maxColors = 8,
+    this.minSaturation = 0.3,
+    this.userPreferences = const {},
+  });
+
+  factory PaletteExtractionInput.fromMap(Map<String, dynamic> map) {
+    return PaletteExtractionInput(
+      imagePath: map['imagePath'] as String,
+      maxColors: map['maxColors'] as int? ?? 8,
+      minSaturation: map['minSaturation'] as double? ?? 0.3,
+      userPreferences: Map<String, dynamic>.from(
+        map['userPreferences'] as Map? ?? {},
+      ),
+    );
+  }
+
+  @override
+  Map<String, dynamic> toMap() {
+    return {
+      'imagePath': imagePath,
+      'maxColors': maxColors,
+      'minSaturation': minSaturation,
+      'userPreferences': userPreferences,
+    };
+  }
+
+  @override
+  List<String> validate() {
+    final issues = <String>[];
+
+    if (imagePath.isEmpty) {
+      issues.add('imagePath cannot be empty');
+    }
+
+    if (maxColors <= 0) {
+      issues.add('maxColors must be positive');
+    }
+
+    if (minSaturation < 0.0 || minSaturation > 1.0) {
+      issues.add('minSaturation must be between 0.0 and 1.0');
+    }
+
+    return issues;
+  }
+}
+
+/// Example concrete implementation for color refinement output
+class ColorRefinementOutput extends ToolOutput {
+  final List<String> refinedColors;
+  final List<String> improvementsMade;
+  final Map<String, double> accessibilityScores;
+
+  const ColorRefinementOutput({
+    required this.refinedColors,
+    required this.improvementsMade,
+    this.accessibilityScores = const {},
+  });
+
+  factory ColorRefinementOutput.fromMap(Map<String, dynamic> map) {
+    return ColorRefinementOutput(
+      refinedColors: List<String>.from(map['refined_colors'] as List),
+      improvementsMade: List<String>.from(map['improvements_made'] as List),
+      accessibilityScores: Map<String, double>.from(
+        map['accessibility_scores'] as Map? ?? {},
+      ),
+    );
+  }
+
+  @override
+  Map<String, dynamic> toMap() {
+    return {
+      'refined_colors': refinedColors,
+      'improvements_made': improvementsMade,
+      'accessibility_scores': accessibilityScores,
+    };
+  }
+}
+
+/// Example concrete implementation for theme generation output
+class ThemeGenerationOutput extends ToolOutput {
+  final Map<String, String> theme;
+  final Map<String, dynamic> metadata;
+
+  const ThemeGenerationOutput({required this.theme, this.metadata = const {}});
+
+  factory ThemeGenerationOutput.fromMap(Map<String, dynamic> map) {
+    return ThemeGenerationOutput(
+      theme: Map<String, String>.from(map['theme'] as Map),
+      metadata: Map<String, dynamic>.from(map['metadata'] as Map? ?? {}),
+    );
+  }
+
+  @override
+  Map<String, dynamic> toMap() {
+    return {'theme': theme, 'metadata': metadata};
+  }
+}
+
+/// Example concrete implementation for color refinement input
+class ColorRefinementInput extends ToolInput {
+  final List<String> colors;
+  final bool enhanceContrast;
+  final String targetAccessibility;
+
+  const ColorRefinementInput({
+    required this.colors,
+    this.enhanceContrast = true,
+    this.targetAccessibility = 'AA',
+  });
+
+  factory ColorRefinementInput.fromMap(Map<String, dynamic> map) {
+    return ColorRefinementInput(
+      colors: List<String>.from(map['colors'] as List),
+      enhanceContrast: map['enhance_contrast'] as bool? ?? true,
+      targetAccessibility: map['target_accessibility'] as String? ?? 'AA',
+    );
+  }
+
+  @override
+  Map<String, dynamic> toMap() {
+    return {
+      'colors': colors,
+      'enhance_contrast': enhanceContrast,
+      'target_accessibility': targetAccessibility,
+    };
+  }
+
+  @override
+  List<String> validate() {
+    final issues = <String>[];
+
+    if (colors.isEmpty) {
+      issues.add('colors list cannot be empty');
+    }
+
+    for (final color in colors) {
+      if (!RegExp(r'^#[0-9A-Fa-f]{6}$').hasMatch(color)) {
+        issues.add('Invalid color format: $color (expected #RRGGBB)');
+      }
+    }
+
+    if (!['A', 'AA', 'AAA'].contains(targetAccessibility)) {
+      issues.add('targetAccessibility must be A, AA, or AAA');
+    }
+
+    return issues;
+  }
+}
+
+/// Example concrete implementation for palette extraction output
+class PaletteExtractionOutput extends ToolOutput {
+  final List<String> colors;
+  final double confidence;
+  final String imageAnalyzed;
+  final Map<String, dynamic> metadata;
+
+  const PaletteExtractionOutput({
+    required this.colors,
+    required this.confidence,
+    required this.imageAnalyzed,
+    this.metadata = const {},
+  });
+
+  factory PaletteExtractionOutput.fromMap(Map<String, dynamic> map) {
+    return PaletteExtractionOutput(
+      colors: List<String>.from(map['colors'] as List),
+      confidence: map['confidence'] as double,
+      imageAnalyzed: map['image_analyzed'] as String,
+      metadata: Map<String, dynamic>.from(map['metadata'] as Map? ?? {}),
+    );
+  }
+
+  @override
+  Map<String, dynamic> toMap() {
+    return {
+      'colors': colors,
+      'confidence': confidence,
+      'image_analyzed': imageAnalyzed,
+      'metadata': metadata,
+    };
+  }
 }
 
 /// Example of extending the ToolResult class for custom data
 class ColorExtractionResult extends ToolResult {
   /// Confidence score for the extraction
   final double confidence;
-  
+
   /// Image metadata
   final Map<String, dynamic> imageMetadata;
 
@@ -285,38 +484,43 @@ class ColorExtractionResult extends ToolResult {
 /// Example usage of StepConfig factory methods
 void demonstrateStepConfigUsage() {
   // Different ways to configure steps
-  
+
   // Step with specific audits only
-  final step1Config = StepConfig.withAudits([
-    ColorQualityAuditFunction(),
-    ColorDiversityAuditFunction(),
-  ]);
+  final step1Config = StepConfig(
+    audits: [ColorQualityAuditFunction(), ColorDiversityAuditFunction()],
+  );
   print('Step 1: ${step1Config.audits.length} audits configured');
-  
+
   // Step with custom retry configuration
-  final step2Config = StepConfig.withRetries(
+  final step2Config = StepConfig(
     maxRetries: 5,
     audits: [ColorQualityAuditFunction()],
   );
   print('Step 2: Max retries = ${step2Config.maxRetries}');
-  
+
   // Step with custom pass/fail criteria
-  final step3Config = StepConfig.withCustomCriteria(
-    passedCriteria: (issues) {
+  final step3Config = StepConfig(
+    customPassCriteria: (issues) {
       // Custom logic: fail only if there are 3+ high severity issues
-      final highIssues = issues.where((i) => 
-        i.severity == IssueSeverity.high || 
-        i.severity == IssueSeverity.critical
-      ).length;
+      final highIssues = issues
+          .where(
+            (i) =>
+                i.severity == IssueSeverity.high ||
+                i.severity == IssueSeverity.critical,
+          )
+          .length;
       return highIssues < 3;
     },
-    failureReason: (issues) => 'Too many high-severity issues: ${issues.length}',
+    customFailureReason: (issues) =>
+        'Too many high-severity issues: ${issues.length}',
   );
-  print('Step 3: Has custom criteria = ${step3Config.customPassCriteria != null}');
-  
+  print(
+    'Step 3: Has custom criteria = ${step3Config.customPassCriteria != null}',
+  );
+
   // Step with no audits
-  final step4Config = StepConfig.noAudits();
+  final step4Config = StepConfig();
   print('Step 4: Has audits = ${step4Config.hasAudits}');
-  
+
   print('Step config examples demonstrated successfully');
 }

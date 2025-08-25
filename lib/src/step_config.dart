@@ -2,7 +2,7 @@ import 'audit_function.dart';
 import 'issue.dart';
 
 /// Configuration for a specific step in a tool flow.
-/// 
+///
 /// Allows different audit configurations and retry criteria per step.
 class StepConfig {
   /// Audit functions to run for this specific step
@@ -36,29 +36,6 @@ class StepConfig {
     this.stopOnFailure = true,
     this.auditOnlyFinalAttempt = false,
   });
-
-  /// Creates a StepConfig with only specific audits
-  const StepConfig.withAudits(List<AuditFunction> audits) : this(audits: audits);
-
-  /// Creates a StepConfig with no audits (skip audit phase)
-  const StepConfig.noAudits() : this(audits: const []);
-
-  /// Creates a StepConfig with custom retry configuration
-  const StepConfig.withRetries({
-    required int maxRetries,
-    List<AuditFunction> audits = const [],
-  }) : this(audits: audits, maxRetries: maxRetries);
-
-  /// Creates a StepConfig with custom pass/fail criteria
-  const StepConfig.withCustomCriteria({
-    required bool Function(List<Issue>) passedCriteria,
-    String Function(List<Issue>)? failureReason,
-    List<AuditFunction> audits = const [],
-  }) : this(
-    audits: audits,
-    customPassCriteria: passedCriteria,
-    customFailureReason: failureReason,
-  );
 
   /// Returns true if this step has any audits configured
   bool get hasAudits => audits.isNotEmpty;
@@ -101,7 +78,7 @@ class StepConfig {
       }
     }
 
-    return failureReasons.isNotEmpty 
+    return failureReasons.isNotEmpty
         ? failureReasons.join('; ')
         : 'Step criteria not met';
   }

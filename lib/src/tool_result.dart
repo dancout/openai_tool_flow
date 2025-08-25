@@ -2,7 +2,7 @@ import 'issue.dart';
 import 'typed_interfaces.dart';
 
 /// Structured output of a tool call step.
-/// 
+///
 /// This class follows a strict but extensible schema:
 /// - Strict: certain fields are required
 /// - Extensible: projects may extend the class with new fields
@@ -10,13 +10,13 @@ import 'typed_interfaces.dart';
 class ToolResult {
   /// Name of the tool that was executed
   final String toolName;
-  
+
   /// Input parameters that were passed to the tool
   final Map<String, dynamic> input;
-  
+
   /// Output data returned by the tool
   final Map<String, dynamic> output;
-  
+
   /// Issues identified during tool execution or subsequent audits
   final List<Issue> issues;
 
@@ -40,7 +40,7 @@ class ToolResult {
   factory ToolResult.fromJson(Map<String, dynamic> json) {
     final toolName = json['toolName'] as String;
     final output = Map<String, dynamic>.from(json['output'] as Map);
-    
+
     // Try to create typed output if registry has a creator for this tool
     final typedOutput = ToolOutputRegistry.hasTypedOutput(toolName)
         ? ToolOutputRegistry.create(toolName, output)
@@ -50,15 +50,20 @@ class ToolResult {
       toolName: toolName,
       input: Map<String, dynamic>.from(json['input'] as Map),
       output: output,
-      issues: (json['issues'] as List?)
-          ?.map((issueJson) => Issue.fromJson(issueJson as Map<String, dynamic>))
-          .toList() ?? [],
+      issues:
+          (json['issues'] as List?)
+              ?.map(
+                (issueJson) =>
+                    Issue.fromJson(issueJson as Map<String, dynamic>),
+              )
+              .toList() ??
+          [],
       typedOutput: typedOutput,
     );
   }
 
   /// Converts this ToolResult to a JSON map
-  /// 
+  ///
   /// Subclasses should override this method to include their additional fields
   /// while calling super.toJson() to preserve the base fields.
   Map<String, dynamic> toJson() {
@@ -81,21 +86,6 @@ class ToolResult {
       issues: [...issues, ...newIssues],
       typedInput: typedInput,
       typedOutput: typedOutput,
-    );
-  }
-
-  /// Creates a copy of this ToolResult with typed interfaces
-  ToolResult withTypedInterfaces({
-    ToolInput? typedInput,
-    ToolOutput? typedOutput,
-  }) {
-    return ToolResult(
-      toolName: toolName,
-      input: input,
-      output: output,
-      issues: issues,
-      typedInput: typedInput ?? this.typedInput,
-      typedOutput: typedOutput ?? this.typedOutput,
     );
   }
 
