@@ -103,9 +103,7 @@ void main() async {
                 issue.severity == IssueSeverity.critical,
           );
         },
-        forwardingConfigs: [
-          ForwardingConfig.outputOnly('extract_palette', outputKeys: ['colors']),
-        ],
+        includeOutputsFrom: ['extract_palette'],
       ),
     ),
 

@@ -289,7 +289,7 @@ void main() {
       expect(multipleResults.length, equals(2));
     });
 
-    test('should support issue forwarding between steps', () async {
+    test('should support output inclusion between steps', () async {
       final config = OpenAIConfig(
         apiKey: 'test-key',
         defaultModel: 'gpt-4',
@@ -328,9 +328,7 @@ void main() {
             toolName: 'refine_colors',
             model: 'gpt-4',
             stepConfig: StepConfig(
-              forwardingConfigs: [
-                ForwardingConfig.issuesOnly(0), // Forward issues from step 0
-              ],
+              includeOutputsFrom: [0], // Include outputs from step 0
             ),
           ),
         ],
@@ -342,9 +340,57 @@ void main() {
       expect(result.results.length, equals(2));
       expect(result.allIssues.length, equals(1)); // One issue from first step
       
-      // Check that second step received forwarded issues
+      // Check that second step received outputs from first step
       final secondStepResult = result.results[1];
-      expect(secondStepResult.input.containsKey('_forwarded_issues_extract_palette'), isTrue);
+      expect(secondStepResult.input.containsKey('extract_palette_colors'), isTrue);
+      expect(secondStepResult.input['extract_palette_colors'], equals(['#FF0000']));
+    });
+
+    test('should handle duplicate tool names correctly', () async {
+      final config = OpenAIConfig(
+        apiKey: 'test-key',
+        defaultModel: 'gpt-4',
+      );
+
+      final mockService = MockOpenAiToolService(
+        responses: {
+          'refine_colors': {
+            'refined_colors': ['#FF5733', '#33FF57'], // First call
+          },
+        },
+      );
+
+      final flow = ToolFlow(
+        config: config,
+        steps: [
+          ToolCallStep(
+            toolName: 'refine_colors',
+            model: 'gpt-4',
+            params: {'iteration': 1},
+          ),
+          ToolCallStep(
+            toolName: 'refine_colors', // Same tool name
+            model: 'gpt-4',
+            params: {'iteration': 2},
+          ),
+        ],
+        openAiService: mockService,
+      );
+
+      final result = await flow.run();
+
+      expect(result.results.length, equals(2));
+      
+      // Check that resultsByToolName contains the most recent result
+      final latestResult = result.getResultByToolName('refine_colors');
+      expect(latestResult, isNotNull);
+      expect(latestResult!.input['iteration'], equals(2));
+      
+      // Check that getAllResultsByToolName returns both results
+      final allResults = result.getAllResultsByToolName('refine_colors');
+      expect(allResults.length, equals(2));
+      expect(allResults[0].input['iteration'], equals(1));
+      expect(allResults[1].input['iteration'], equals(2));
     });
   });
 }

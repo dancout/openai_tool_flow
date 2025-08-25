@@ -39,27 +39,23 @@ class ExampleStepConfigs {
   static StepConfig forwardingIssuesConfig(List<int> stepIndexes) {
     return StepConfig(
       audits: [ColorQualityAuditFunction()],
-      forwardingConfigs: stepIndexes
-          .map((index) => ForwardingConfig.issuesOnly(index))
-          .toList(),
+      includeOutputsFrom: stepIndexes,
     );
   }
 
   /// Configuration that forwards specific outputs
-  static StepConfig forwardingOutputConfig(String toolName, List<String> keys) {
+  static StepConfig forwardingOutputConfig(String toolName) {
     return StepConfig(
-      forwardingConfigs: [
-        ForwardingConfig.outputOnly(toolName, outputKeys: keys),
-      ],
+      includeOutputsFrom: [toolName],
     );
   }
 
   /// Configuration with output sanitization
   static StepConfig sanitizingConfig(
-    Map<String, dynamic> Function(List<ToolResult>) sanitizer,
+    Map<String, dynamic> Function(Map<String, dynamic>) outputSanitizer,
   ) {
     return StepConfig(
-      outputSanitizer: sanitizer,
+      outputSanitizer: outputSanitizer,
     );
   }
 
@@ -75,7 +71,8 @@ class ExampleStepConfigs {
 /// Example output sanitizers for cleaning data between steps
 class ExampleSanitizers {
   /// Sanitizes color palette output for refinement input
-  static Map<String, dynamic> paletteToRefinementSanitizer(
+  static Map<String, dynamic> paletteToRefinementInputSanitizer(
+    Map<String, dynamic> input,
     List<ToolResult> previousResults,
   ) {
     final sanitized = <String, dynamic>{};
@@ -105,14 +102,35 @@ class ExampleSanitizers {
       }
     }
 
+    // Include other input data
+    sanitized.addAll(input);
+    return sanitized;
+  }
+
+  /// Sanitizes output after color palette extraction
+  static Map<String, dynamic> paletteOutputSanitizer(
+    Map<String, dynamic> output,
+  ) {
+    final sanitized = Map<String, dynamic>.from(output);
+    
+    // Ensure colors are properly formatted
+    final colors = sanitized['colors'] as List?;
+    if (colors != null) {
+      sanitized['colors'] = colors
+          .cast<String>()
+          .where((color) => RegExp(r'^#[0-9A-Fa-f]{6}$').hasMatch(color))
+          .toList();
+    }
+    
     return sanitized;
   }
 
   /// Sanitizes refinement output for theme generation
-  static Map<String, dynamic> refinementToThemeSanitizer(
+  static Map<String, dynamic> refinementToThemeInputSanitizer(
+    Map<String, dynamic> input,
     List<ToolResult> previousResults,
   ) {
-    final sanitized = <String, dynamic>{};
+    final sanitized = Map<String, dynamic>.from(input);
 
     // Get refined colors
     final refinementResult = previousResults
@@ -135,10 +153,11 @@ class ExampleSanitizers {
   }
 
   /// Generic sanitizer that removes internal fields and formats data
-  static Map<String, dynamic> genericSanitizer(
+  static Map<String, dynamic> genericInputSanitizer(
+    Map<String, dynamic> input,
     List<ToolResult> previousResults,
   ) {
-    final sanitized = <String, dynamic>{};
+    final sanitized = Map<String, dynamic>.from(input);
 
     for (final result in previousResults) {
       // Add non-internal output fields with tool name prefix
@@ -197,7 +216,7 @@ void demonstrateStepConfigUsage() {
     print('$name Configuration:');
     print('  Audits: ${config.audits.length}');
     print('  Max Retries: ${config.maxRetries ?? 'default'}');
-    print('  Has Forwarding: ${config.hasForwarding}');
+    print('  Has Output Inclusion: ${config.hasOutputInclusion}');
     print('  Stop on Failure: ${config.stopOnFailure}');
     print('  Has Custom Criteria: ${config.customPassCriteria != null}');
     print('');
@@ -242,10 +261,8 @@ Map<String, ToolCallStep> createColorThemeWorkflow() {
       stepConfig: StepConfig(
         audits: [colorFormatAudit],
         maxRetries: 5,
-        forwardingConfigs: [
-          ForwardingConfig.outputOnly('extract_palette', outputKeys: ['colors']),
-        ],
-        outputSanitizer: ExampleSanitizers.paletteToRefinementSanitizer,
+        includeOutputsFrom: ['extract_palette'],
+        inputSanitizer: ExampleSanitizers.paletteToRefinementInputSanitizer,
         customPassCriteria: (issues) {
           return !issues.any(
             (issue) =>
@@ -264,14 +281,8 @@ Map<String, ToolCallStep> createColorThemeWorkflow() {
       stepConfig: StepConfig(
         audits: [],
         stopOnFailure: false,
-        forwardingConfigs: [
-          ForwardingConfig.outputOnly('refine_colors', outputKeys: ['refined_colors']),
-          ForwardingConfig.issuesOnly(
-            'extract_palette',
-            issueFilter: ExampleIssueFilters.criticalAndHighOnly,
-          ),
-        ],
-        outputSanitizer: ExampleSanitizers.refinementToThemeSanitizer,
+        includeOutputsFrom: ['refine_colors'],
+        inputSanitizer: ExampleSanitizers.refinementToThemeInputSanitizer,
       ),
     ),
   };

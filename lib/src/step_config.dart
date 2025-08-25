@@ -2,54 +2,12 @@ import 'audit_function.dart';
 import 'issue.dart';
 import 'tool_result.dart';
 
-/// Configuration for forwarding specific step outputs/issues to this step.
-class ForwardingConfig {
-  /// Step index (or tool name) to forward from
-  final dynamic stepReference;
 
-  /// Whether to forward the output from this step
-  final bool forwardOutput;
-
-  /// Whether to forward issues from this step
-  final bool forwardIssues;
-
-  /// Filter function for which issues to forward
-  final bool Function(Issue)? issueFilter;
-
-  /// Keys to include from the output (null means all)
-  final List<String>? outputKeys;
-
-  const ForwardingConfig({
-    required this.stepReference,
-    this.forwardOutput = true,
-    this.forwardIssues = true,
-    this.issueFilter,
-    this.outputKeys,
-  });
-
-  /// Creates a config to forward everything from a step
-  ForwardingConfig.all(this.stepReference)
-      : forwardOutput = true,
-        forwardIssues = true,
-        issueFilter = null,
-        outputKeys = null;
-
-  /// Creates a config to forward only output from a step
-  ForwardingConfig.outputOnly(this.stepReference, {this.outputKeys})
-      : forwardOutput = true,
-        forwardIssues = false,
-        issueFilter = null;
-
-  /// Creates a config to forward only issues from a step
-  ForwardingConfig.issuesOnly(this.stepReference, {this.issueFilter})
-      : forwardOutput = false,
-        forwardIssues = true,
-        outputKeys = null;
-}
 
 /// Configuration for a specific step in a tool flow.
 ///
 /// Allows different audit configurations and retry criteria per step.
+/// Provides a clean interface for including outputs from previous steps.
 class StepConfig {
   /// Audit functions to run for this specific step
   final List<AuditFunction> audits;
@@ -74,12 +32,71 @@ class StepConfig {
   /// Defaults to false (run audits on every attempt)
   final bool auditOnlyFinalAttempt;
 
-  /// Configuration for which previous step outputs/issues to forward
-  final List<ForwardingConfig> forwardingConfigs;
+  /// Simple list of steps to include outputs from.
+  /// Can be int (step index) or String (tool name).
+  /// 
+  /// **Usage Examples:**
+  /// ```dart
+  /// // Include outputs from step 0 and any step with tool name 'extract_palette'
+  /// includeOutputsFrom: [0, 'extract_palette']
+  /// 
+  /// // Include outputs from steps 1 and 2
+  /// includeOutputsFrom: [1, 2]
+  /// 
+  /// // Include outputs from 'refine_colors' tool (most recent if duplicates)
+  /// includeOutputsFrom: ['refine_colors']
+  /// ```
+  /// 
+  /// **How it works:**
+  /// - int values: References step by index (0-based)
+  /// - String values: References step by tool name (most recent if duplicates)
+  /// - All matching outputs are merged into input with `toolName_key` prefix
+  /// - For example, if 'extract_palette' outputs `{'colors': [...]}`, 
+  ///   it becomes `{'extract_palette_colors': [...]}` in the receiving step
+  final List<dynamic> includeOutputsFrom;
 
-  /// Function to sanitize/transform previous step outputs for use as input
-  /// Takes previous step results and returns cleaned input
-  final Map<String, dynamic> Function(List<ToolResult>)? outputSanitizer;
+  /// Function to sanitize/transform the input BEFORE executing the step.
+  /// Takes the raw input map and previous results, returns cleaned input.
+  /// Called BEFORE step execution.
+  /// 
+  /// **When to use:** Transform data between steps, clean up field names,
+  /// filter out unwanted data, or combine data from multiple previous steps.
+  /// 
+  /// **Example:**
+  /// ```dart
+  /// inputSanitizer: (input, previousResults) {
+  ///   final cleaned = Map<String, dynamic>.from(input);
+  ///   // Remove internal fields
+  ///   cleaned.removeWhere((key, value) => key.startsWith('_'));
+  ///   // Add processed data from previous steps
+  ///   final paletteResult = previousResults.firstWhere((r) => r.toolName == 'extract_palette');
+  ///   cleaned['processed_colors'] = paletteResult.output['colors'];
+  ///   return cleaned;
+  /// }
+  /// ```
+  final Map<String, dynamic> Function(Map<String, dynamic> input, List<ToolResult> previousResults)? inputSanitizer;
+
+  /// Function to sanitize/transform the output AFTER executing the step.
+  /// Takes the raw output map and returns cleaned output.
+  /// Called AFTER step execution.
+  /// 
+  /// **When to use:** Clean up model responses, normalize data formats,
+  /// remove sensitive information, or ensure consistent output structure.
+  /// 
+  /// **Example:**
+  /// ```dart
+  /// outputSanitizer: (output) {
+  ///   final cleaned = Map<String, dynamic>.from(output);
+  ///   // Ensure colors are properly formatted
+  ///   if (cleaned['colors'] is List) {
+  ///     cleaned['colors'] = (cleaned['colors'] as List)
+  ///         .where((color) => RegExp(r'^#[0-9A-Fa-f]{6}$').hasMatch(color))
+  ///         .toList();
+  ///   }
+  ///   return cleaned;
+  /// }
+  /// ```
+  final Map<String, dynamic> Function(Map<String, dynamic> output)? outputSanitizer;
 
   const StepConfig({
     this.audits = const [],
@@ -88,15 +105,19 @@ class StepConfig {
     this.customFailureReason,
     this.stopOnFailure = true,
     this.auditOnlyFinalAttempt = false,
-    this.forwardingConfigs = const [],
+    this.includeOutputsFrom = const [],
+    this.inputSanitizer,
     this.outputSanitizer,
   });
 
   /// Returns true if this step has any audits configured
   bool get hasAudits => audits.isNotEmpty;
 
-  /// Returns true if this step has any forwarding configured
-  bool get hasForwarding => forwardingConfigs.isNotEmpty;
+  /// Returns true if this step should include outputs from previous steps
+  bool get hasOutputInclusion => includeOutputsFrom.isNotEmpty;
+
+  /// Returns true if this step has input sanitization configured
+  bool get hasInputSanitizer => inputSanitizer != null;
 
   /// Returns true if this step has output sanitization configured
   bool get hasOutputSanitizer => outputSanitizer != null;
@@ -144,81 +165,63 @@ class StepConfig {
         : 'Step criteria not met';
   }
 
-  /// Filters and forwards outputs/issues from previous steps based on configuration
-  Map<String, dynamic> buildForwardedInput(
+  /// Includes outputs from previous steps based on the includeOutputsFrom configuration.
+  /// 
+  /// This method provides a clean way to access previous step results:
+  /// - int values are treated as step indexes (0-based)
+  /// - String values are treated as tool names
+  /// - For duplicate tool names, only the most recent result is included
+  /// - All matching outputs are merged into the input with tool name prefixes
+  Map<String, dynamic> buildIncludedOutputs(
     List<ToolResult> previousResults,
     Map<String, ToolResult> resultsByToolName,
   ) {
-    final forwardedInput = <String, dynamic>{};
+    final includedOutputs = <String, dynamic>{};
 
-    for (final config in forwardingConfigs) {
+    for (final reference in includeOutputsFrom) {
       ToolResult? sourceResult;
 
       // Find the source result by index or tool name
-      if (config.stepReference is int) {
-        final index = config.stepReference as int;
-        if (index >= 0 && index < previousResults.length) {
-          sourceResult = previousResults[index];
+      if (reference is int) {
+        if (reference >= 0 && reference < previousResults.length) {
+          sourceResult = previousResults[reference];
         }
-      } else if (config.stepReference is String) {
-        final toolName = config.stepReference as String;
-        sourceResult = resultsByToolName[toolName];
+      } else if (reference is String) {
+        sourceResult = resultsByToolName[reference];
       }
 
       if (sourceResult == null) continue;
 
-      // Forward output if configured
-      if (config.forwardOutput) {
-        final output = sourceResult.output;
-        if (config.outputKeys != null) {
-          // Forward only specific keys
-          for (final key in config.outputKeys!) {
-            if (output.containsKey(key)) {
-              forwardedInput['${sourceResult.toolName}_$key'] = output[key];
-            }
-          }
-        } else {
-          // Forward all output keys with tool name prefix
-          for (final entry in output.entries) {
-            forwardedInput['${sourceResult.toolName}_${entry.key}'] = entry.value;
-          }
-        }
-      }
-
-      // Forward issues if configured
-      if (config.forwardIssues) {
-        final issues = sourceResult.issues;
-        final filteredIssues = config.issueFilter != null
-            ? issues.where(config.issueFilter!).toList()
-            : issues;
-
-        if (filteredIssues.isNotEmpty) {
-          forwardedInput['_forwarded_issues_${sourceResult.toolName}'] = 
-              filteredIssues.map((issue) => issue.toJson()).toList();
-          
-          // Also add the associated output for context
-          forwardedInput['_forwarded_output_${sourceResult.toolName}'] = sourceResult.output;
-        }
+      // Include all output with tool name prefix to avoid conflicts
+      for (final entry in sourceResult.output.entries) {
+        includedOutputs['${sourceResult.toolName}_${entry.key}'] = entry.value;
       }
     }
 
-    return forwardedInput;
+    return includedOutputs;
   }
 
-  /// Applies output sanitization if configured
+  /// Applies input sanitization if configured.
+  /// Called BEFORE step execution to clean/transform input data.
   Map<String, dynamic> sanitizeInput(
     Map<String, dynamic> rawInput,
     List<ToolResult> previousResults,
   ) {
-    if (outputSanitizer == null) {
+    if (inputSanitizer == null) {
       return rawInput;
     }
 
-    final sanitizedInput = Map<String, dynamic>.from(rawInput);
-    final sanitizedData = outputSanitizer!(previousResults);
-    sanitizedInput.addAll(sanitizedData);
+    return inputSanitizer!(rawInput, previousResults);
+  }
 
-    return sanitizedInput;
+  /// Applies output sanitization if configured.
+  /// Called AFTER step execution to clean/transform output data.
+  Map<String, dynamic> sanitizeOutput(Map<String, dynamic> rawOutput) {
+    if (outputSanitizer == null) {
+      return rawOutput;
+    }
+
+    return outputSanitizer!(rawOutput);
   }
 
   /// Creates a StepConfig from JSON
@@ -230,7 +233,7 @@ class StepConfig {
       stopOnFailure: json['stopOnFailure'] as bool? ?? true,
       auditOnlyFinalAttempt: json['auditOnlyFinalAttempt'] as bool? ?? false,
       // Note: Functions cannot be serialized
-      forwardingConfigs: const [],
+      includeOutputsFrom: json['includeOutputsFrom'] as List<dynamic>? ?? const [],
     );
   }
 
@@ -241,8 +244,10 @@ class StepConfig {
       'stopOnFailure': stopOnFailure,
       'auditOnlyFinalAttempt': auditOnlyFinalAttempt,
       'hasAudits': hasAudits,
-      'hasForwarding': hasForwarding,
+      'hasOutputInclusion': hasOutputInclusion,
+      'hasInputSanitizer': hasInputSanitizer,
       'hasOutputSanitizer': hasOutputSanitizer,
+      'includeOutputsFrom': includeOutputsFrom,
     };
   }
 }

@@ -36,7 +36,12 @@ class ToolFlow {
   final List<ToolResult> _results = [];
 
   /// Results keyed by tool name for easy retrieval
+  /// For duplicate tool names, this contains the MOST RECENT result
   final Map<String, ToolResult> _resultsByToolName = {};
+
+  /// All results grouped by tool name (handles duplicates)
+  /// Each tool name maps to a list of results in execution order
+  final Map<String, List<ToolResult>> _allResultsByToolName = {};
 
   /// Creates a ToolFlow with configuration and steps
   ToolFlow({
@@ -52,6 +57,7 @@ class ToolFlow {
     _state.clear();
     _results.clear();
     _resultsByToolName.clear();
+    _allResultsByToolName.clear();
     _state.addAll(input);
 
     for (int i = 0; i < steps.length; i++) {
@@ -70,6 +76,19 @@ class ToolFlow {
         try {
           // Execute the step
           stepResult = await _executeStep(step, i, attemptCount - 1);
+
+          // Apply output sanitization if configured
+          if (stepConfig.hasOutputSanitizer) {
+            final sanitizedOutput = stepConfig.sanitizeOutput(stepResult.output);
+            stepResult = ToolResult(
+              toolName: stepResult.toolName,
+              input: stepResult.input,
+              output: sanitizedOutput,
+              issues: stepResult.issues,
+              typedInput: stepResult.typedInput,
+              typedOutput: stepResult.typedOutput,
+            );
+          }
 
           // Run audits if configured for this step
           if (stepConfig.hasAudits) {
@@ -94,10 +113,11 @@ class ToolFlow {
             );
           }
         } catch (e) {
-          // Create an error result
+          // Create an error result - build step input for error case
+          final errorStepInput = _buildStepInput(step, i);
           stepResult = ToolResult(
             toolName: step.toolName,
-            input: _buildStepInput(step, i),
+            input: errorStepInput.toMap(),
             output: {'error': e.toString()},
             issues: [
               Issue(
@@ -122,7 +142,14 @@ class ToolFlow {
       // Add the final result
       if (stepResult != null) {
         _results.add(stepResult);
+        
+        // Update results by tool name (most recent wins for simple access)
         _resultsByToolName[stepResult.toolName] = stepResult;
+        
+        // Update all results by tool name (for duplicate handling)
+        _allResultsByToolName
+            .putIfAbsent(stepResult.toolName, () => [])
+            .add(stepResult);
 
         // Update state with step results
         _state['step_${i}_result'] = stepResult.toJson();
@@ -143,6 +170,9 @@ class ToolFlow {
       finalState: Map.unmodifiable(_state),
       allIssues: _getAllIssues(),
       resultsByToolName: Map.unmodifiable(_resultsByToolName),
+      allResultsByToolName: _allResultsByToolName.map(
+        (key, value) => MapEntry(key, List<ToolResult>.unmodifiable(value)),
+      ),
     );
   }
 
@@ -152,16 +182,23 @@ class ToolFlow {
     int stepIndex,
     int round,
   ) async {
-    final stepInput = _buildStepInput(step, stepIndex);
+    var stepInput = _buildStepInput(step, stepIndex);
+    
+    // Update the round information for this attempt
+    stepInput = StepInput(
+      round: round,
+      previousIssues: stepInput.previousIssues,
+      customData: stepInput.customData,
+      model: stepInput.model,
+      temperature: stepInput.temperature,
+      maxTokens: stepInput.maxTokens,
+    );
 
-    // Add round information to input
-    stepInput['_round'] = round;
-    stepInput['_previous_issues'] = step.issues
-        .map((issue) => issue.toJson())
-        .toList();
+    // Convert to map for service call
+    final inputMap = stepInput.toMap();
 
     // Execute using the injected OpenAI service
-    final response = await openAiService.executeToolCall(step, stepInput);
+    final response = await openAiService.executeToolCall(step, inputMap);
 
     // Try to create typed interfaces if available
     ToolInput? typedInput;
@@ -174,10 +211,13 @@ class ToolFlow {
       // If typed creation fails, continue with untyped result
     }
 
+    // Use the structured input as typed input
+    typedInput = stepInput;
+
     // Create initial result without issues (audits will add them)
     final result = ToolResult(
       toolName: step.toolName,
-      input: stepInput,
+      input: inputMap,
       output: response,
       issues: [],
       typedInput: typedInput,
@@ -226,37 +266,54 @@ class ToolFlow {
   }
 
   /// Builds input for a step based on current state and step parameters
-  Map<String, dynamic> _buildStepInput(ToolCallStep step, int stepIndex) {
-    final input = <String, dynamic>{};
+  StepInput _buildStepInput(ToolCallStep step, int stepIndex) {
+    final customData = <String, dynamic>{};
 
-    // Add current state
-    input.addAll(_state);
+    // Add current state (excluding internal fields)
+    for (final entry in _state.entries) {
+      if (!entry.key.startsWith('_') && !entry.key.startsWith('step_')) {
+        customData[entry.key] = entry.value;
+      }
+    }
 
     // Add step-specific parameters
-    input.addAll(step.params);
+    customData.addAll(step.params);
 
-    // Add forwarded data from previous steps
-    if (step.stepConfig.hasForwarding) {
-      final forwardedInput = step.stepConfig.buildForwardedInput(
+    // Include outputs from previous steps if configured
+    if (step.stepConfig.hasOutputInclusion) {
+      final includedOutputs = step.stepConfig.buildIncludedOutputs(
         _results,
         _resultsByToolName,
       );
-      input.addAll(forwardedInput);
+      customData.addAll(includedOutputs);
     }
 
-    // Apply output sanitization if configured
-    if (step.stepConfig.hasOutputSanitizer) {
-      final sanitizedInput = step.stepConfig.sanitizeInput(input, _results);
-      input.clear();
-      input.addAll(sanitizedInput);
+    // Prepare previous issues for context
+    final previousIssues = _results
+        .expand((result) => result.issues)
+        .map((issue) => issue.toJson())
+        .toList();
+
+    // Create structured input
+    var stepInput = StepInput(
+      round: 0, // Will be updated in _executeStep
+      previousIssues: previousIssues,
+      customData: customData,
+      model: step.model,
+      temperature: config.defaultTemperature,
+      maxTokens: config.defaultMaxTokens,
+    );
+
+    // Apply input sanitization if configured (before execution)
+    if (step.stepConfig.hasInputSanitizer) {
+      final sanitizedInput = step.stepConfig.sanitizeInput(
+        stepInput.toMap(),
+        _results,
+      );
+      stepInput = StepInput.fromMap(sanitizedInput);
     }
 
-    // Add model configuration
-    input['_model'] = step.model;
-    input['_temperature'] = config.defaultTemperature;
-    input['_max_tokens'] = config.defaultMaxTokens;
-
-    return input;
+    return stepInput;
   }
 
   /// Gets all issues from all completed steps
@@ -279,6 +336,13 @@ class ToolFlow {
   /// Gets the current results by tool name (for testing/debugging)
   @visibleForTesting
   Map<String, ToolResult> get currentResultsByToolName => Map.unmodifiable(_resultsByToolName);
+
+  /// Gets the current all results by tool name (for testing/debugging)
+  @visibleForTesting
+  Map<String, List<ToolResult>> get currentAllResultsByToolName => 
+      Map.unmodifiable(_allResultsByToolName.map(
+        (key, value) => MapEntry(key, List.unmodifiable(value)),
+      ));
 }
 
 /// Result of executing a ToolFlow
@@ -293,7 +357,25 @@ class ToolFlowResult {
   final List<Issue> allIssues;
 
   /// Results keyed by tool name for easy retrieval
+  /// For duplicate tool names, this contains the MOST RECENT result
+  /// 
+  /// **Example:**
+  /// ```dart
+  /// final latestPaletteResult = result.resultsByToolName['extract_palette'];
+  /// ```
   final Map<String, ToolResult> resultsByToolName;
+
+  /// All results grouped by tool name (handles duplicates)
+  /// Each tool name maps to a list of results in execution order
+  /// 
+  /// **Use this when you need all instances of a tool:**
+  /// ```dart
+  /// final allPaletteResults = result.allResultsByToolName['extract_palette'] ?? [];
+  /// for (final result in allPaletteResults) {
+  ///   print('Palette from step ${result.input['_round']}: ${result.output}');
+  /// }
+  /// ```
+  final Map<String, List<ToolResult>> allResultsByToolName;
 
   /// Creates a ToolFlowResult
   const ToolFlowResult({
@@ -301,6 +383,7 @@ class ToolFlowResult {
     required this.finalState,
     required this.allIssues,
     required this.resultsByToolName,
+    required this.allResultsByToolName,
   });
 
   /// Returns true if any step produced issues
@@ -318,8 +401,31 @@ class ToolFlowResult {
   }
 
   /// Gets the result for a specific tool by name
+  /// Returns the most recent result if there are duplicates
+  /// 
+  /// **Example:**
+  /// ```dart
+  /// final paletteResult = result.getResultByToolName('extract_palette');
+  /// if (paletteResult != null) {
+  ///   final colors = paletteResult.output['colors'];
+  /// }
+  /// ```
   ToolResult? getResultByToolName(String toolName) {
     return resultsByToolName[toolName];
+  }
+
+  /// Gets all results for a specific tool name (handles duplicates)
+  /// Returns results in execution order
+  /// 
+  /// **Use when the same tool was called multiple times:**
+  /// ```dart
+  /// final allRefinements = result.getAllResultsByToolName('refine_colors');
+  /// for (int i = 0; i < allRefinements.length; i++) {
+  ///   print('Refinement iteration ${i + 1}: ${allRefinements[i].output}');
+  /// }
+  /// ```
+  List<ToolResult> getAllResultsByToolName(String toolName) {
+    return allResultsByToolName[toolName] ?? [];
   }
 
   /// Gets all results for tools matching a pattern
@@ -327,12 +433,19 @@ class ToolFlowResult {
     return results.where(predicate).toList();
   }
 
-  /// Gets results by tool names
+  /// Gets results by tool names (most recent for each tool)
   List<ToolResult> getResultsByToolNames(List<String> toolNames) {
     return toolNames
         .map((name) => resultsByToolName[name])
         .where((result) => result != null)
         .cast<ToolResult>()
+        .toList();
+  }
+
+  /// Gets all results by tool names (including duplicates)
+  List<ToolResult> getAllResultsByToolNames(List<String> toolNames) {
+    return toolNames
+        .expand((name) => getAllResultsByToolName(name))
         .toList();
   }
 
@@ -345,6 +458,9 @@ class ToolFlowResult {
       'hasIssues': hasIssues,
       'resultsByToolName': resultsByToolName.map(
         (key, value) => MapEntry(key, value.toJson()),
+      ),
+      'allResultsByToolName': allResultsByToolName.map(
+        (key, value) => MapEntry(key, value.map((r) => r.toJson()).toList()),
       ),
     };
   }
