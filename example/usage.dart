@@ -14,7 +14,7 @@ void main() async {
   print('=================================\n');
 
   // Register typed outputs for type safety
-  _registerTypedOutputs();
+  registerColorThemeTypedOutputs();
 
   // Create configuration (in practice, this would load from environment or .env)
   final config = OpenAIConfig(
@@ -31,72 +31,102 @@ void main() async {
     weightedThreshold: 3.0, // Lower threshold for stricter requirements
   );
 
-  // Create step configurations with different audits per step
-  final stepConfigs = {
-    // Step 0: Palette extraction - run diversity audit only
-    0: StepConfig(audits: [diversityAudit]),
-
-    // Step 1: Color refinement - run format audit with custom retry logic
-    1: StepConfig(
-      audits: [colorFormatAudit],
-      maxRetries: 5, // Override default retries for this step
-      customPassCriteria: (issues) {
-        // Custom criteria: pass if no medium or higher issues
-        return !issues.any(
-          (issue) =>
-              issue.severity == IssueSeverity.medium ||
-              issue.severity == IssueSeverity.high ||
-              issue.severity == IssueSeverity.critical,
-        );
+  // Create a mock service for demonstration
+  final mockService = MockOpenAiToolService(
+    responses: {
+      'extract_palette': {
+        'colors': ['#FF5733', '#33FF57', '#3357FF', '#F333FF', '#FF33F5'],
+        'confidence': 0.85,
+        'image_analyzed': 'assets/sample_image.jpg',
+        'metadata': {'extraction_method': 'k-means', 'processing_time': 2.3},
       },
-    ),
+      'refine_colors': {
+        'refined_colors': ['#E74C3C', '#2ECC71', '#3498DB', '#9B59B6'],
+        'improvements_made': [
+          'contrast adjustment',
+          'saturation optimization',
+          'accessibility compliance',
+        ],
+      },
+      'generate_theme': {
+        'theme': {
+          'primary': '#3498DB',
+          'secondary': '#2ECC71',
+          'accent': '#E74C3C',
+          'background': '#FFFFFF',
+          'variants': {
+            'light': {'opacity': 0.7},
+            'dark': {'opacity': 0.9},
+          },
+        },
+        'metadata': {'theme_type': 'material_design', 'version': '1.0'},
+      },
+    },
+  );
 
-    // Step 2: Theme generation - no audits, but don't stop flow on failure
-    2: StepConfig(
-      audits: [],
-      stopOnFailure: false, // Continue even if this step fails
-    ),
-  };
-
-  // Create the tool flow with strongly-typed inputs
-  final flow = ToolFlow(
-    useMockResponses: true,
-    config: config,
-    steps: [
-      // Step 1: Extract base colors from image
-      ToolCallStep(
-        toolName: 'extract_palette',
-        model: 'gpt-4',
-        params: PaletteExtractionInput(
-          imagePath: 'assets/sample_image.jpg',
-          maxColors: 8,
-          minSaturation: 0.3,
-          userPreferences: {'style': 'modern', 'mood': 'energetic'},
-        ).toMap(),
+  // Define steps with integrated configuration (new Round 3 pattern)
+  final steps = [
+    // Step 1: Extract base colors from image
+    ToolCallStep(
+      toolName: 'extract_palette',
+      model: 'gpt-4',
+      params: PaletteExtractionInput(
+        imagePath: 'assets/sample_image.jpg',
+        maxColors: 8,
+        minSaturation: 0.3,
+        userPreferences: {'style': 'modern', 'mood': 'energetic'},
+      ).toMap(),
+      stepConfig: StepConfig(
+        audits: [diversityAudit],
         maxRetries: 3,
       ),
+    ),
 
-      // Step 2: Refine the extracted colors
-      ToolCallStep(
-        toolName: 'refine_colors',
-        model: 'gpt-4',
-        params: ColorRefinementInput(
-          colors: [], // Will be populated from previous step
-          enhanceContrast: true,
-          targetAccessibility: 'AA',
-        ).toMap(),
-        maxRetries: 2,
+    // Step 2: Refine the extracted colors
+    ToolCallStep(
+      toolName: 'refine_colors',
+      model: 'gpt-4',
+      params: ColorRefinementInput(
+        colors: [], // Will be populated from previous step
+        enhanceContrast: true,
+        targetAccessibility: 'AA',
+      ).toMap(),
+      stepConfig: StepConfig(
+        audits: [colorFormatAudit],
+        maxRetries: 5, // Override default retries for this step
+        customPassCriteria: (issues) {
+          // Custom criteria: pass if no medium or higher issues
+          return !issues.any(
+            (issue) =>
+                issue.severity == IssueSeverity.medium ||
+                issue.severity == IssueSeverity.high ||
+                issue.severity == IssueSeverity.critical,
+          );
+        },
+        forwardingConfigs: [
+          ForwardingConfig.outputOnly('extract_palette', outputKeys: ['colors']),
+        ],
       ),
+    ),
 
-      // Step 3: Generate final theme
-      ToolCallStep(
-        toolName: 'generate_theme',
-        model: 'gpt-4',
-        params: {'theme_type': 'material_design', 'include_variants': true},
+    // Step 3: Generate final theme
+    ToolCallStep(
+      toolName: 'generate_theme',
+      model: 'gpt-4',
+      params: {'theme_type': 'material_design', 'include_variants': true},
+      stepConfig: StepConfig(
+        audits: [],
         maxRetries: 1,
+        stopOnFailure: false, // Continue even if this step fails
       ),
-    ],
-    stepConfigs: stepConfigs,
+    ),
+  ];
+
+  // Create the tool flow with service injection (new Round 3 pattern)
+  final flow = ToolFlow(
+    config: config,
+    steps: steps,
+    openAiService: mockService, // Inject mock service for testing
   );
 
   // Execute the flow
@@ -223,7 +253,7 @@ void main() async {
 }
 
 /// Register typed outputs for type-safe operations
-void _registerTypedOutputs() {
+void registerColorThemeTypedOutputs() {
   ToolOutputRegistry.register(
     'extract_palette',
     (data) => PaletteExtractionOutput.fromMap(data),

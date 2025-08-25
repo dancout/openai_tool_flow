@@ -1,8 +1,5 @@
-import 'dart:convert';
-
 import 'package:meta/meta.dart';
 
-import 'audit_function.dart';
 import 'issue.dart';
 import 'openai_config.dart';
 import 'openai_service.dart';
@@ -95,7 +92,6 @@ class ToolFlow {
             print(
               'Step $i attempt $attemptCount failed. ${stepConfig.getFailureReason(allIssues)}. Retrying...',
             );
-          }
           }
         } catch (e) {
           // Create an error result

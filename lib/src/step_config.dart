@@ -246,7 +246,6 @@ class StepConfig {
     };
   }
 }
-}
 
 /// Extension methods for working with step configurations
 extension StepConfigExtension on Map<int, StepConfig> {
