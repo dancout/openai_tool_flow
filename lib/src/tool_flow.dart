@@ -1,11 +1,12 @@
 import 'dart:convert';
 
-import 'package:http/http.dart' as http;
 import 'package:meta/meta.dart';
 
 import 'audit_function.dart';
 import 'issue.dart';
 import 'openai_config.dart';
+import 'openai_service.dart';
+import 'openai_service_impl.dart';
 import 'step_config.dart';
 import 'tool_call_step.dart';
 import 'tool_result.dart';
@@ -20,6 +21,7 @@ import 'typed_interfaces.dart';
 /// - Supports per-step audit configuration
 /// - Implements retry logic with configurable attempts
 /// - Provides structured results at the end
+/// - Supports dependency injection for OpenAI service (for testing)
 class ToolFlow {
   /// Configuration for OpenAI API access
   final OpenAIConfig config;
@@ -27,31 +29,24 @@ class ToolFlow {
   /// Ordered list of tool call steps to execute
   final List<ToolCallStep> steps;
 
-  /// Optional audit functions to run after each step (legacy)
-  /// Use stepConfigs for more granular control
-  final List<AuditFunction> audits;
-
-  /// Per-step configuration for audits and retry behavior
-  /// Key is step index (0-based), value is configuration for that step
-  final Map<int, StepConfig> stepConfigs;
-
-  /// Whether to use mock responses for testing (defaults to false for real API calls)
-  final bool useMockResponses;
+  /// OpenAI service for making tool calls (can be injected for testing)
+  final OpenAiToolService openAiService;
 
   /// Internal state accumulated across steps
   final Map<String, dynamic> _state = {};
 
-  /// Results from completed steps
+  /// Results from completed steps (ordered list)
   final List<ToolResult> _results = [];
+
+  /// Results keyed by tool name for easy retrieval
+  final Map<String, ToolResult> _resultsByToolName = {};
 
   /// Creates a ToolFlow with configuration and steps
   ToolFlow({
     required this.config,
     required this.steps,
-    this.audits = const [],
-    this.stepConfigs = const {},
-    this.useMockResponses = false,
-  });
+    OpenAiToolService? openAiService,
+  }) : openAiService = openAiService ?? DefaultOpenAiToolService(config: config);
 
   /// Executes the tool flow with the given input
   ///
@@ -59,11 +54,12 @@ class ToolFlow {
   Future<ToolFlowResult> run({Map<String, dynamic> input = const {}}) async {
     _state.clear();
     _results.clear();
+    _resultsByToolName.clear();
     _state.addAll(input);
 
     for (int i = 0; i < steps.length; i++) {
       final step = steps[i];
-      final stepConfig = stepConfigs.getConfigForStep(i);
+      final stepConfig = step.stepConfig;
 
       ToolResult? stepResult;
       bool stepPassed = false;
@@ -79,7 +75,7 @@ class ToolFlow {
           stepResult = await _executeStep(step, i, attemptCount - 1);
 
           // Run audits if configured for this step
-          if (stepConfig.hasAudits || audits.isNotEmpty) {
+          if (stepConfig.hasAudits) {
             final shouldRunAudits =
                 !stepConfig.auditOnlyFinalAttempt ||
                 attemptCount > maxRetries ||
@@ -99,6 +95,7 @@ class ToolFlow {
             print(
               'Step $i attempt $attemptCount failed. ${stepConfig.getFailureReason(allIssues)}. Retrying...',
             );
+          }
           }
         } catch (e) {
           // Create an error result
@@ -129,6 +126,7 @@ class ToolFlow {
       // Add the final result
       if (stepResult != null) {
         _results.add(stepResult);
+        _resultsByToolName[stepResult.toolName] = stepResult;
 
         // Update state with step results
         _state['step_${i}_result'] = stepResult.toJson();
@@ -148,6 +146,7 @@ class ToolFlow {
       results: List.unmodifiable(_results),
       finalState: Map.unmodifiable(_state),
       allIssues: _getAllIssues(),
+      resultsByToolName: Map.unmodifiable(_resultsByToolName),
     );
   }
 
@@ -165,10 +164,8 @@ class ToolFlow {
         .map((issue) => issue.toJson())
         .toList();
 
-    // Execute either real API call or mock response depending on configuration
-    final response = useMockResponses
-        ? await _getMockResponse(step, stepInput)
-        : await _executeToolCall(step, stepInput);
+    // Execute using the injected OpenAI service
+    final response = await openAiService.executeToolCall(step, stepInput);
 
     // Try to create typed interfaces if available
     ToolInput? typedInput;
@@ -195,6 +192,7 @@ class ToolFlow {
   }
 
   /// Runs audits for a specific step
+  /// Runs audits for a step and returns the result with any issues found
   Future<ToolResult> _runAuditsForStep(
     ToolResult result,
     StepConfig stepConfig,
@@ -202,7 +200,7 @@ class ToolFlow {
   ) async {
     var auditedResult = result;
 
-    // Run step-specific audits first
+    // Run step-specific audits only (global audits are deprecated)
     for (final audit in stepConfig.audits) {
       final auditIssues = audit.run(auditedResult);
       // Add round information to audit issues
@@ -228,35 +226,6 @@ class ToolFlow {
       auditedResult = auditedResult.withAdditionalIssues(roundedIssues);
     }
 
-    // Run legacy global audits if no step-specific audits are configured
-    if (!stepConfig.hasAudits) {
-      for (final audit in audits) {
-        final auditIssues = audit.run(auditedResult);
-        // Add round information to audit issues
-        final roundedIssues = auditIssues
-            .map(
-              (issue) => Issue(
-                id: issue.id,
-                severity: issue.severity,
-                description: issue.description,
-                context: issue.context,
-                suggestions: issue.suggestions,
-                round:
-                    int.tryParse(result.input['_round']?.toString() ?? '0') ??
-                    0,
-                relatedData: {
-                  'step_index': stepIndex,
-                  'audit_name': audit.name,
-                  'tool_output': result.output,
-                },
-              ),
-            )
-            .toList();
-
-        auditedResult = auditedResult.withAdditionalIssues(roundedIssues);
-      }
-    }
-
     return auditedResult;
   }
 
@@ -269,6 +238,22 @@ class ToolFlow {
 
     // Add step-specific parameters
     input.addAll(step.params);
+
+    // Add forwarded data from previous steps
+    if (step.stepConfig.hasForwarding) {
+      final forwardedInput = step.stepConfig.buildForwardedInput(
+        _results,
+        _resultsByToolName,
+      );
+      input.addAll(forwardedInput);
+    }
+
+    // Apply output sanitization if configured
+    if (step.stepConfig.hasOutputSanitizer) {
+      final sanitizedInput = step.stepConfig.sanitizeInput(input, _results);
+      input.clear();
+      input.addAll(sanitizedInput);
+    }
 
     // Add model configuration
     input['_model'] = step.model;
@@ -617,11 +602,15 @@ class ToolFlowResult {
   /// All issues collected from all steps
   final List<Issue> allIssues;
 
+  /// Results keyed by tool name for easy retrieval
+  final Map<String, ToolResult> resultsByToolName;
+
   /// Creates a ToolFlowResult
   const ToolFlowResult({
     required this.results,
     required this.finalState,
     required this.allIssues,
+    required this.resultsByToolName,
   });
 
   /// Returns true if any step produced issues
@@ -638,6 +627,25 @@ class ToolFlowResult {
     return results.last.output;
   }
 
+  /// Gets the result for a specific tool by name
+  ToolResult? getResultByToolName(String toolName) {
+    return resultsByToolName[toolName];
+  }
+
+  /// Gets all results for tools matching a pattern
+  List<ToolResult> getResultsWhere(bool Function(ToolResult) predicate) {
+    return results.where(predicate).toList();
+  }
+
+  /// Gets results by tool names
+  List<ToolResult> getResultsByToolNames(List<String> toolNames) {
+    return toolNames
+        .map((name) => resultsByToolName[name])
+        .where((result) => result != null)
+        .cast<ToolResult>()
+        .toList();
+  }
+
   /// Converts this result to a JSON map
   Map<String, dynamic> toJson() {
     return {
@@ -645,11 +653,14 @@ class ToolFlowResult {
       'finalState': finalState,
       'allIssues': allIssues.map((i) => i.toJson()).toList(),
       'hasIssues': hasIssues,
+      'resultsByToolName': resultsByToolName.map(
+        (key, value) => MapEntry(key, value.toJson()),
+      ),
     };
   }
 
   @override
   String toString() {
-    return 'ToolFlowResult(steps: ${results.length}, issues: ${allIssues.length})';
+    return 'ToolFlowResult(steps: ${results.length}, issues: ${allIssues.length}, tools: ${resultsByToolName.keys.join(', ')})';
   }
 }
