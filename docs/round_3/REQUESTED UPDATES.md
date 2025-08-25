@@ -1,6 +1,6 @@
 # ROUND 3
-## REQUESTED UPDATES
-I need your help with the following content:
+### Context
+I need your help with the following content. The "CONDENSED ACCEPTANCE CRITERIA" is a summarized, machine readable (potentially non-exhaustive) version of the requirements. Cross-reference the "USER-DEFINED REQUESTS" section for supplemental details and requirements.
 
 ### Instructions
 - Please fulfill each of the requested updates for each section below.
@@ -9,8 +9,26 @@ I need your help with the following content:
     - Documenting your decisions is critical for future requested updates so that we understand why certain decisions were made
     - You should name the ADR file(s) accordingly, or better yet put them in a named directory, so that it is clear that they came from this request of changes
 
+## CONDENSED ACCEPTANCE CRITERIA
+This is a condensed listing of tasks to complete, but might not be exhaustive of all requirements specified in the user-defined requests section below
 
-### Requests
+- [ ] Document every significant decision using the ADR_TEMPLATE.md, placing ADRs in a clearly named directory.
+- [ ] Allow audit issues to be selectively passed to relevant steps; implement configuration to specify which previous step outputs/issues are forwarded to each step.
+- [ ] Optionally allow both output and associated issues from previous steps to be passed forward, with configuration per step.
+- [ ] Consider keying results by tool name for easier retrieval, and provide a getter for step results by tool name.
+- [ ] Ensure that step inputs can be composed from multiple previous step outputs as needed.
+- [ ] Implement a mechanism to sanitize the output of one step for use as the input of the next; make this configurable (e.g., via StepConfig).
+- [ ] Extract OpenAI tool call logic into a dedicated service file/class (e.g., OpenAiToolService.executeToolCall).
+- [ ] Create an OpenAiRequest class to encapsulate all request parameters, handling model-specific differences (e.g., temperature, max_tokens).
+- [ ] Refactor system/user message building functions to use strictly-typed input classes, avoiding unstructured maps.
+- [ ] Allow the OpenAiToolService (or similar) to be injected/mocked for testing, removing useMockResponses from ToolFlow.
+- [ ] Write tests to verify output schemas, issue reporting, audit retry logic, and issue forwarding.
+- [ ] Pass StepConfig directly into ToolCallStep, removing the need to match configs by index.
+- [ ] Ensure audits are specified per StepConfig, not globally in ToolFlow.
+- [ ] Split usage.dart into smaller files for abstract class implementations and example usage.
+
+
+## USER-DEFINED REQUESTS
 - We should be able to specify which layers to pass the audit issues to some capacity
     - The context here is that the audit results or issues from step 1 may be relevant to steps 2 & 3, but not 4. To save on token bloat, we don't want to pass forward issues that are purely just noise
     - I'm not sure how to accomplish this, so be creative
@@ -49,3 +67,5 @@ I need your help with the following content:
 - ToolFlow does not need to specify audits, since each StepConfig specifies audits, especially since each step may have different inputs and outputs.
 
 - Split usage.dart into smaller files for implementing the abstract classes and making the example usage case more digestible.
+
+
