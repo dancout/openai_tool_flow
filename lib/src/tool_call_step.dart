@@ -1,4 +1,5 @@
 import 'issue.dart';
+import 'step_config.dart';
 
 /// Defines a single tool call step in a ToolFlow.
 /// 
@@ -22,6 +23,9 @@ class ToolCallStep {
   /// Defaults to 3 attempts
   final int maxRetries;
 
+  /// Configuration for this step including audits, forwarding, and sanitization
+  final StepConfig stepConfig;
+
   /// Creates a ToolCallStep
   const ToolCallStep({
     required this.toolName,
@@ -29,6 +33,7 @@ class ToolCallStep {
     this.params = const {},
     this.issues = const [],
     this.maxRetries = 3,
+    this.stepConfig = const StepConfig(),
   });
 
   /// Creates a ToolCallStep from a JSON map
@@ -41,6 +46,9 @@ class ToolCallStep {
           ?.map((issueJson) => Issue.fromJson(issueJson as Map<String, dynamic>))
           .toList() ?? [],
       maxRetries: json['maxRetries'] as int? ?? 3,
+      stepConfig: json['stepConfig'] != null 
+          ? StepConfig.fromJson(json['stepConfig'] as Map<String, dynamic>)
+          : const StepConfig(),
     );
   }
 
@@ -52,6 +60,7 @@ class ToolCallStep {
       'params': params,
       'issues': issues.map((issue) => issue.toJson()).toList(),
       'maxRetries': maxRetries,
+      'stepConfig': stepConfig.toJson(),
     };
   }
 
@@ -62,6 +71,7 @@ class ToolCallStep {
     Map<String, dynamic>? params,
     List<Issue>? issues,
     int? maxRetries,
+    StepConfig? stepConfig,
   }) {
     return ToolCallStep(
       toolName: toolName ?? this.toolName,
@@ -69,6 +79,7 @@ class ToolCallStep {
       params: params ?? this.params,
       issues: issues ?? this.issues,
       maxRetries: maxRetries ?? this.maxRetries,
+      stepConfig: stepConfig ?? this.stepConfig,
     );
   }
 
