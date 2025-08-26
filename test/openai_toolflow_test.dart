@@ -393,4 +393,197 @@ void main() {
       expect(allResults[1].input['iteration'], equals(2));
     });
   });
+
+  group('ToolInput', () {
+    test('should create input with structured data and Issue objects', () {
+      final issue = Issue(
+        id: 'test-issue',
+        severity: IssueSeverity.low,
+        description: 'Test description',
+        context: {},
+        suggestions: [],
+      );
+
+      final input = ToolInput(
+        round: 1,
+        previousIssues: [issue],
+        customData: {'test': 'value'},
+        model: 'gpt-4',
+        temperature: 0.8,
+        maxTokens: 1000,
+      );
+
+      expect(input.round, equals(1));
+      expect(input.previousIssues.length, equals(1));
+      expect(input.previousIssues.first.id, equals('test-issue'));
+      expect(input.customData['test'], equals('value'));
+      expect(input.model, equals('gpt-4'));
+      expect(input.temperature, equals(0.8));
+      expect(input.maxTokens, equals(1000));
+    });
+
+    test('should serialize to Map with structured previousIssues', () {
+      final issue = Issue(
+        id: 'test-issue',
+        severity: IssueSeverity.medium,
+        description: 'Test issue',
+        context: {'key': 'value'},
+        suggestions: ['suggestion'],
+      );
+
+      final input = ToolInput(
+        round: 2,
+        previousIssues: [issue],
+        customData: {'param': 'data'},
+        model: 'gpt-3.5-turbo',
+      );
+
+      final map = input.toMap();
+
+      expect(map['_round'], equals(2));
+      expect(map['_model'], equals('gpt-3.5-turbo'));
+      expect(map['param'], equals('data'));
+      expect(map['_previous_issues'], isA<List>());
+      
+      final issueJson = map['_previous_issues'][0] as Map<String, dynamic>;
+      expect(issueJson['id'], equals('test-issue'));
+      expect(issueJson['severity'], equals('medium'));
+    });
+
+    test('should restore from Map with structured previousIssues', () {
+      final originalIssue = Issue(
+        id: 'original-issue',
+        severity: IssueSeverity.high,
+        description: 'Original description',
+        context: {'original': true},
+        suggestions: ['fix it'],
+      );
+
+      final originalInput = ToolInput(
+        round: 3,
+        previousIssues: [originalIssue],
+        customData: {'custom': 'value'},
+        model: 'gpt-4',
+        temperature: 0.5,
+      );
+
+      final map = originalInput.toMap();
+      final restoredInput = ToolInput.fromMap(map);
+
+      expect(restoredInput.round, equals(3));
+      expect(restoredInput.model, equals('gpt-4'));
+      expect(restoredInput.customData['custom'], equals('value'));
+      expect(restoredInput.previousIssues.length, equals(1));
+      
+      final restoredIssue = restoredInput.previousIssues.first;
+      expect(restoredIssue.id, equals('original-issue'));
+      expect(restoredIssue.severity, equals(IssueSeverity.high));
+      expect(restoredIssue.description, equals('Original description'));
+    });
+
+    test('StepInput should be alias to ToolInput', () {
+      final stepInput = StepInput(customData: {'test': 'value'});
+      expect(stepInput, isA<ToolInput>());
+      expect(stepInput.customData['test'], equals('value'));
+    });
+  });
+
+  group('ToolResult copyWith', () {
+    test('should create copy with modified fields', () {
+      final originalResult = ToolResult(
+        toolName: 'original_tool',
+        input: {'original': 'input'},
+        output: {'original': 'output'},
+        issues: [],
+      );
+
+      final copiedResult = originalResult.copyWith(
+        toolName: 'modified_tool',
+        output: {'modified': 'output'},
+      );
+
+      expect(copiedResult.toolName, equals('modified_tool'));
+      expect(copiedResult.input['original'], equals('input')); // Unchanged
+      expect(copiedResult.output['modified'], equals('output')); // Changed
+      expect(copiedResult.output.containsKey('original'), isFalse); // Old value replaced
+      expect(copiedResult.issues, isEmpty);
+    });
+
+    test('should preserve unchanged fields', () {
+      final issue = Issue(
+        id: 'test-issue',
+        severity: IssueSeverity.low,
+        description: 'Test',
+        context: {},
+        suggestions: [],
+      );
+
+      final originalResult = ToolResult(
+        toolName: 'tool',
+        input: {'key': 'value'},
+        output: {'result': 'data'},
+        issues: [issue],
+      );
+
+      final copiedResult = originalResult.copyWith(
+        output: {'new': 'result'},
+      );
+
+      expect(copiedResult.toolName, equals('tool')); // Preserved
+      expect(copiedResult.input['key'], equals('value')); // Preserved
+      expect(copiedResult.output['new'], equals('result')); // Changed
+      expect(copiedResult.issues.length, equals(1)); // Preserved
+      expect(copiedResult.issues.first.id, equals('test-issue'));
+    });
+  });
+
+  group('ToolFlow with filtered previousIssues', () {
+    test('should only include issues from included output steps', () async {
+      final config = OpenAIConfig(
+        apiKey: 'test-key',
+        defaultModel: 'gpt-4',
+      );
+
+      final mockService = MockOpenAiToolService(
+        responses: {
+          'step1_tool': {'result': 'step1'},
+          'step2_tool': {'result': 'step2'},
+          'step3_tool': {'result': 'step3'},
+        },
+      );
+
+      final flow = ToolFlow(
+        config: config,
+        steps: [
+          ToolCallStep(
+            toolName: 'step1_tool',
+            model: 'gpt-4',
+            params: {},
+          ),
+          ToolCallStep(
+            toolName: 'step2_tool',
+            model: 'gpt-4',
+            params: {},
+          ),
+          ToolCallStep(
+            toolName: 'step3_tool',
+            model: 'gpt-4',
+            params: {},
+            stepConfig: StepConfig(
+              includeOutputsFrom: ['step1_tool'], // Only include step1
+            ),
+          ),
+        ],
+        openAiService: mockService,
+      );
+
+      final result = await flow.run();
+      expect(result.results.length, equals(3));
+      
+      // Verify that the flow completed successfully
+      expect(result.results[0].toolName, equals('step1_tool'));
+      expect(result.results[1].toolName, equals('step2_tool'));
+      expect(result.results[2].toolName, equals('step3_tool'));
+    });
+  });
 }
