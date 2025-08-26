@@ -25,17 +25,17 @@ abstract class ToolInput {
 
 /// Structured input for a tool execution step.
 ///
-/// This class provides consistent structure for all tool calls while 
+/// This class provides consistent structure for all tool calls while
 /// allowing custom data through the `customData` field.
-/// 
+///
 /// **Structured Fields (always present):**
 /// - `round`: Current retry round (0 for first attempt)
 /// - `previousIssues`: Issues from previous steps for context
 /// - `model`, `temperature`, `maxTokens`: Model configuration
-/// 
+///
 /// **Custom Data:**
 /// - All step-specific parameters and forwarded outputs from previous steps
-/// 
+///
 /// **Example usage:**
 /// ```dart
 /// final stepInput = StepInput(
@@ -48,7 +48,7 @@ abstract class ToolInput {
 ///   },
 ///   model: 'gpt-4',
 /// );
-/// 
+///
 /// // Convert to map for service call
 /// final inputMap = stepInput.toMap();
 /// // Results in: {
@@ -60,7 +60,12 @@ abstract class ToolInput {
 /// //   'extract_palette_confidence': 0.85,
 /// // }
 /// ```
-class StepInput extends ToolInput {
+class StepInput
+        // TODO: Why do we have StepInput extending ToolInput here at the base level?
+        // Should the usage.dart example file be extending StepInput instead?
+        // OR - Should we remove StepInput entirely in favor of using ToolInput, and that not be abstract?
+        extends
+        ToolInput {
   /// Current retry round (0 for first attempt)
   final int round;
 
@@ -103,11 +108,13 @@ class StepInput extends ToolInput {
   /// Creates a StepInput from a Map
   factory StepInput.fromMap(Map<String, dynamic> map) {
     final customData = Map<String, dynamic>.from(map);
-    
+
     // Remove known fields from custom data
     final round = customData.remove('_round') as int? ?? 0;
-    final previousIssues = (customData.remove('_previous_issues') as List?)
-        ?.cast<Map<String, dynamic>>() ?? [];
+    final previousIssues =
+        (customData.remove('_previous_issues') as List?)
+            ?.cast<Map<String, dynamic>>() ??
+        [];
     final model = customData.remove('_model') as String? ?? 'gpt-4';
     final temperature = customData.remove('_temperature') as double?;
     final maxTokens = customData.remove('_max_tokens') as int?;
@@ -125,23 +132,23 @@ class StepInput extends ToolInput {
   @override
   List<String> validate() {
     final issues = <String>[];
-    
+
     if (round < 0) {
       issues.add('Round must be non-negative');
     }
-    
+
     if (model.isEmpty) {
       issues.add('Model cannot be empty');
     }
-    
+
     if (temperature != null && (temperature! < 0 || temperature! > 2)) {
       issues.add('Temperature must be between 0 and 2');
     }
-    
+
     if (maxTokens != null && maxTokens! <= 0) {
       issues.add('Max tokens must be positive');
     }
-    
+
     return issues;
   }
 }

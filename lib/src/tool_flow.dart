@@ -86,6 +86,8 @@ class ToolFlow {
               output: sanitizedOutput,
               issues: stepResult.issues,
               typedInput: stepResult.typedInput,
+              // TODO: Should the typedOutput not also be sanitized first? Maybe not, but there's lots of potential for overlap there.
+              // TODO: Also, should we enforce a typed output structure?
               typedOutput: stepResult.typedOutput,
             );
           }
@@ -182,7 +184,7 @@ class ToolFlow {
     int stepIndex,
     int round,
   ) async {
-    var stepInput = _buildStepInput(step, stepIndex);
+    StepInput stepInput = _buildStepInput(step, stepIndex);
     
     // Update the round information for this attempt
     stepInput = StepInput(
@@ -211,6 +213,7 @@ class ToolFlow {
       // If typed creation fails, continue with untyped result
     }
 
+    // TODO: Setting this typedINput here AFTER we've already called to execute the tool call does literally nothing for us.
     // Use the structured input as typed input
     typedInput = stepInput;
 
@@ -269,6 +272,11 @@ class ToolFlow {
   StepInput _buildStepInput(ToolCallStep step, int stepIndex) {
     final customData = <String, dynamic>{};
 
+    // TODO: What the heck is going on here?
+    // Are we just adding the results of every previous step to input here?
+    // Then below we are adding only the forwarded input. Would it be better to
+    // only add the forwarded input?
+    
     // Add current state (excluding internal fields)
     for (final entry in _state.entries) {
       if (!entry.key.startsWith('_') && !entry.key.startsWith('step_')) {
@@ -325,6 +333,7 @@ class ToolFlow {
     return allIssues;
   }
 
+  // TODO: Eventually, investigate if these visible for testings are necessary
   /// Gets the current state (for testing/debugging)
   @visibleForTesting
   Map<String, dynamic> get currentState => Map.unmodifiable(_state);

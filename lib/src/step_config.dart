@@ -194,6 +194,7 @@ class StepConfig {
 
       // Include all output with tool name prefix to avoid conflicts
       for (final entry in sourceResult.output.entries) {
+        // TODO: Why do we need to prepend the toolName and the key again?
         includedOutputs['${sourceResult.toolName}_${entry.key}'] = entry.value;
       }
     }
