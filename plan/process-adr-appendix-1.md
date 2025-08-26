@@ -34,7 +34,7 @@ GOAL-001: For each ADR file, transfer its Title, Round Number, key words, and a 
 | TASK-ADR-0005 | Add entry for `adr-0002-issue-forwarding-step-config.md` (Round 3): Title, Round Number, key words, and summary to appendix table. |  |  |
 | TASK-ADR-0006 | Add entry for `adr-0003-round3-implementation-summary.md` (Round 3): Title, Round Number, key words, and summary to appendix table. |  |  |
 | TASK-ADR-0007 | Add entry for `adr-0001-consolidate-step-input-and-tool-input.md` (Round 4): Title, Round Number, key words, and summary to docs/appendix table. |  |  |
-| TASK-ADR-0008 | Add entry for `adr-0002-selective-previous-issues-inclusion.md` (Round 3): Title, Round Number, key words, and summary to docs/appendix table. |  |  |
+| TASK-ADR-0008 | Add entry for `adr-0002-selective-previous-issues-inclusion.md` (Round 4): Title, Round Number, key words, and summary to docs/appendix table. |  |  |
 | TASK-ADR-0009 | Add entry for `adr-0003-output-sanitization-and-toolresult-patterns.md` (Round 4): Title, Round Number, key words, and summary to docs/appendix table. |  |  |
 
 ### Implementation Phase 2

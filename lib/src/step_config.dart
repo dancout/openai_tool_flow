@@ -73,6 +73,7 @@ class StepConfig {
   /// }
   /// ```
   final Map<String, dynamic> Function(
+    // TODO: This should probably take in ToolInput/StepInput instead of just an unstructured Map
     Map<String, dynamic> input,
     List<ToolResult> previousResults,
   )?

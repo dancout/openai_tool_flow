@@ -9,6 +9,7 @@ class ToolInput {
   /// Current retry round (0 for first attempt)
   final int round;
 
+  // TODO: Instead of passing forward the previous issues, we should pass forward the previous results, which includes both the previous steps' output and issues all in the same object.
   /// Issues from previous steps that may be relevant
   final List<Issue> previousIssues;
 
@@ -38,7 +39,9 @@ class ToolInput {
   Map<String, dynamic> toMap() {
     return {
       '_round': round,
-      '_previous_issues': previousIssues.map((issue) => issue.toJson()).toList(),
+      '_previous_issues': previousIssues
+          .map((issue) => issue.toJson())
+          .toList(),
       '_model': model,
       if (temperature != null) '_temperature': temperature,
       if (maxTokens != null) '_max_tokens': maxTokens,
@@ -52,7 +55,8 @@ class ToolInput {
 
     // Remove known fields from custom data
     final round = customData.remove('_round') as int? ?? 0;
-    final previousIssuesJson = customData.remove('_previous_issues') as List? ?? [];
+    final previousIssuesJson =
+        customData.remove('_previous_issues') as List? ?? [];
     final previousIssues = previousIssuesJson
         .cast<Map<String, dynamic>>()
         .map((json) => Issue.fromJson(json))

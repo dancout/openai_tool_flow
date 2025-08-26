@@ -78,8 +78,6 @@ class ToolFlow {
           // Execute the step
           stepResult = await _executeStep(step, i, attemptCount - 1);
 
-          // Note: Output sanitization is now handled in _executeStep before typedOutput creation
-
           // Run audits if configured for this step
           if (stepConfig.hasAudits) {
             final shouldRunAudits =
@@ -193,7 +191,7 @@ class ToolFlow {
       // Attempt to create typed output if registry has a creator using sanitized data
       typedOutput = ToolOutputRegistry.create(step.toolName, sanitizedOutput);
     } catch (e) {
-      // If typed creation fails, continue with untyped result
+      // TODO: If typed creation exists and it fails, then we need to fail the step. This is unexpected behavior.
     }
 
     // Use the structured input as typed input
@@ -273,6 +271,7 @@ class ToolFlow {
     // Include outputs from previous steps if configured
     List<ToolResult> includedResults = [];
     if (step.stepConfig.hasOutputInclusion) {
+      // TODO: Don't the included tool results already have the issues included on that object? Is it necessary to also pass around this includedResults object?
       includedResults = _getIncludedResults(step.stepConfig);
       final includedOutputs = step.stepConfig.buildIncludedOutputs(
         _results,
@@ -284,7 +283,7 @@ class ToolFlow {
     // Prepare previous issues for context - only from included steps
     final previousIssues = step.stepConfig.hasOutputInclusion
         ? includedResults.expand((result) => result.issues).toList()
-        : _results.expand((result) => result.issues).toList();
+        : <Issue>[];
 
     // Create structured input
     ToolInput stepInput = ToolInput(
@@ -302,6 +301,7 @@ class ToolFlow {
       // So, I'm not certain it works as expected.
       final sanitizedInput = step.stepConfig.sanitizeInput(
         stepInput.toMap(),
+        // TODO: Why does sanitizeInput take in the entire list of results?
         _results,
       );
       stepInput = ToolInput.fromMap(sanitizedInput);
@@ -313,7 +313,7 @@ class ToolFlow {
   /// Gets the list of results that should be included based on step configuration
   List<ToolResult> _getIncludedResults(StepConfig stepConfig) {
     final includedResults = <ToolResult>[];
-    
+
     for (final include in stepConfig.includeOutputsFrom) {
       if (include is int) {
         // Include by step index
@@ -328,7 +328,7 @@ class ToolFlow {
         }
       }
     }
-    
+
     return includedResults;
   }
 
