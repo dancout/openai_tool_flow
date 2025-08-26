@@ -1,76 +1,16 @@
-/// Abstract base class for strongly-typed tool inputs.
+import 'issue.dart';
+
+/// Base class for strongly-typed tool inputs.
 ///
 /// Provides type safety and validation for tool call parameters
 /// while maintaining backward compatibility with Map-based interface.
-abstract class ToolInput {
-  /// Allows const constructors in subclasses
-  const ToolInput();
-
-  /// Converts this input to a Map for tool call processing
-  Map<String, dynamic> toMap();
-
-  /// Creates a ToolInput from a Map
-  ///
-  /// Subclasses should implement this factory constructor
-  /// to enable deserialization from generic maps.
-  static ToolInput fromMap(Map<String, dynamic> map) {
-    throw UnimplementedError('Subclasses must implement fromMap');
-  }
-
-  /// Validates the input parameters
-  ///
-  /// Returns a list of validation issues, empty if valid
-  List<String> validate() => [];
-}
-
-/// Structured input for a tool execution step.
-///
-/// This class provides consistent structure for all tool calls while
-/// allowing custom data through the `customData` field.
-///
-/// **Structured Fields (always present):**
-/// - `round`: Current retry round (0 for first attempt)
-/// - `previousIssues`: Issues from previous steps for context
-/// - `model`, `temperature`, `maxTokens`: Model configuration
-///
-/// **Custom Data:**
-/// - All step-specific parameters and forwarded outputs from previous steps
-///
-/// **Example usage:**
-/// ```dart
-/// final stepInput = StepInput(
-///   round: 0,
-///   previousIssues: [],
-///   customData: {
-///     'colors': ['#FF0000', '#00FF00'],
-///     'enhance_contrast': true,
-///     'extract_palette_confidence': 0.85, // From previous step
-///   },
-///   model: 'gpt-4',
-/// );
-///
-/// // Convert to map for service call
-/// final inputMap = stepInput.toMap();
-/// // Results in: {
-/// //   '_round': 0,
-/// //   '_previous_issues': [],
-/// //   '_model': 'gpt-4',
-/// //   'colors': ['#FF0000', '#00FF00'],
-/// //   'enhance_contrast': true,
-/// //   'extract_palette_confidence': 0.85,
-/// // }
-/// ```
-class StepInput
-        // TODO: Why do we have StepInput extending ToolInput here at the base level?
-        // Should the usage.dart example file be extending StepInput instead?
-        // OR - Should we remove StepInput entirely in favor of using ToolInput, and that not be abstract?
-        extends
-        ToolInput {
+/// Can be extended for custom tool inputs or used directly for simple cases.
+class ToolInput {
   /// Current retry round (0 for first attempt)
   final int round;
 
   /// Issues from previous steps that may be relevant
-  final List<Map<String, dynamic>> previousIssues;
+  final List<Issue> previousIssues;
 
   /// Custom input data specific to this tool
   final Map<String, dynamic> customData;
@@ -84,20 +24,21 @@ class StepInput
   /// Max tokens for this step
   final int? maxTokens;
 
-  const StepInput({
-    required this.round,
-    required this.previousIssues,
-    required this.customData,
-    required this.model,
+  /// Creates a ToolInput with structured fields and custom data
+  const ToolInput({
+    this.round = 0,
+    this.previousIssues = const [],
+    this.customData = const {},
+    this.model = 'gpt-4',
     this.temperature,
     this.maxTokens,
   });
 
-  @override
+  /// Converts this input to a Map for tool call processing
   Map<String, dynamic> toMap() {
     return {
       '_round': round,
-      '_previous_issues': previousIssues,
+      '_previous_issues': previousIssues.map((issue) => issue.toJson()).toList(),
       '_model': model,
       if (temperature != null) '_temperature': temperature,
       if (maxTokens != null) '_max_tokens': maxTokens,
@@ -105,21 +46,22 @@ class StepInput
     };
   }
 
-  /// Creates a StepInput from a Map
-  factory StepInput.fromMap(Map<String, dynamic> map) {
+  /// Creates a ToolInput from a Map
+  factory ToolInput.fromMap(Map<String, dynamic> map) {
     final customData = Map<String, dynamic>.from(map);
 
     // Remove known fields from custom data
     final round = customData.remove('_round') as int? ?? 0;
-    final previousIssues =
-        (customData.remove('_previous_issues') as List?)
-            ?.cast<Map<String, dynamic>>() ??
-        [];
+    final previousIssuesJson = customData.remove('_previous_issues') as List? ?? [];
+    final previousIssues = previousIssuesJson
+        .cast<Map<String, dynamic>>()
+        .map((json) => Issue.fromJson(json))
+        .toList();
     final model = customData.remove('_model') as String? ?? 'gpt-4';
     final temperature = customData.remove('_temperature') as double?;
     final maxTokens = customData.remove('_max_tokens') as int?;
 
-    return StepInput(
+    return ToolInput(
       round: round,
       previousIssues: previousIssues,
       customData: customData,
@@ -129,7 +71,9 @@ class StepInput
     );
   }
 
-  @override
+  /// Validates the input parameters
+  ///
+  /// Returns a list of validation issues, empty if valid
   List<String> validate() {
     final issues = <String>[];
 
@@ -152,6 +96,25 @@ class StepInput
     return issues;
   }
 }
+
+/// Structured input for a tool execution step.
+///
+/// This is now a type alias to ToolInput for backward compatibility.
+/// Use ToolInput directly for new code.
+///
+/// **Example usage:**
+/// ```dart
+/// final stepInput = ToolInput(
+///   round: 0,
+///   previousIssues: [],
+///   customData: {
+///     'colors': ['#FF0000', '#00FF00'],
+///     'enhance_contrast': true,
+///   },
+///   model: 'gpt-4',
+/// );
+/// ```
+typedef StepInput = ToolInput;
 
 /// Abstract base class for strongly-typed tool outputs.
 ///

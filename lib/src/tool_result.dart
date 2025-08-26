@@ -89,6 +89,25 @@ class ToolResult {
     );
   }
 
+  /// Creates a copy of this ToolResult with optional field overrides
+  ToolResult copyWith({
+    String? toolName,
+    Map<String, dynamic>? input,
+    Map<String, dynamic>? output,
+    List<Issue>? issues,
+    ToolInput? typedInput,
+    ToolOutput? typedOutput,
+  }) {
+    return ToolResult(
+      toolName: toolName ?? this.toolName,
+      input: input ?? this.input,
+      output: output ?? this.output,
+      issues: issues ?? this.issues,
+      typedInput: typedInput ?? this.typedInput,
+      typedOutput: typedOutput ?? this.typedOutput,
+    );
+  }
+
   /// Returns true if this ToolResult has any issues
   bool get hasIssues => issues.isNotEmpty;
 

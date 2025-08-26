@@ -78,21 +78,7 @@ class ToolFlow {
           // Execute the step
           stepResult = await _executeStep(step, i, attemptCount - 1);
 
-          // Apply output sanitization if configured
-          if (stepConfig.hasOutputSanitizer) {
-            final sanitizedOutput = stepConfig.sanitizeOutput(
-              stepResult.output,
-            );
-            stepResult = ToolResult(
-              toolName: stepResult.toolName,
-              input: stepResult.input,
-              output: sanitizedOutput,
-              issues: stepResult.issues,
-              typedInput: stepResult.typedInput,
-              // TODO: Also, should we enforce a typed output structure?
-              typedOutput: stepResult.typedOutput,
-            );
-          }
+          // Note: Output sanitization is now handled in _executeStep before typedOutput creation
 
           // Run audits if configured for this step
           if (stepConfig.hasAudits) {
@@ -186,7 +172,7 @@ class ToolFlow {
     int stepIndex,
     int round,
   ) async {
-    StepInput stepInput = _buildStepInput(step, stepIndex, round);
+    ToolInput stepInput = _buildStepInput(step, stepIndex, round);
 
     // Convert to map for service call
     final inputMap = stepInput.toMap();
@@ -194,13 +180,18 @@ class ToolFlow {
     // Execute using the injected OpenAI service
     final response = await openAiService.executeToolCall(step, inputMap);
 
+    // Apply output sanitization first if configured
+    final sanitizedOutput = step.stepConfig.hasOutputSanitizer
+        ? step.stepConfig.sanitizeOutput(response)
+        : response;
+
     // Try to create typed interfaces if available
     ToolInput? typedInput;
     ToolOutput? typedOutput;
 
     try {
-      // Attempt to create typed output if registry has a creator
-      typedOutput = ToolOutputRegistry.create(step.toolName, response);
+      // Attempt to create typed output if registry has a creator using sanitized data
+      typedOutput = ToolOutputRegistry.create(step.toolName, sanitizedOutput);
     } catch (e) {
       // If typed creation fails, continue with untyped result
     }
@@ -212,7 +203,7 @@ class ToolFlow {
     final result = ToolResult(
       toolName: step.toolName,
       input: inputMap,
-      output: response,
+      output: sanitizedOutput,
       issues: [],
       typedInput: typedInput,
       typedOutput: typedOutput,
@@ -260,7 +251,7 @@ class ToolFlow {
   }
 
   /// Builds input for a step based on current state and step parameters
-  StepInput _buildStepInput(ToolCallStep step, int stepIndex, int round) {
+  ToolInput _buildStepInput(ToolCallStep step, int stepIndex, int round) {
     final customData = <String, dynamic>{};
 
     // TODO: What the heck is going on here?
@@ -280,7 +271,9 @@ class ToolFlow {
     customData.addAll(step.params);
 
     // Include outputs from previous steps if configured
+    List<ToolResult> includedResults = [];
     if (step.stepConfig.hasOutputInclusion) {
+      includedResults = _getIncludedResults(step.stepConfig);
       final includedOutputs = step.stepConfig.buildIncludedOutputs(
         _results,
         _resultsByToolName,
@@ -288,14 +281,13 @@ class ToolFlow {
       customData.addAll(includedOutputs);
     }
 
-    // Prepare previous issues for context
-    final previousIssues = _results
-        .expand((result) => result.issues)
-        .map((issue) => issue.toJson())
-        .toList();
+    // Prepare previous issues for context - only from included steps
+    final previousIssues = step.stepConfig.hasOutputInclusion
+        ? includedResults.expand((result) => result.issues).toList()
+        : _results.expand((result) => result.issues).toList();
 
     // Create structured input
-    StepInput stepInput = StepInput(
+    ToolInput stepInput = ToolInput(
       round: round,
       previousIssues: previousIssues,
       customData: customData,
@@ -312,10 +304,32 @@ class ToolFlow {
         stepInput.toMap(),
         _results,
       );
-      stepInput = StepInput.fromMap(sanitizedInput);
+      stepInput = ToolInput.fromMap(sanitizedInput);
     }
 
     return stepInput;
+  }
+
+  /// Gets the list of results that should be included based on step configuration
+  List<ToolResult> _getIncludedResults(StepConfig stepConfig) {
+    final includedResults = <ToolResult>[];
+    
+    for (final include in stepConfig.includeOutputsFrom) {
+      if (include is int) {
+        // Include by step index
+        if (include >= 0 && include < _results.length) {
+          includedResults.add(_results[include]);
+        }
+      } else if (include is String) {
+        // Include by tool name (most recent)
+        final result = _resultsByToolName[include];
+        if (result != null) {
+          includedResults.add(result);
+        }
+      }
+    }
+    
+    return includedResults;
   }
 
   /// Gets all issues from all completed steps
