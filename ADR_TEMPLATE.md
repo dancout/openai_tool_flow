@@ -27,6 +27,7 @@ If any of the required inputs are not provided or cannot be determined from the 
 - Use coded bullet points (3-4 letter codes + 3-digit numbers) for multi-item sections
 
 The ADR must be saved in the `round_{round_number}/docs/adr/` directory using the naming convention: `adr-NNNN-[title-slug].md`, where NNNN is the next sequential 4-digit number (e.g., `adr-0001-database-selection.md`).
+You must also update the adr_appendix.md file with this ADR's Title, Round Number, Key Words (such as core classes, files, or concepts), and a one-sentence Quick Summary.
 
 ## Required Documentation Structure
 
