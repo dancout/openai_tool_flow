@@ -12,6 +12,7 @@ I need your help with the following content.
 - There should be no linting issues or warnings when you are finished with your work.
 - Please update all relevant existing tests or create new ones for new functionality before officially completing your work.
 - Be sure to commit at checkpoints throughout your work so that in the event of an error in your process, all your good work is not lost.
+- When adding comments, do so for the sake of good documentation and not for the sake of letting the user know you were following instructions.
 
 ### REQUESTS
 - [ ] Consolidate StepInput and ToolInput within the typed_interfaces.dart file
