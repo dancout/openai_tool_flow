@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'openai_config.dart';
 import 'openai_service.dart';
 import 'tool_call_step.dart';
+import 'tool_result.dart';
 
 /// Default implementation of OpenAiToolService that makes actual API calls.
 class DefaultOpenAiToolService implements OpenAiToolService {
@@ -61,15 +62,16 @@ class DefaultOpenAiToolService implements OpenAiToolService {
     Map<String, dynamic> input,
   ) {
     // Create tool definition
-    // TODO: This input should probably be more structured so that it's easier to build the tool definition, extract the previous results, and the relevant issues.
     final toolDefinition = _buildToolDefinition(step, input);
+
+    // Extract previous results from input
+    final previousResults = _extractPreviousResults(input);
 
     // Build system message
     final systemMessageInput = SystemMessageInput(
       toolFlowContext: 'Executing tool call in a structured workflow',
       stepDescription: 'Tool: ${step.toolName}, Model: ${step.model}',
-      previousResults: _extractPreviousResults(input),
-      relevantIssues: _extractRelevantIssues(input),
+      previousResults: previousResults,
       additionalContext: {'step_tool': step.toolName, 'step_model': step.model},
     );
 
@@ -190,25 +192,24 @@ class DefaultOpenAiToolService implements OpenAiToolService {
 
     if (input.previousResults.isNotEmpty) {
       buffer.writeln();
-      buffer.writeln('Previous step results:');
+      buffer.writeln('Previous step results and associated issues:');
       for (int i = 0; i < input.previousResults.length; i++) {
         final result = input.previousResults[i];
         buffer.writeln(
-          '  Step ${i + 1}: ${result['toolName']} -> ${result['output']?.keys?.join(', ') ?? 'unknown'}',
+          '  Step ${i + 1}: ${result.toolName} -> Output keys: ${result.output.keys.join(', ')}',
         );
-      }
-    }
-
-    if (input.relevantIssues.isNotEmpty) {
-      buffer.writeln();
-      buffer.writeln('Issues from previous steps to consider:');
-      for (final issue in input.relevantIssues) {
-        buffer.writeln('  - ${issue['severity']}: ${issue['description']}');
-        if (issue['suggestions'] != null &&
-            (issue['suggestions'] as List).isNotEmpty) {
-          buffer.writeln(
-            '    Suggestions: ${(issue['suggestions'] as List).join(', ')}',
-          );
+        
+        // Include issues associated with this specific result
+        if (result.issues.isNotEmpty) {
+          buffer.writeln('    Associated issues:');
+          for (final issue in result.issues) {
+            buffer.writeln('      - ${issue.severity.name.toUpperCase()}: ${issue.description}');
+            if (issue.suggestions.isNotEmpty) {
+              buffer.writeln(
+                '        Suggestions: ${issue.suggestions.join(', ')}',
+              );
+            }
+          }
         }
       }
     }
@@ -251,40 +252,27 @@ class DefaultOpenAiToolService implements OpenAiToolService {
   }
 
   /// Extracts previous results from input for context
-  List<Map<String, dynamic>> _extractPreviousResults(
+  List<ToolResult> _extractPreviousResults(
     Map<String, dynamic> input,
   ) {
-    final results = <Map<String, dynamic>>[];
+    final results = <ToolResult>[];
 
-    // Look for step results in the input
-    for (final key in input.keys) {
-      if (key.startsWith('step_') && key.endsWith('_result')) {
-        final result = input[key];
+    // Look for _previous_results in the input (new structure)
+    final previousResults = input['_previous_results'];
+    if (previousResults is List) {
+      for (final result in previousResults) {
         if (result is Map<String, dynamic>) {
-          results.add(result);
+          try {
+            results.add(ToolResult.fromJson(result));
+          } catch (e) {
+            // Skip invalid result entries
+            print('Warning: Failed to parse previous result: $e');
+          }
         }
       }
     }
 
     return results;
-  }
-
-  /// Extracts relevant issues from input
-  List<Map<String, dynamic>> _extractRelevantIssues(
-    Map<String, dynamic> input,
-  ) {
-    final issues = <Map<String, dynamic>>[];
-
-    final previousIssues = input['_previous_issues'];
-    if (previousIssues is List) {
-      for (final issue in previousIssues) {
-        if (issue is Map<String, dynamic>) {
-          issues.add(issue);
-        }
-      }
-    }
-
-    return issues;
   }
 
   /// Extracts tool call result from OpenAI response

@@ -76,7 +76,11 @@ class ToolFlow {
 
         try {
           // Execute the step
-          stepResult = await _executeStep(step, i, attemptCount - 1);
+          stepResult = await _executeStep(
+            step: step,
+            stepIndex: i,
+            round: attemptCount - 1,
+          );
 
           // Run audits if configured for this step
           if (stepConfig.hasAudits) {
@@ -86,7 +90,11 @@ class ToolFlow {
                 attemptCount == 1; // Always run on first attempt
 
             if (shouldRunAudits) {
-              stepResult = await _runAuditsForStep(stepResult, stepConfig, i);
+              stepResult = await _runAuditsForStep(
+                result: stepResult,
+                stepConfig: stepConfig,
+                stepIndex: i,
+              );
             }
           }
 
@@ -102,7 +110,11 @@ class ToolFlow {
           }
         } catch (e) {
           // Create an error result - build step input for error case
-          final errorStepInput = _buildStepInput(step, i, attemptCount);
+          final errorStepInput = _buildStepInput(
+            step: step,
+            stepIndex: i,
+            round: attemptCount,
+          );
           stepResult = ToolResult(
             toolName: step.toolName,
             input: errorStepInput.toMap(),
@@ -165,12 +177,16 @@ class ToolFlow {
   }
 
   /// Executes a single step
-  Future<ToolResult> _executeStep(
-    ToolCallStep step,
-    int stepIndex,
-    int round,
-  ) async {
-    ToolInput stepInput = _buildStepInput(step, stepIndex, round);
+  Future<ToolResult> _executeStep({
+    required ToolCallStep step,
+    required int stepIndex,
+    required int round,
+  }) async {
+    ToolInput stepInput = _buildStepInput(
+      step: step,
+      stepIndex: stepIndex,
+      round: round,
+    );
 
     // Convert to map for service call
     final inputMap = stepInput.toMap();
@@ -187,11 +203,16 @@ class ToolFlow {
     ToolInput? typedInput;
     ToolOutput? typedOutput;
 
-    try {
-      // Attempt to create typed output if registry has a creator using sanitized data
-      typedOutput = ToolOutputRegistry.create(step.toolName, sanitizedOutput);
-    } catch (e) {
-      // TODO: If typed creation exists and it fails, then we need to fail the step. This is unexpected behavior.
+    // Attempt to create typed output if registry has a creator using sanitized data
+    // If this fails and there is a registered creator, the step should fail
+    if (ToolOutputRegistry.hasTypedOutput(step.toolName)) {
+      try {
+        typedOutput = ToolOutputRegistry.create(step.toolName, sanitizedOutput);
+      } catch (e) {
+        throw Exception(
+          'Failed to create typed output for ${step.toolName}: $e',
+        );
+      }
     }
 
     // Use the structured input as typed input
@@ -210,13 +231,12 @@ class ToolFlow {
     return result;
   }
 
-  /// Runs audits for a specific step
   /// Runs audits for a step and returns the result with any issues found
-  Future<ToolResult> _runAuditsForStep(
-    ToolResult result,
-    StepConfig stepConfig,
-    int stepIndex,
-  ) async {
+  Future<ToolResult> _runAuditsForStep({
+    required ToolResult result,
+    required StepConfig stepConfig,
+    required int stepIndex,
+  }) async {
     var auditedResult = result;
 
     // Run step-specific audits only (global audits are deprecated)
@@ -249,15 +269,13 @@ class ToolFlow {
   }
 
   /// Builds input for a step based on current state and step parameters
-  ToolInput _buildStepInput(ToolCallStep step, int stepIndex, int round) {
+  ToolInput _buildStepInput({
+    required ToolCallStep step,
+    required int stepIndex,
+    required int round,
+  }) {
     final customData = <String, dynamic>{};
 
-    // TODO: What the heck is going on here?
-    // Are we just adding the results of every previous step to input here?
-    // Then below we are adding only the forwarded input. Would it be better to
-    // only add the forwarded input?
-
-    // TODO: Yeah, we are totally just adding the stored data (not necessarily results) of EVERY step into here, so definitely some fluff we don't need, especially if it's not sanitized out.
     // Add current state (excluding internal fields)
     for (final entry in _state.entries) {
       if (!entry.key.startsWith('_') && !entry.key.startsWith('step_')) {
@@ -268,11 +286,10 @@ class ToolFlow {
     // Add step-specific parameters
     customData.addAll(step.params);
 
-    // Include outputs from previous steps if configured
+    // Include results from previous steps if configured
     List<ToolResult> includedResults = [];
     if (step.stepConfig.hasOutputInclusion) {
-      // TODO: Don't the included tool results already have the issues included on that object? Is it necessary to also pass around this includedResults object?
-      includedResults = _getIncludedResults(step.stepConfig);
+      includedResults = _getIncludedResults(stepConfig: step.stepConfig);
       final includedOutputs = step.stepConfig.buildIncludedOutputs(
         _results,
         _resultsByToolName,
@@ -280,15 +297,10 @@ class ToolFlow {
       customData.addAll(includedOutputs);
     }
 
-    // Prepare previous issues for context - only from included steps
-    final previousIssues = step.stepConfig.hasOutputInclusion
-        ? includedResults.expand((result) => result.issues).toList()
-        : <Issue>[];
-
-    // Create structured input
+    // Create structured input with previous results
     ToolInput stepInput = ToolInput(
       round: round,
-      previousIssues: previousIssues,
+      previousResults: includedResults,
       customData: customData,
       model: step.model,
       temperature: config.defaultTemperature,
@@ -297,11 +309,8 @@ class ToolFlow {
 
     // Apply input sanitization if configured (before execution)
     if (step.stepConfig.hasInputSanitizer) {
-      // TODO: We don't actually use the sanitizedInput in our example.
-      // So, I'm not certain it works as expected.
       final sanitizedInput = step.stepConfig.sanitizeInput(
         stepInput.toMap(),
-        // TODO: Why does sanitizeInput take in the entire list of results?
         _results,
       );
       stepInput = ToolInput.fromMap(sanitizedInput);
@@ -311,7 +320,7 @@ class ToolFlow {
   }
 
   /// Gets the list of results that should be included based on step configuration
-  List<ToolResult> _getIncludedResults(StepConfig stepConfig) {
+  List<ToolResult> _getIncludedResults({required StepConfig stepConfig}) {
     final includedResults = <ToolResult>[];
 
     for (final include in stepConfig.includeOutputsFrom) {

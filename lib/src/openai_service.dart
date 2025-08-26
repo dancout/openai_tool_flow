@@ -1,4 +1,5 @@
 import 'tool_call_step.dart';
+import 'tool_result.dart';
 
 /// Abstract interface for OpenAI tool execution services.
 ///
@@ -141,10 +142,8 @@ class SystemMessageInput {
   final String stepDescription;
 
   /// Previous step results relevant to this step
-  final List<Map<String, dynamic>> previousResults;
-
-  /// Issues from previous steps that are relevant
-  final List<Map<String, dynamic>> relevantIssues;
+  /// Contains both outputs and issues from previous tool executions
+  final List<ToolResult> previousResults;
 
   /// Additional context data
   final Map<String, dynamic> additionalContext;
@@ -153,7 +152,6 @@ class SystemMessageInput {
     required this.toolFlowContext,
     required this.stepDescription,
     this.previousResults = const [],
-    this.relevantIssues = const [],
     this.additionalContext = const {},
   });
 
@@ -177,8 +175,7 @@ class SystemMessageInput {
     return {
       'toolFlowContext': toolFlowContext,
       'stepDescription': stepDescription,
-      'previousResults': previousResults,
-      'relevantIssues': relevantIssues,
+      'previousResults': previousResults.map((result) => result.toJson()).toList(),
       'additionalContext': additionalContext,
     };
   }
