@@ -11,6 +11,7 @@ I need your help with the following content.
 - You should be able to install dart on your VM, and have done so before. The log output from when you did this can be found at /docs/install_dart_logs.txt
 - There should be no linting issues or warnings when you are finished with your work.
 - Please update all relevant existing tests or create new ones for new functionality before officially completing your work.
+- Be sure to commit at checkpoints throughout your work so that in the event of an error in your process, all your good work is not lost.
 
 ### REQUESTS
 - [ ] 

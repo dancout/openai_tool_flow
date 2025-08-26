@@ -48,7 +48,8 @@ class ToolFlow {
     required this.config,
     required this.steps,
     OpenAiToolService? openAiService,
-  }) : openAiService = openAiService ?? DefaultOpenAiToolService(config: config);
+  }) : openAiService =
+           openAiService ?? DefaultOpenAiToolService(config: config);
 
   /// Executes the tool flow with the given input
   ///
@@ -79,14 +80,15 @@ class ToolFlow {
 
           // Apply output sanitization if configured
           if (stepConfig.hasOutputSanitizer) {
-            final sanitizedOutput = stepConfig.sanitizeOutput(stepResult.output);
+            final sanitizedOutput = stepConfig.sanitizeOutput(
+              stepResult.output,
+            );
             stepResult = ToolResult(
               toolName: stepResult.toolName,
               input: stepResult.input,
               output: sanitizedOutput,
               issues: stepResult.issues,
               typedInput: stepResult.typedInput,
-              // TODO: Should the typedOutput not also be sanitized first? Maybe not, but there's lots of potential for overlap there.
               // TODO: Also, should we enforce a typed output structure?
               typedOutput: stepResult.typedOutput,
             );
@@ -116,7 +118,7 @@ class ToolFlow {
           }
         } catch (e) {
           // Create an error result - build step input for error case
-          final errorStepInput = _buildStepInput(step, i);
+          final errorStepInput = _buildStepInput(step, i, attemptCount);
           stepResult = ToolResult(
             toolName: step.toolName,
             input: errorStepInput.toMap(),
@@ -144,10 +146,10 @@ class ToolFlow {
       // Add the final result
       if (stepResult != null) {
         _results.add(stepResult);
-        
+
         // Update results by tool name (most recent wins for simple access)
         _resultsByToolName[stepResult.toolName] = stepResult;
-        
+
         // Update all results by tool name (for duplicate handling)
         _allResultsByToolName
             .putIfAbsent(stepResult.toolName, () => [])
@@ -184,17 +186,7 @@ class ToolFlow {
     int stepIndex,
     int round,
   ) async {
-    StepInput stepInput = _buildStepInput(step, stepIndex);
-    
-    // Update the round information for this attempt
-    stepInput = StepInput(
-      round: round,
-      previousIssues: stepInput.previousIssues,
-      customData: stepInput.customData,
-      model: stepInput.model,
-      temperature: stepInput.temperature,
-      maxTokens: stepInput.maxTokens,
-    );
+    StepInput stepInput = _buildStepInput(step, stepIndex, round);
 
     // Convert to map for service call
     final inputMap = stepInput.toMap();
@@ -213,7 +205,6 @@ class ToolFlow {
       // If typed creation fails, continue with untyped result
     }
 
-    // TODO: Setting this typedINput here AFTER we've already called to execute the tool call does literally nothing for us.
     // Use the structured input as typed input
     typedInput = stepInput;
 
@@ -269,14 +260,15 @@ class ToolFlow {
   }
 
   /// Builds input for a step based on current state and step parameters
-  StepInput _buildStepInput(ToolCallStep step, int stepIndex) {
+  StepInput _buildStepInput(ToolCallStep step, int stepIndex, int round) {
     final customData = <String, dynamic>{};
 
     // TODO: What the heck is going on here?
     // Are we just adding the results of every previous step to input here?
     // Then below we are adding only the forwarded input. Would it be better to
     // only add the forwarded input?
-    
+
+    // TODO: Yeah, we are totally just adding the stored data (not necessarily results) of EVERY step into here, so definitely some fluff we don't need, especially if it's not sanitized out.
     // Add current state (excluding internal fields)
     for (final entry in _state.entries) {
       if (!entry.key.startsWith('_') && !entry.key.startsWith('step_')) {
@@ -303,8 +295,8 @@ class ToolFlow {
         .toList();
 
     // Create structured input
-    var stepInput = StepInput(
-      round: 0, // Will be updated in _executeStep
+    StepInput stepInput = StepInput(
+      round: round,
       previousIssues: previousIssues,
       customData: customData,
       model: step.model,
@@ -314,6 +306,8 @@ class ToolFlow {
 
     // Apply input sanitization if configured (before execution)
     if (step.stepConfig.hasInputSanitizer) {
+      // TODO: We don't actually use the sanitizedInput in our example.
+      // So, I'm not certain it works as expected.
       final sanitizedInput = step.stepConfig.sanitizeInput(
         stepInput.toMap(),
         _results,
@@ -344,14 +338,17 @@ class ToolFlow {
 
   /// Gets the current results by tool name (for testing/debugging)
   @visibleForTesting
-  Map<String, ToolResult> get currentResultsByToolName => Map.unmodifiable(_resultsByToolName);
+  Map<String, ToolResult> get currentResultsByToolName =>
+      Map.unmodifiable(_resultsByToolName);
 
   /// Gets the current all results by tool name (for testing/debugging)
   @visibleForTesting
-  Map<String, List<ToolResult>> get currentAllResultsByToolName => 
-      Map.unmodifiable(_allResultsByToolName.map(
-        (key, value) => MapEntry(key, List.unmodifiable(value)),
-      ));
+  Map<String, List<ToolResult>> get currentAllResultsByToolName =>
+      Map.unmodifiable(
+        _allResultsByToolName.map(
+          (key, value) => MapEntry(key, List.unmodifiable(value)),
+        ),
+      );
 }
 
 /// Result of executing a ToolFlow
@@ -367,7 +364,7 @@ class ToolFlowResult {
 
   /// Results keyed by tool name for easy retrieval
   /// For duplicate tool names, this contains the MOST RECENT result
-  /// 
+  ///
   /// **Example:**
   /// ```dart
   /// final latestPaletteResult = result.resultsByToolName['extract_palette'];
@@ -376,7 +373,7 @@ class ToolFlowResult {
 
   /// All results grouped by tool name (handles duplicates)
   /// Each tool name maps to a list of results in execution order
-  /// 
+  ///
   /// **Use this when you need all instances of a tool:**
   /// ```dart
   /// final allPaletteResults = result.allResultsByToolName['extract_palette'] ?? [];
@@ -411,7 +408,7 @@ class ToolFlowResult {
 
   /// Gets the result for a specific tool by name
   /// Returns the most recent result if there are duplicates
-  /// 
+  ///
   /// **Example:**
   /// ```dart
   /// final paletteResult = result.getResultByToolName('extract_palette');
@@ -425,7 +422,7 @@ class ToolFlowResult {
 
   /// Gets all results for a specific tool name (handles duplicates)
   /// Returns results in execution order
-  /// 
+  ///
   /// **Use when the same tool was called multiple times:**
   /// ```dart
   /// final allRefinements = result.getAllResultsByToolName('refine_colors');
@@ -453,9 +450,7 @@ class ToolFlowResult {
 
   /// Gets all results by tool names (including duplicates)
   List<ToolResult> getAllResultsByToolNames(List<String> toolNames) {
-    return toolNames
-        .expand((name) => getAllResultsByToolName(name))
-        .toList();
+    return toolNames.expand((name) => getAllResultsByToolName(name)).toList();
   }
 
   /// Converts this result to a JSON map

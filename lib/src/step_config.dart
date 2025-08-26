@@ -2,8 +2,6 @@ import 'audit_function.dart';
 import 'issue.dart';
 import 'tool_result.dart';
 
-
-
 /// Configuration for a specific step in a tool flow.
 ///
 /// Allows different audit configurations and retry criteria per step.
@@ -34,34 +32,34 @@ class StepConfig {
 
   /// Simple list of steps to include outputs from.
   /// Can be int (step index) or String (tool name).
-  /// 
+  ///
   /// **Usage Examples:**
   /// ```dart
   /// // Include outputs from step 0 and any step with tool name 'extract_palette'
   /// includeOutputsFrom: [0, 'extract_palette']
-  /// 
+  ///
   /// // Include outputs from steps 1 and 2
   /// includeOutputsFrom: [1, 2]
-  /// 
+  ///
   /// // Include outputs from 'refine_colors' tool (most recent if duplicates)
   /// includeOutputsFrom: ['refine_colors']
   /// ```
-  /// 
+  ///
   /// **How it works:**
   /// - int values: References step by index (0-based)
   /// - String values: References step by tool name (most recent if duplicates)
   /// - All matching outputs are merged into input with `toolName_key` prefix
-  /// - For example, if 'extract_palette' outputs `{'colors': [...]}`, 
+  /// - For example, if 'extract_palette' outputs `{'colors': [...]}`,
   ///   it becomes `{'extract_palette_colors': [...]}` in the receiving step
   final List<dynamic> includeOutputsFrom;
 
   /// Function to sanitize/transform the input BEFORE executing the step.
   /// Takes the raw input map and previous results, returns cleaned input.
   /// Called BEFORE step execution.
-  /// 
+  ///
   /// **When to use:** Transform data between steps, clean up field names,
   /// filter out unwanted data, or combine data from multiple previous steps.
-  /// 
+  ///
   /// **Example:**
   /// ```dart
   /// inputSanitizer: (input, previousResults) {
@@ -74,15 +72,19 @@ class StepConfig {
   ///   return cleaned;
   /// }
   /// ```
-  final Map<String, dynamic> Function(Map<String, dynamic> input, List<ToolResult> previousResults)? inputSanitizer;
+  final Map<String, dynamic> Function(
+    Map<String, dynamic> input,
+    List<ToolResult> previousResults,
+  )?
+  inputSanitizer;
 
   /// Function to sanitize/transform the output AFTER executing the step.
   /// Takes the raw output map and returns cleaned output.
   /// Called AFTER step execution.
-  /// 
+  ///
   /// **When to use:** Clean up model responses, normalize data formats,
   /// remove sensitive information, or ensure consistent output structure.
-  /// 
+  ///
   /// **Example:**
   /// ```dart
   /// outputSanitizer: (output) {
@@ -96,7 +98,8 @@ class StepConfig {
   ///   return cleaned;
   /// }
   /// ```
-  final Map<String, dynamic> Function(Map<String, dynamic> output)? outputSanitizer;
+  final Map<String, dynamic> Function(Map<String, dynamic> output)?
+  outputSanitizer;
 
   const StepConfig({
     this.audits = const [],
@@ -166,7 +169,7 @@ class StepConfig {
   }
 
   /// Includes outputs from previous steps based on the includeOutputsFrom configuration.
-  /// 
+  ///
   /// This method provides a clean way to access previous step results:
   /// - int values are treated as step indexes (0-based)
   /// - String values are treated as tool names
@@ -195,6 +198,8 @@ class StepConfig {
       // Include all output with tool name prefix to avoid conflicts
       for (final entry in sourceResult.output.entries) {
         // TODO: Why do we need to prepend the toolName and the key again?
+        // I don't think that really adds anything to this custom data.
+        // TODO: I don't think we should add the output entries key by key, but instead we should just throw the entire typedOutput.toJson() onto there, and have the sanitizeInput take care of wittling down to what we do and don't need.
         includedOutputs['${sourceResult.toolName}_${entry.key}'] = entry.value;
       }
     }
@@ -229,12 +234,13 @@ class StepConfig {
   factory StepConfig.fromJson(Map<String, dynamic> json) {
     return StepConfig(
       // Note: Audit functions cannot be serialized, would need a registry
-      audits: const [], 
+      audits: const [],
       maxRetries: json['maxRetries'] as int?,
       stopOnFailure: json['stopOnFailure'] as bool? ?? true,
       auditOnlyFinalAttempt: json['auditOnlyFinalAttempt'] as bool? ?? false,
       // Note: Functions cannot be serialized
-      includeOutputsFrom: json['includeOutputsFrom'] as List<dynamic>? ?? const [],
+      includeOutputsFrom:
+          json['includeOutputsFrom'] as List<dynamic>? ?? const [],
     );
   }
 

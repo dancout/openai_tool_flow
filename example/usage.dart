@@ -76,16 +76,19 @@ void main() async {
         minSaturation: 0.3,
         userPreferences: {'style': 'modern', 'mood': 'energetic'},
       ).toMap(),
-      stepConfig: StepConfig(
-        audits: [diversityAudit],
-        maxRetries: 3,
-      ),
+      stepConfig: StepConfig(audits: [diversityAudit], maxRetries: 3),
     ),
 
     // Step 2: Refine the extracted colors
     ToolCallStep(
       toolName: 'refine_colors',
       model: 'gpt-4',
+      // TODO: These params cannot possibly all be defined yet, especially if they rely on the previous step.
+      // Note the colors below" "Will be populated..."
+      // Figure out a better way to do this, either by only including static params
+      // OR would it be better to force a TypedInput here?
+      //  We could build the Typed Input from the previous output, populating the colors in a more elegant way.
+      //    Yeah, I like the latter way.
       params: ColorRefinementInput(
         colors: [], // Will be populated from previous step
         enhanceContrast: true,

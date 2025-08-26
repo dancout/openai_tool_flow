@@ -14,10 +14,8 @@ class DefaultOpenAiToolService implements OpenAiToolService {
   /// HTTP client for making requests
   final http.Client? _httpClient;
 
-  DefaultOpenAiToolService({
-    required this.config,
-    http.Client? httpClient,
-  }) : _httpClient = httpClient;
+  DefaultOpenAiToolService({required this.config, http.Client? httpClient})
+    : _httpClient = httpClient;
 
   @override
   Future<Map<String, dynamic>> executeToolCall(
@@ -63,6 +61,7 @@ class DefaultOpenAiToolService implements OpenAiToolService {
     Map<String, dynamic> input,
   ) {
     // Create tool definition
+    // TODO: This input should probably be more structured so that it's easier to build the tool definition, extract the previous results, and the relevant issues.
     final toolDefinition = _buildToolDefinition(step, input);
 
     // Build system message
@@ -71,16 +70,14 @@ class DefaultOpenAiToolService implements OpenAiToolService {
       stepDescription: 'Tool: ${step.toolName}, Model: ${step.model}',
       previousResults: _extractPreviousResults(input),
       relevantIssues: _extractRelevantIssues(input),
-      additionalContext: {
-        'step_tool': step.toolName,
-        'step_model': step.model,
-      },
+      additionalContext: {'step_tool': step.toolName, 'step_model': step.model},
     );
 
     // Build user message
     final userMessageInput = UserMessageInput(
       toolInput: input,
-      instructions: 'Execute the ${step.toolName} tool with the provided parameters.',
+      instructions:
+          'Execute the ${step.toolName} tool with the provided parameters.',
       outputFormat: 'Return structured JSON output matching the tool schema.',
     );
 
@@ -166,49 +163,56 @@ class DefaultOpenAiToolService implements OpenAiToolService {
   ) {
     // For now, treat all non-internal parameters as required
     final required = <String>[];
-    
+
     // Add step parameters
     required.addAll(step.params.keys);
-    
+
     // Add input parameters (excluding internal ones)
     for (final key in input.keys) {
       if (!key.startsWith('_') && !required.contains(key)) {
         required.add(key);
       }
     }
-    
+
     return required;
   }
 
   /// Builds system message from structured input
   String _buildSystemMessage(SystemMessageInput input) {
     final buffer = StringBuffer();
-    
-    buffer.writeln('You are an AI assistant executing tool calls in a structured workflow.');
+
+    buffer.writeln(
+      'You are an AI assistant executing tool calls in a structured workflow.',
+    );
     buffer.writeln();
     buffer.writeln('Context: ${input.toolFlowContext}');
     buffer.writeln('Current Step: ${input.stepDescription}');
-    
+
     if (input.previousResults.isNotEmpty) {
       buffer.writeln();
       buffer.writeln('Previous step results:');
       for (int i = 0; i < input.previousResults.length; i++) {
         final result = input.previousResults[i];
-        buffer.writeln('  Step ${i + 1}: ${result['toolName']} -> ${result['output']?.keys?.join(', ') ?? 'unknown'}');
+        buffer.writeln(
+          '  Step ${i + 1}: ${result['toolName']} -> ${result['output']?.keys?.join(', ') ?? 'unknown'}',
+        );
       }
     }
-    
+
     if (input.relevantIssues.isNotEmpty) {
       buffer.writeln();
       buffer.writeln('Issues from previous steps to consider:');
       for (final issue in input.relevantIssues) {
         buffer.writeln('  - ${issue['severity']}: ${issue['description']}');
-        if (issue['suggestions'] != null && (issue['suggestions'] as List).isNotEmpty) {
-          buffer.writeln('    Suggestions: ${(issue['suggestions'] as List).join(', ')}');
+        if (issue['suggestions'] != null &&
+            (issue['suggestions'] as List).isNotEmpty) {
+          buffer.writeln(
+            '    Suggestions: ${(issue['suggestions'] as List).join(', ')}',
+          );
         }
       }
     }
-    
+
     if (input.additionalContext.isNotEmpty) {
       buffer.writeln();
       buffer.writeln('Additional context: ${input.additionalContext}');
@@ -220,21 +224,21 @@ class DefaultOpenAiToolService implements OpenAiToolService {
   /// Builds user message from structured input
   String _buildUserMessage(UserMessageInput input) {
     final buffer = StringBuffer();
-    
+
     buffer.writeln('Please execute the tool with the following parameters:');
     buffer.writeln();
     buffer.writeln(jsonEncode(input.getCleanToolInput()));
-    
+
     if (input.instructions.isNotEmpty) {
       buffer.writeln();
       buffer.writeln('Instructions: ${input.instructions}');
     }
-    
+
     if (input.outputFormat.isNotEmpty) {
       buffer.writeln();
       buffer.writeln('Output format: ${input.outputFormat}');
     }
-    
+
     if (input.constraints.isNotEmpty) {
       buffer.writeln();
       buffer.writeln('Constraints:');
@@ -247,9 +251,11 @@ class DefaultOpenAiToolService implements OpenAiToolService {
   }
 
   /// Extracts previous results from input for context
-  List<Map<String, dynamic>> _extractPreviousResults(Map<String, dynamic> input) {
+  List<Map<String, dynamic>> _extractPreviousResults(
+    Map<String, dynamic> input,
+  ) {
     final results = <Map<String, dynamic>>[];
-    
+
     // Look for step results in the input
     for (final key in input.keys) {
       if (key.startsWith('step_') && key.endsWith('_result')) {
@@ -259,14 +265,16 @@ class DefaultOpenAiToolService implements OpenAiToolService {
         }
       }
     }
-    
+
     return results;
   }
 
   /// Extracts relevant issues from input
-  List<Map<String, dynamic>> _extractRelevantIssues(Map<String, dynamic> input) {
+  List<Map<String, dynamic>> _extractRelevantIssues(
+    Map<String, dynamic> input,
+  ) {
     final issues = <Map<String, dynamic>>[];
-    
+
     final previousIssues = input['_previous_issues'];
     if (previousIssues is List) {
       for (final issue in previousIssues) {
@@ -275,7 +283,7 @@ class DefaultOpenAiToolService implements OpenAiToolService {
         }
       }
     }
-    
+
     return issues;
   }
 
@@ -356,11 +364,11 @@ class MockOpenAiToolService implements OpenAiToolService {
     // Return predefined response if available
     if (responses.containsKey(step.toolName)) {
       final response = Map<String, dynamic>.from(responses[step.toolName]!);
-      
+
       // Add input information for testing
       response['_mock_input_received'] = input.keys.toList();
       response['_mock_model_used'] = step.model;
-      
+
       return response;
     }
 
@@ -369,7 +377,7 @@ class MockOpenAiToolService implements OpenAiToolService {
     response['toolName'] = step.toolName;
     response['inputKeys'] = input.keys.toList();
     response['model'] = step.model;
-    
+
     return response;
   }
 }
