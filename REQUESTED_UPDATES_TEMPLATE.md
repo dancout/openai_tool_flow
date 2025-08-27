@@ -14,6 +14,8 @@ I need your help with the following content.
 - When adding comments, do so for the sake of good documentation and not for the sake of letting the user know you were following instructions.
 - You do not need to worry about backwards compatibility, so don't keep legacy code and make the codebase more bloated. We are still working on version 0.0, so feel free to make breaking changes.
 - Do not remove existing TODOs unless you are directly addressing them.
+- Do not add convenience functions or classes "just in case".
+    - Only add code that you fully intend on using. Otherwise, multiple getters or factory methods that are never again referenced are simply bloating the codebase.
 
 ### REQUESTS
 - [ ] 
