@@ -37,6 +37,7 @@ I need your help with the following content.
 ### FINAL REQUIREMENTS
 - [ ] Please update all relevant existing tests or create new ones for new functionality before officially completing your work.
 - [ ] Ensure any necessary ADR files are generated for core decisions made from the above requests.
+    - Also update the `adr_references` and `used_as_resource_in` sections of the relevant ADRs so that we know which ADRs have been used in the future.
 - [ ] There should be no linting errors or warnings when you are finished with your work.
     - You can run "dart analyze" to see all the linting errors and warnings.
 - [ ] Ensure all completed requests have been committed to the PR Branch before moving beyond this task
