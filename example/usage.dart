@@ -111,13 +111,21 @@ void main() async {
       ),
     ),
 
-    // Step 3: Generate final theme
+    // Step 3: Generate final theme using refined colors
     ToolCallStep(
       toolName: 'generate_theme',
       model: 'gpt-4',
-      inputBuilder: (previousResults) => {
-        'theme_type': 'material_design', 
-        'include_variants': true,
+      buildInputsFrom: ['refine_colors'], // Use refined colors from previous step
+      inputBuilder: (previousResults) {
+        // Extract refined colors from the previous step
+        final refinementResult = previousResults.first;
+        final refinedColors = refinementResult.output.toMap()['refined_colors'] as List<String>;
+        
+        return {
+          'theme_type': 'material_design', 
+          'include_variants': true,
+          'base_colors': refinedColors, // Use the refined colors as base for theme generation
+        };
       },
       stepConfig: StepConfig(
         audits: [],
