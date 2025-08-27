@@ -31,6 +31,9 @@ class PaletteExtractionInput extends ToolInput {
     );
   }
 
+  // TODO: Consider changing all toMap to toJson.
+  // - [ ] Consolidate usages of `toJson` and `toMap` to all be named identically, since these are doing the same thing.
+  //   - Uniformity is nice. Let's go with toJson.
   @override
   Map<String, dynamic> toMap() {
     return {
@@ -183,7 +186,8 @@ class ThemeGenerationOutput extends ToolOutput {
   final Map<String, String> theme;
   final Map<String, dynamic> metadata;
 
-  const ThemeGenerationOutput({required this.theme, this.metadata = const {}}) : super.subclass();
+  const ThemeGenerationOutput({required this.theme, this.metadata = const {}})
+    : super.subclass();
 
   factory ThemeGenerationOutput.fromMap(Map<String, dynamic> map) {
     return ThemeGenerationOutput(

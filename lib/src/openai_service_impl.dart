@@ -123,6 +123,8 @@ class DefaultOpenAiToolService implements OpenAiToolService {
   /// Builds parameter schema based on step configuration and input
   Map<String, dynamic> _buildParameterSchema({
     required ToolCallStep step,
+    // TODO: This function is enforcing that the response of the open ai tool call confroms to the INPUT schema, which is wrong!
+    /// This should be conforming to the expected OUTPUT schema
     required ToolInput input,
   }) {
     final schema = <String, dynamic>{};

@@ -100,6 +100,9 @@ class StepConfig {
   /// }
   /// ```
   final Map<String, dynamic> Function(Map<String, dynamic> output)?
+  // TODO: Is there any way to force the `output` input (lol) to conform to a specific schema?
+  /// Also, we need to enforce the output of this function to conform to that same schema.
+  /// Not sure if we can be extending ToolOutput or a Schema or something.
   outputSanitizer;
 
   const StepConfig({
