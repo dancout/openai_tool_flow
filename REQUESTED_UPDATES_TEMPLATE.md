@@ -10,8 +10,6 @@ I need your help with the following content.
     - You should name the ADR file(s) accordingly, or better yet put them in a named directory, so that it is clear that they came from this request of changes
 - You can view previous ADR files by looking in the docs/adr_appendix.md file, which contains the title, round number, key words, and quick summary of each ADR.
 - You should be able to install dart on your VM, and have done so before. The log output from when you did this can be found at /docs/install_dart_logs.txt
-- There should be no linting issues or warnings when you are finished with your work.
-- Please update all relevant existing tests or create new ones for new functionality before officially completing your work.
 - Be sure to commit at checkpoints throughout your work so that in the event of an error in your process, all your good work is not lost.
 - When adding comments, do so for the sake of good documentation and not for the sake of letting the user know you were following instructions.
 - You do not need to worry about backwards compatibility, so don't keep legacy code and make the codebase more bloated. We are still working on version 0.0, so feel free to make breaking changes.
@@ -21,6 +19,9 @@ I need your help with the following content.
 - [ ] 
 
 ### FINAL REQUIREMENTS
+- [ ] Please update all relevant existing tests or create new ones for new functionality before officially completing your work.
 - [ ] Ensure any necessary ADR files are generated for core decisions made from the above requests.
+- [ ] There should be no linting errors or warnings when you are finished with your work.
+    - You can run "dart analyze" to see all the linting errors and warnings.
 - [ ] Ensure all completed requests have been committed to the PR Branch before moving beyond this task
 - [ ] Add an entry in the docs/adr_appendix.md for each of the ADR files that were created above
