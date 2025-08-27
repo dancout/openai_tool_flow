@@ -202,33 +202,6 @@ class ThemeGenerationOutput extends ToolOutput {
   }
 }
 
-// TODO: Is this ever used?
-/// Example of extending the ToolResult class for custom data
-class ColorExtractionResult extends ToolResult {
-  /// Confidence score for the extraction
-  final double confidence;
-
-  /// Image metadata
-  final Map<String, dynamic> imageMetadata;
-
-  ColorExtractionResult({
-    required super.toolName,
-    required super.input,
-    required super.output,
-    super.issues,
-    required this.confidence,
-    required this.imageMetadata,
-  });
-
-  @override
-  Map<String, dynamic> toJson() {
-    final json = super.toJson();
-    json['confidence'] = confidence;
-    json['imageMetadata'] = imageMetadata;
-    return json;
-  }
-}
-
 /// Registers typed outputs for type-safe operations
 void registerColorThemeTypedOutputs() {
   ToolOutputRegistry.register(

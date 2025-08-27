@@ -83,12 +83,15 @@ void main() async {
     ToolCallStep(
       toolName: 'refine_colors',
       model: 'gpt-4',
-      buildInputsFrom: ['extract_palette'], // Get results from palette extraction
+      buildInputsFrom: [
+        'extract_palette',
+      ], // Get results from palette extraction
       inputBuilder: (previousResults) {
         // Now we can dynamically build input based on actual previous results!
         final paletteResult = previousResults.first;
-        final extractedColors = paletteResult.output.toMap()['colors'] as List<String>;
-        
+        final extractedColors =
+            paletteResult.output.toMap()['colors'] as List<String>;
+
         return ColorRefinementInput(
           colors: extractedColors, // Populated from previous step!
           enhanceContrast: true,
@@ -115,16 +118,20 @@ void main() async {
     ToolCallStep(
       toolName: 'generate_theme',
       model: 'gpt-4',
-      buildInputsFrom: ['refine_colors'], // Use refined colors from previous step
+      buildInputsFrom: [
+        'refine_colors',
+      ], // Use refined colors from previous step
       inputBuilder: (previousResults) {
         // Extract refined colors from the previous step
         final refinementResult = previousResults.first;
-        final refinedColors = refinementResult.output.toMap()['refined_colors'] as List<String>;
-        
+        final refinedColors =
+            refinementResult.output.toMap()['refined_colors'] as List<String>;
+
         return {
-          'theme_type': 'material_design', 
+          'theme_type': 'material_design',
           'include_variants': true,
-          'base_colors': refinedColors, // Use the refined colors as base for theme generation
+          'base_colors':
+              refinedColors, // Use the refined colors as base for theme generation
         };
       },
       stepConfig: StepConfig(
@@ -393,7 +400,8 @@ class ThemeGenerationOutput extends ToolOutput {
   final Map<String, String> theme;
   final Map<String, dynamic> metadata;
 
-  const ThemeGenerationOutput({required this.theme, this.metadata = const {}}) : super.subclass();
+  const ThemeGenerationOutput({required this.theme, this.metadata = const {}})
+    : super.subclass();
 
   factory ThemeGenerationOutput.fromMap(Map<String, dynamic> map) {
     return ThemeGenerationOutput(
@@ -490,33 +498,6 @@ class PaletteExtractionOutput extends ToolOutput {
       'image_analyzed': imageAnalyzed,
       'metadata': metadata,
     };
-  }
-}
-
-// TODO: Is this ever used?
-/// Example of extending the ToolResult class for custom data
-class ColorExtractionResult extends ToolResult {
-  /// Confidence score for the extraction
-  final double confidence;
-
-  /// Image metadata
-  final Map<String, dynamic> imageMetadata;
-
-  ColorExtractionResult({
-    required super.toolName,
-    required super.input,
-    required super.output,
-    super.issues,
-    required this.confidence,
-    required this.imageMetadata,
-  });
-
-  @override
-  Map<String, dynamic> toJson() {
-    final json = super.toJson();
-    json['confidence'] = confidence;
-    json['imageMetadata'] = imageMetadata;
-    return json;
   }
 }
 
