@@ -6,6 +6,8 @@ authors: ["AI Assistant", "Package Maintainer"]
 tags: ["architecture", "type-safety", "interfaces", "ToolResult"]
 supersedes: ""
 superseded_by: ""
+adr_references: []
+used_as_resource_in: []
 ---
 
 # ADR-0002: Mandatory Typed Interfaces for ToolResult

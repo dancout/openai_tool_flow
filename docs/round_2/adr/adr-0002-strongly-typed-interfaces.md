@@ -6,6 +6,8 @@ authors: ["AI Assistant", "Package Maintainer"]
 tags: ["architecture", "typing", "interfaces", "compatibility"]
 supersedes: ""
 superseded_by: ""
+adr_references: []
+used_as_resource_in: []
 ---
 
 # ADR-0002: Strongly-Typed Tool Interfaces and Backward Compatibility

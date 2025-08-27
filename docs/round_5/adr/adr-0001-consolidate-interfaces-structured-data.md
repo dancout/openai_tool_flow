@@ -1,4 +1,16 @@
 # ADR-0001: Consolidate Interfaces and Use Structured Data
+------
+title: "ADR-0001: Consolidate Interfaces and Use Structured Data"
+status: "Accepted"
+date: "2025-08-27"
+authors: "GitHub Copilot, Package Maintainer"
+tags: ["architecture", "interfaces", "structured-data", "ToolInput", "ToolResult"]
+supersedes: ""
+superseded_by: ""
+adr_references: []
+used_as_resource_in: []
+------
+
 
 ## Status
 

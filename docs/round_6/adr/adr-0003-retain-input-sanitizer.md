@@ -6,6 +6,8 @@ authors: ["AI Assistant", "Package Maintainer"]
 tags: ["architecture", "input-sanitization", "state-management", "inputBuilder"]
 supersedes: ""
 superseded_by: ""
+adr_references: []
+used_as_resource_in: []
 ---
 
 # ADR-0003: Retain Input Sanitizer with Enhanced Role

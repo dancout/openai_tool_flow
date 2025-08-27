@@ -6,6 +6,8 @@ authors: "GitHub Copilot"
 tags: ["architecture", "decision", "data-flow", "optimization"]
 supersedes: ""
 superseded_by: ""
+adr_references: []
+used_as_resource_in: []
 ---
 
 # ADR-0002: Implement Selective Previous Issues Inclusion

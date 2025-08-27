@@ -6,6 +6,8 @@ authors: "GitHub Copilot"
 tags: ["architecture", "decision", "interfaces", "consolidation"]
 supersedes: ""
 superseded_by: ""
+adr_references: []
+used_as_resource_in: []
 ---
 
 # ADR-0001: Consolidate StepInput and ToolInput Classes
