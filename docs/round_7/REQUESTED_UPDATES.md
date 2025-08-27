@@ -16,9 +16,10 @@ I need your help with the following content.
 - Do not remove existing TODOs unless you are directly addressing them.
 
 ### REQUESTS
-- [ ] Refactor the `AuditFunction` base class to support generics, allowing it to be defined as `AuditFunction<T extends ToolResult>`.
-    - The run method should accept a parameter of type T, so that specialized audit functions (e.g., ColorQualityAuditFunction) can safely access properties specific to their result type (e.g., colors on ColorsToolResult).
-    - Update all audit function implementations to specify their expected ToolResult subtype.
+- [ ] Refactor the `AuditFunction` base class to support generics, allowing it to be defined as `AuditFunction<T extends ToolOutput>`.
+    - The `run` method should accept a parameter of type `ToolResult<T>`, so that specialized audit functions (e.g., `ColorQualityAuditFunction`) can safely access properties specific to their output type (e.g., `result.output.colors` on `ToolResult<ColorsToolOutput>`).
+    - Update `ToolResult` to be generic as `ToolResult<T extends ToolOutput>`, ensuring the output is strongly typed and accessible.
+    - Update all audit function implementations to specify their expected `ToolOutput` subtype.
     - Ensure the interface remains consistent and discoverable for all audit functions, while providing type safety and flexibility for specialized logic.
 
 
