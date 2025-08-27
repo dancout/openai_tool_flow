@@ -134,7 +134,10 @@ class ToolOutputRegistry {
   }
 
   /// Creates a typed output for the given tool name and data
-  static ToolOutput? create(String toolName, Map<String, dynamic> data) {
+  static ToolOutput? create({
+    required String toolName,
+    required Map<String, dynamic> data,
+  }) {
     final creator = _creators[toolName];
     return creator?.call(data);
   }

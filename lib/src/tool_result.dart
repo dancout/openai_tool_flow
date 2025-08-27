@@ -43,7 +43,7 @@ class ToolResult {
 
     // Try to create typed output if registry has a creator for this tool
     final typedOutput = ToolOutputRegistry.hasTypedOutput(toolName)
-        ? ToolOutputRegistry.create(toolName, output)
+        ? ToolOutputRegistry.create(toolName: toolName, data: output)
         : null;
 
     return ToolResult(

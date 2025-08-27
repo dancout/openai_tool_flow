@@ -62,7 +62,7 @@ class StepConfig {
   ///
   /// **Example:**
   /// ```dart
-  /// inputSanitizer: (input, previousResults) {
+  /// inputSanitizer: ({required input, required previousResults}) {
   ///   final cleaned = Map<String, dynamic>.from(input);
   ///   // Remove internal fields
   ///   cleaned.removeWhere((key, value) => key.startsWith('_'));
@@ -72,11 +72,11 @@ class StepConfig {
   ///   return cleaned;
   /// }
   /// ```
-  final Map<String, dynamic> Function(
+  final Map<String, dynamic> Function({
     // TODO: This should probably take in ToolInput/StepInput instead of just an unstructured Map
-    Map<String, dynamic> input,
-    List<ToolResult> previousResults,
-  )?
+    required Map<String, dynamic> input,
+    required List<ToolResult> previousResults,
+  })?
   inputSanitizer;
 
   /// Function to sanitize/transform the output AFTER executing the step.
@@ -212,15 +212,15 @@ class StepConfig {
 
   /// Applies input sanitization if configured.
   /// Called BEFORE step execution to clean/transform input data.
-  Map<String, dynamic> sanitizeInput(
-    Map<String, dynamic> rawInput,
-    List<ToolResult> previousResults,
-  ) {
+  Map<String, dynamic> sanitizeInput({
+    required Map<String, dynamic> rawInput,
+    required List<ToolResult> previousResults,
+  }) {
     if (inputSanitizer == null) {
       return rawInput;
     }
 
-    return inputSanitizer!(rawInput, previousResults);
+    return inputSanitizer!(input: rawInput, previousResults: previousResults);
   }
 
   /// Applies output sanitization if configured.

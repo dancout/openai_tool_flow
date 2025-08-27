@@ -202,7 +202,10 @@ class ToolFlow {
     // Attempt to create typed output if registry has a creator using sanitized data
     if (ToolOutputRegistry.hasTypedOutput(step.toolName)) {
       try {
-        typedOutput = ToolOutputRegistry.create(step.toolName, sanitizedOutput);
+        typedOutput = ToolOutputRegistry.create(
+          toolName: step.toolName,
+          data: sanitizedOutput,
+        );
       } catch (e) {
         throw Exception(
           'Failed to create typed output for ${step.toolName}: $e',
@@ -311,9 +314,9 @@ class ToolFlow {
       // TODO: We don't actually use the sanitizedInput in our example.
       // So, I'm not certain it works as expected.
       final sanitizedInput = step.stepConfig.sanitizeInput(
-        stepInput.toMap(),
+        rawInput: stepInput.toMap(),
         // TODO: Why does sanitizeInput take in the entire list of results?
-        _results,
+        previousResults: _results,
       );
       stepInput = ToolInput.fromMap(sanitizedInput);
     }
