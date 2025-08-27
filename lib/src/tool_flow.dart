@@ -197,24 +197,29 @@ class ToolFlow {
         : response;
 
     // Try to create typed interfaces if available
-    ToolOutput? typedOutput;
+    late ToolOutput typedOutput;
 
-    // Attempt to create typed output if registry has a creator using sanitized data
-    if (ToolOutputRegistry.hasTypedOutput(step.toolName)) {
-      try {
-        typedOutput = ToolOutputRegistry.create(
-          toolName: step.toolName,
-          data: sanitizedOutput,
-        );
-      } catch (e) {
-        throw Exception(
-          'Failed to create typed output for ${step.toolName}: $e',
-        );
-      }
+    if (!ToolOutputRegistry.hasTypedOutput(step.toolName)) {
+      throw Exception('No typed output registered for ${step.toolName}');
     }
 
-    // Ensure we have a typed output
-    typedOutput ??= ToolOutput(sanitizedOutput);
+    // Attempt to create typed output if registry has a creator using sanitized data
+
+    try {
+      // TODO: Consider trying to make this a non-null return type for cleaner code here. Maybe this create function throws if a null object is trying to be returned.
+      final trialTypedOutput = ToolOutputRegistry.create(
+        toolName: step.toolName,
+        data: sanitizedOutput,
+      );
+      if (trialTypedOutput == null) {
+        throw Exception(
+          'No typed output could be created for ${step.toolName}',
+        );
+      }
+      typedOutput = trialTypedOutput;
+    } catch (e) {
+      throw Exception('Failed to create typed output for ${step.toolName}: $e');
+    }
 
     // Create initial result without issues (audits will add them)
     final result = ToolResult(
@@ -248,7 +253,10 @@ class ToolFlow {
               context: issue.context,
               suggestions: issue.suggestions,
               round:
-                  int.tryParse(result.input.toMap()['_round']?.toString() ?? '0') ?? 0,
+                  int.tryParse(
+                    result.input.toMap()['_round']?.toString() ?? '0',
+                  ) ??
+                  0,
               relatedData: {
                 'step_index': stepIndex,
                 'audit_name': audit.name,

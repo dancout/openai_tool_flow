@@ -37,10 +37,15 @@ class ToolResult {
     // Create typed input from map data
     final typedInput = ToolInput.fromMap(inputMap);
 
+    if (!ToolOutputRegistry.hasTypedOutput(toolName)) {
+      throw Exception('No typed output registered for tool "$toolName".');
+    }
+
     // Try to create typed output if registry has a creator for this tool
-    final typedOutput = ToolOutputRegistry.hasTypedOutput(toolName)
-        ? ToolOutputRegistry.create(toolName: toolName, data: outputMap)
-        : ToolOutput.fromMap(outputMap);
+    final typedOutput = ToolOutputRegistry.create(
+      toolName: toolName,
+      data: outputMap,
+    );
 
     if (typedOutput == null) {
       throw Exception(
