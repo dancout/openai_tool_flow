@@ -109,6 +109,8 @@ class StepConfig {
     this.customFailureReason,
     this.stopOnFailure = true,
     this.auditOnlyFinalAttempt = false,
+    // TODO(DJC): Have I been thinking about includeOutputsFrom wrong? Are we more concerned with building the input of this step from the previous output than we are with pulling forward the raw output and issues from previous steps?
+    /// So, all in all, does this go away?
     this.includeOutputsFrom = const [],
     this.inputSanitizer,
     this.outputSanitizer,

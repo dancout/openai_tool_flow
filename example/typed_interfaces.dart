@@ -1,5 +1,5 @@
 /// Concrete implementations of typed tool interfaces.
-/// 
+///
 /// This file demonstrates how to create strongly-typed input and output classes
 /// for tool calls, providing better type safety and IDE support.
 library;

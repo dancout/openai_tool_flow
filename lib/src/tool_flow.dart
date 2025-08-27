@@ -197,7 +197,6 @@ class ToolFlow {
         : response;
 
     // Try to create typed interfaces if available
-    ToolInput? typedInput;
     ToolOutput? typedOutput;
 
     // Attempt to create typed output if registry has a creator using sanitized data
@@ -211,16 +210,13 @@ class ToolFlow {
       }
     }
 
-    // Use the structured input as typed input
-    typedInput = stepInput;
-
     // Create initial result without issues (audits will add them)
     final result = ToolResult(
       toolName: step.toolName,
       input: stepInput.toMap(),
       output: sanitizedOutput,
       issues: [],
-      typedInput: typedInput,
+      typedInput: stepInput,
       typedOutput: typedOutput,
     );
 
