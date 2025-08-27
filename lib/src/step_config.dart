@@ -1,6 +1,7 @@
 import 'audit_function.dart';
 import 'issue.dart';
 import 'tool_result.dart';
+import 'typed_interfaces.dart';
 
 /// Configuration for a specific step in a tool flow.
 ///
@@ -75,7 +76,7 @@ class StepConfig {
   final Map<String, dynamic> Function({
     // TODO: This should probably take in ToolInput/StepInput instead of just an unstructured Map
     required Map<String, dynamic> input,
-    required List<ToolResult> previousResults,
+    required List<ToolResult<ToolOutput>> previousResults,
   })?
   inputSanitizer;
 
@@ -105,6 +106,34 @@ class StepConfig {
   /// Not sure if we can be extending ToolOutput or a Schema or something.
   outputSanitizer;
 
+  /// Schema definition for the expected tool output.
+  /// This defines the structure that OpenAI tool calls should conform to.
+  /// 
+  /// **When to use:** Define the exact output structure you expect from the tool call,
+  /// ensuring type safety and consistent data formats.
+  ///
+  /// **Example:**
+  /// ```dart
+  /// outputSchema: {
+  ///   'type': 'object',
+  ///   'properties': {
+  ///     'colors': {
+  ///       'type': 'array',
+  ///       'items': {'type': 'string'},
+  ///       'description': 'Array of hex color codes'
+  ///     },
+  ///     'confidence': {
+  ///       'type': 'number',
+  ///       'minimum': 0.0,
+  ///       'maximum': 1.0,
+  ///       'description': 'Confidence score for the extraction'
+  ///     }
+  ///   },
+  ///   'required': ['colors', 'confidence']
+  /// }
+  /// ```
+  final Map<String, dynamic>? outputSchema;
+
   const StepConfig({
     this.audits = const [],
     this.maxRetries,
@@ -121,6 +150,7 @@ class StepConfig {
     this.includeOutputsFrom = const [],
     this.inputSanitizer,
     this.outputSanitizer,
+    this.outputSchema,
   });
 
   /// Returns true if this step has any audits configured
@@ -186,13 +216,13 @@ class StepConfig {
   /// - For duplicate tool names, only the most recent result is included
   /// - All matching outputs are merged into the input with tool name prefixes
   Map<String, dynamic> buildIncludedOutputs(
-    List<ToolResult> previousResults,
-    Map<String, ToolResult> resultsByToolName,
+    List<ToolResult<ToolOutput>> previousResults,
+    Map<String, ToolResult<ToolOutput>> resultsByToolName,
   ) {
     final includedOutputs = <String, dynamic>{};
 
     for (final reference in includeOutputsFrom) {
-      ToolResult? sourceResult;
+      ToolResult<ToolOutput>? sourceResult;
 
       // Find the source result by index or tool name
       if (reference is int) {
@@ -221,7 +251,7 @@ class StepConfig {
   /// Called BEFORE step execution to clean/transform input data.
   Map<String, dynamic> sanitizeInput({
     required Map<String, dynamic> rawInput,
-    required List<ToolResult> previousResults,
+    required List<ToolResult<ToolOutput>> previousResults,
   }) {
     if (inputSanitizer == null) {
       return rawInput;

@@ -111,67 +111,34 @@ class DefaultOpenAiToolService implements OpenAiToolService {
       'function': {
         'name': step.toolName,
         'description': 'Execute ${step.toolName} tool with provided parameters',
-        'parameters': {
-          'type': 'object',
-          'properties': _buildParameterSchema(step: step, input: input),
-          'required': _getRequiredParameters(step: step, input: input),
-        },
+        'parameters': _buildOutputSchema(step: step),
       },
       "strict": true,
     };
   }
 
-  /// Builds parameter schema based on step configuration and input
-  Map<String, dynamic> _buildParameterSchema({
-    required ToolCallStep step,
-    // TODO: This function is enforcing that the response of the open ai tool call confroms to the INPUT schema, which is wrong!
-    /// This should be conforming to the expected OUTPUT schema
-    required ToolInput input,
-  }) {
-    final schema = <String, dynamic>{};
-    final inputJson = input.toMap();
-
-    // Add parameters from input (excluding internal ones)
-    for (final key in inputJson.keys) {
-      if (!key.startsWith('_')) {
-        schema[key] = {
-          'type': _inferParameterType(inputJson[key]),
-          'description': 'Input parameter $key for ${step.toolName}',
-        };
-      }
+  /// Builds output schema for OpenAI based on step configuration
+  Map<String, dynamic> _buildOutputSchema({required ToolCallStep step}) {
+    // Check if step has a custom output schema configured
+    if (step.stepConfig.outputSchema != null) {
+      return step.stepConfig.outputSchema!;
     }
 
-    return schema;
-  }
-
-  /// Infers the JSON schema type from a Dart value
-  String _inferParameterType(dynamic value) {
-    if (value is String) return 'string';
-    if (value is int) return 'integer';
-    if (value is double) return 'number';
-    if (value is bool) return 'boolean';
-    if (value is List) return 'array';
-    if (value is Map) return 'object';
-    return 'string'; // Default fallback
-  }
-
-  /// Gets required parameters from step configuration
-  List<String> _getRequiredParameters({
-    required ToolCallStep step,
-    required ToolInput input,
-  }) {
-    // For now, treat all non-internal parameters as required
-    final required = <String>[];
-    final inputJson = input.toMap();
-
-    // Add input parameters (excluding internal ones)
-    for (final key in inputJson.keys) {
-      if (!key.startsWith('_')) {
-        required.add(key);
-      }
-    }
-
-    return required;
+    // Fallback to a generic schema if no specific schema is provided
+    return {
+      'type': 'object',
+      'properties': {
+        'result': {
+          'type': 'string',
+          'description': 'The result of executing ${step.toolName}',
+        },
+        'success': {
+          'type': 'boolean',
+          'description': 'Whether the operation was successful',
+        },
+      },
+      'required': ['result'],
+    };
   }
 
   /// Builds system message from structured input

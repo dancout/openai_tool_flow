@@ -7,7 +7,7 @@ import 'typed_interfaces.dart';
 /// - Strict: certain fields are required
 /// - Extensible: projects may extend the class with new fields
 /// - The pipeline never strips fields — it always forwards the full object by serializing with `toJson()`
-class ToolResult {
+class ToolResult<T extends ToolOutput> {
   /// Name of the tool that was executed
   final String toolName;
 
@@ -15,7 +15,7 @@ class ToolResult {
   final ToolInput input;
 
   /// Strongly-typed output data returned by the tool
-  final ToolOutput output;
+  final T output;
 
   /// Issues identified during tool execution or subsequent audits
   final List<Issue> issues;
@@ -54,7 +54,7 @@ class ToolResult {
       );
     }
 
-    return ToolResult(
+    return ToolResult<ToolOutput>(
       toolName: toolName,
       input: typedInput,
       output: typedOutput,
@@ -66,7 +66,7 @@ class ToolResult {
               )
               .toList() ??
           [],
-    );
+    ) as ToolResult<T>;
   }
 
   /// Converts this ToolResult to a JSON map
@@ -83,8 +83,8 @@ class ToolResult {
   }
 
   /// Creates a copy of this ToolResult with additional issues
-  ToolResult withAdditionalIssues(List<Issue> newIssues) {
-    return ToolResult(
+  ToolResult<T> withAdditionalIssues(List<Issue> newIssues) {
+    return ToolResult<T>(
       toolName: toolName,
       input: input,
       output: output,
@@ -93,13 +93,13 @@ class ToolResult {
   }
 
   /// Creates a copy of this ToolResult with optional field overrides
-  ToolResult copyWith({
+  ToolResult<T> copyWith({
     String? toolName,
     ToolInput? input,
-    ToolOutput? output,
+    T? output,
     List<Issue>? issues,
   }) {
-    return ToolResult(
+    return ToolResult<T>(
       toolName: toolName ?? this.toolName,
       input: input ?? this.input,
       output: output ?? this.output,
@@ -123,7 +123,7 @@ class ToolResult {
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
-    return other is ToolResult &&
+    return other is ToolResult<T> &&
         other.toolName == toolName &&
         other.input.toMap().toString() == input.toMap().toString() &&
         other.output.toMap().toString() == output.toMap().toString();
