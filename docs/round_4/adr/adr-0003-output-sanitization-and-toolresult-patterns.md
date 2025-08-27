@@ -6,6 +6,8 @@ authors: "GitHub Copilot"
 tags: ["architecture", "decision", "data-processing", "api-design"]
 supersedes: ""
 superseded_by: ""
+adr_references: []
+used_as_resource_in: []
 ---
 
 # ADR-0003: Improve Output Sanitization and ToolResult Modification Patterns

@@ -1,8 +1,8 @@
 /// Configuration examples and utilities for the color theme generator.
-/// 
-/// This file demonstrates various ways to configure steps, audits, and 
+///
+/// This file demonstrates various ways to configure steps, audits, and
 /// forwarding patterns for complex workflows.
-library;
+library step_configs;
 
 import 'package:openai_toolflow/openai_toolflow.dart';
 
@@ -13,9 +13,7 @@ import 'typed_interfaces.dart';
 class ExampleStepConfigs {
   /// Basic configuration with simple audit
   static StepConfig get basicAuditConfig {
-    return StepConfig(
-      audits: [ColorQualityAuditFunction()],
-    );
+    return StepConfig(audits: [ColorQualityAuditFunction()]);
   }
 
   /// Configuration with custom retry logic
@@ -45,18 +43,14 @@ class ExampleStepConfigs {
 
   /// Configuration that forwards specific outputs
   static StepConfig forwardingOutputConfig(String toolName) {
-    return StepConfig(
-      includeOutputsFrom: [toolName],
-    );
+    return StepConfig(includeOutputsFrom: [toolName]);
   }
 
   /// Configuration with output sanitization
   static StepConfig sanitizingConfig(
     Map<String, dynamic> Function(Map<String, dynamic>) outputSanitizer,
   ) {
-    return StepConfig(
-      outputSanitizer: outputSanitizer,
-    );
+    return StepConfig(outputSanitizer: outputSanitizer);
   }
 
   /// Configuration that doesn't stop flow on failure
@@ -71,19 +65,20 @@ class ExampleStepConfigs {
 /// Example output sanitizers for cleaning data between steps
 class ExampleSanitizers {
   /// Sanitizes color palette output for refinement input
-  static Map<String, dynamic> paletteToRefinementInputSanitizer(
-    Map<String, dynamic> input,
-    List<ToolResult> previousResults,
-  ) {
+  static Map<String, dynamic> paletteToRefinementInputSanitizer({
+    required Map<String, dynamic> input,
+    required List<ToolResult> previousResults,
+  }) {
     final sanitized = <String, dynamic>{};
 
     // Find the palette extraction result
-    final paletteResult = previousResults
-        .where((r) => r.toolName == 'extract_palette')
-        .firstOrNull;
+    final paletteResult =
+        previousResults.where((r) => r.toolName == 'extract_palette').isNotEmpty
+        ? previousResults.where((r) => r.toolName == 'extract_palette').first
+        : null;
 
     if (paletteResult != null) {
-      final colors = paletteResult.output['colors'] as List?;
+      final colors = paletteResult.output.toMap()['colors'] as List?;
       if (colors != null) {
         // Ensure colors are in the right format
         final cleanColors = colors
@@ -93,9 +88,10 @@ class ExampleSanitizers {
             .toList();
 
         sanitized['colors'] = cleanColors;
-        
+
         // Add confidence as context
-        final confidence = paletteResult.output['confidence'] as double?;
+        final confidence =
+            paletteResult.output.toMap()['confidence'] as double?;
         if (confidence != null) {
           sanitized['source_confidence'] = confidence;
         }
@@ -112,7 +108,7 @@ class ExampleSanitizers {
     Map<String, dynamic> output,
   ) {
     final sanitized = Map<String, dynamic>.from(output);
-    
+
     // Ensure colors are properly formatted
     final colors = sanitized['colors'] as List?;
     if (colors != null) {
@@ -121,27 +117,29 @@ class ExampleSanitizers {
           .where((color) => RegExp(r'^#[0-9A-Fa-f]{6}$').hasMatch(color))
           .toList();
     }
-    
+
     return sanitized;
   }
 
   /// Sanitizes refinement output for theme generation
-  static Map<String, dynamic> refinementToThemeInputSanitizer(
-    Map<String, dynamic> input,
-    List<ToolResult> previousResults,
-  ) {
+  static Map<String, dynamic> refinementToThemeInputSanitizer({
+    required Map<String, dynamic> input,
+    required List<ToolResult> previousResults,
+  }) {
     final sanitized = Map<String, dynamic>.from(input);
 
     // Get refined colors
-    final refinementResult = previousResults
-        .where((r) => r.toolName == 'refine_colors')
-        .firstOrNull;
+    final refinementResult =
+        previousResults.where((r) => r.toolName == 'refine_colors').isNotEmpty
+        ? previousResults.where((r) => r.toolName == 'refine_colors').first
+        : null;
 
     if (refinementResult != null) {
-      final refinedColors = refinementResult.output['refined_colors'] as List?;
+      final refinedColors =
+          refinementResult.output.toMap()['refined_colors'] as List?;
       if (refinedColors != null && refinedColors.isNotEmpty) {
         sanitized['base_colors'] = refinedColors.take(4).toList();
-        
+
         // Set primary color
         if (refinedColors.isNotEmpty) {
           sanitized['primary_color'] = refinedColors.first;
@@ -153,15 +151,15 @@ class ExampleSanitizers {
   }
 
   /// Generic sanitizer that removes internal fields and formats data
-  static Map<String, dynamic> genericInputSanitizer(
-    Map<String, dynamic> input,
-    List<ToolResult> previousResults,
-  ) {
+  static Map<String, dynamic> genericInputSanitizer({
+    required Map<String, dynamic> input,
+    required List<ToolResult> previousResults,
+  }) {
     final sanitized = Map<String, dynamic>.from(input);
 
     for (final result in previousResults) {
       // Add non-internal output fields with tool name prefix
-      for (final entry in result.output.entries) {
+      for (final entry in result.output.toMap().entries) {
         if (!entry.key.startsWith('_')) {
           sanitized['${result.toolName}_${entry.key}'] = entry.value;
         }
@@ -177,14 +175,16 @@ class ExampleIssueFilters {
   /// Only forward critical and high severity issues
   static bool criticalAndHighOnly(Issue issue) {
     return issue.severity == IssueSeverity.critical ||
-           issue.severity == IssueSeverity.high;
+        issue.severity == IssueSeverity.high;
   }
 
   /// Only forward issues that mention specific keywords
   static bool Function(Issue) keywordFilter(List<String> keywords) {
     return (Issue issue) {
       final description = issue.description.toLowerCase();
-      return keywords.any((keyword) => description.contains(keyword.toLowerCase()));
+      return keywords.any(
+        (keyword) => description.contains(keyword.toLowerCase()),
+      );
     };
   }
 
@@ -238,26 +238,37 @@ Map<String, ToolCallStep> createColorThemeWorkflow() {
     'extract_palette': ToolCallStep(
       toolName: 'extract_palette',
       model: 'gpt-4',
-      params: PaletteExtractionInput(
+      inputBuilder: (previousResults) => PaletteExtractionInput(
         imagePath: 'assets/sample_image.jpg',
         maxColors: 8,
         minSaturation: 0.3,
         userPreferences: {'style': 'modern', 'mood': 'energetic'},
       ).toMap(),
-      stepConfig: StepConfig(
-        audits: [diversityAudit],
-        maxRetries: 3,
-      ),
+      stepConfig: StepConfig(audits: [diversityAudit], maxRetries: 3),
     ),
 
     'refine_colors': ToolCallStep(
       toolName: 'refine_colors',
       model: 'gpt-4',
-      params: ColorRefinementInput(
-        colors: [], // Will be populated from previous step
-        enhanceContrast: true,
-        targetAccessibility: 'AA',
-      ).toMap(),
+      inputBuilder: (previousResults) {
+        // Extract colors from previous palette step
+        final paletteResult =
+            previousResults
+                .where((r) => r.toolName == 'extract_palette')
+                .isNotEmpty
+            ? previousResults
+                  .where((r) => r.toolName == 'extract_palette')
+                  .first
+            : null;
+
+        final extractedColors = paletteResult?.output.toMap()['colors'] ?? [];
+
+        return ColorRefinementInput(
+          colors: extractedColors.cast<String>(),
+          enhanceContrast: true,
+          targetAccessibility: 'AA',
+        ).toMap();
+      },
       stepConfig: StepConfig(
         audits: [colorFormatAudit],
         maxRetries: 5,
@@ -277,7 +288,10 @@ Map<String, ToolCallStep> createColorThemeWorkflow() {
     'generate_theme': ToolCallStep(
       toolName: 'generate_theme',
       model: 'gpt-4',
-      params: {'theme_type': 'material_design', 'include_variants': true},
+      inputBuilder: (previousResults) => {
+        'theme_type': 'material_design',
+        'include_variants': true,
+      },
       stepConfig: StepConfig(
         audits: [],
         stopOnFailure: false,

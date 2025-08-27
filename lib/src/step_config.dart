@@ -62,7 +62,7 @@ class StepConfig {
   ///
   /// **Example:**
   /// ```dart
-  /// inputSanitizer: (input, previousResults) {
+  /// inputSanitizer: ({required input, required previousResults}) {
   ///   final cleaned = Map<String, dynamic>.from(input);
   ///   // Remove internal fields
   ///   cleaned.removeWhere((key, value) => key.startsWith('_'));
@@ -72,11 +72,11 @@ class StepConfig {
   ///   return cleaned;
   /// }
   /// ```
-  final Map<String, dynamic> Function(
+  final Map<String, dynamic> Function({
     // TODO: This should probably take in ToolInput/StepInput instead of just an unstructured Map
-    Map<String, dynamic> input,
-    List<ToolResult> previousResults,
-  )?
+    required Map<String, dynamic> input,
+    required List<ToolResult> previousResults,
+  })?
   inputSanitizer;
 
   /// Function to sanitize/transform the output AFTER executing the step.
@@ -100,6 +100,9 @@ class StepConfig {
   /// }
   /// ```
   final Map<String, dynamic> Function(Map<String, dynamic> output)?
+  // TODO: Is there any way to force the `output` input (lol) to conform to a specific schema?
+  /// Also, we need to enforce the output of this function to conform to that same schema.
+  /// Not sure if we can be extending ToolOutput or a Schema or something.
   outputSanitizer;
 
   const StepConfig({
@@ -111,6 +114,10 @@ class StepConfig {
     this.auditOnlyFinalAttempt = false,
     // TODO(DJC): Have I been thinking about includeOutputsFrom wrong? Are we more concerned with building the input of this step from the previous output than we are with pulling forward the raw output and issues from previous steps?
     /// So, all in all, does this go away?
+    /// I think that yes, we have been thinking about something wrong. Look at the StepConfig.inputSanitizer. It intakes a Map input AND a list of previous tool results.
+    /// // That is basically like the same thing as the buildInputsFrom, right? Since that populates the list of ToolResult coming forward.
+    ///
+    /// Maybe we should ask the AI agent which of these it thinks is better.
     this.includeOutputsFrom = const [],
     this.inputSanitizer,
     this.outputSanitizer,
@@ -199,7 +206,7 @@ class StepConfig {
       if (sourceResult == null) continue;
 
       // Include all output with tool name prefix to avoid conflicts
-      for (final entry in sourceResult.output.entries) {
+      for (final entry in sourceResult.output.toMap().entries) {
         // TODO: Why do we need to prepend the toolName and the key again?
         // I don't think that really adds anything to this custom data.
         // TODO: I don't think we should add the output entries key by key, but instead we should just throw the entire typedOutput.toJson() onto there, and have the sanitizeInput take care of wittling down to what we do and don't need.
@@ -212,15 +219,15 @@ class StepConfig {
 
   /// Applies input sanitization if configured.
   /// Called BEFORE step execution to clean/transform input data.
-  Map<String, dynamic> sanitizeInput(
-    Map<String, dynamic> rawInput,
-    List<ToolResult> previousResults,
-  ) {
+  Map<String, dynamic> sanitizeInput({
+    required Map<String, dynamic> rawInput,
+    required List<ToolResult> previousResults,
+  }) {
     if (inputSanitizer == null) {
       return rawInput;
     }
 
-    return inputSanitizer!(rawInput, previousResults);
+    return inputSanitizer!(input: rawInput, previousResults: previousResults);
   }
 
   /// Applies output sanitization if configured.

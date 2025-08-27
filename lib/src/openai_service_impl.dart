@@ -62,7 +62,7 @@ class DefaultOpenAiToolService implements OpenAiToolService {
     required ToolInput input,
   }) {
     // Create tool definition
-    final toolDefinition = _buildToolDefinition(step, input);
+    final toolDefinition = _buildToolDefinition(step: step, input: input);
 
     // Extract previous results from input
     // Create tool definition
@@ -102,10 +102,10 @@ class DefaultOpenAiToolService implements OpenAiToolService {
   }
 
   /// Builds tool definition for OpenAI
-  Map<String, dynamic> _buildToolDefinition(
-    ToolCallStep step,
-    ToolInput input,
-  ) {
+  Map<String, dynamic> _buildToolDefinition({
+    required ToolCallStep step,
+    required ToolInput input,
+  }) {
     return {
       'type': 'function',
       'function': {
@@ -113,36 +113,30 @@ class DefaultOpenAiToolService implements OpenAiToolService {
         'description': 'Execute ${step.toolName} tool with provided parameters',
         'parameters': {
           'type': 'object',
-          'properties': _buildParameterSchema(step, input),
-          'required': _getRequiredParameters(step, input),
+          'properties': _buildParameterSchema(step: step, input: input),
+          'required': _getRequiredParameters(step: step, input: input),
         },
       },
+      "strict": true,
     };
   }
 
   /// Builds parameter schema based on step configuration and input
-  Map<String, dynamic> _buildParameterSchema(
-    ToolCallStep step,
-    ToolInput input,
-  ) {
+  Map<String, dynamic> _buildParameterSchema({
+    required ToolCallStep step,
+    // TODO: This function is enforcing that the response of the open ai tool call confroms to the INPUT schema, which is wrong!
+    /// This should be conforming to the expected OUTPUT schema
+    required ToolInput input,
+  }) {
     final schema = <String, dynamic>{};
-
-    // Add parameters from step configuration
-    for (final key in step.params.keys) {
-      schema[key] = {
-        'type': _inferParameterType(step.params[key]),
-        'description': 'Parameter $key for ${step.toolName}',
-      };
-    }
-
     final inputJson = input.toMap();
 
     // Add parameters from input (excluding internal ones)
     for (final key in inputJson.keys) {
-      if (!key.startsWith('_') && !schema.containsKey(key)) {
+      if (!key.startsWith('_')) {
         schema[key] = {
           'type': _inferParameterType(inputJson[key]),
-          'description': 'Input parameter $key',
+          'description': 'Input parameter $key for ${step.toolName}',
         };
       }
     }
@@ -162,18 +156,17 @@ class DefaultOpenAiToolService implements OpenAiToolService {
   }
 
   /// Gets required parameters from step configuration
-  List<String> _getRequiredParameters(ToolCallStep step, ToolInput input) {
+  List<String> _getRequiredParameters({
+    required ToolCallStep step,
+    required ToolInput input,
+  }) {
     // For now, treat all non-internal parameters as required
     final required = <String>[];
-
-    // Add step parameters
-    required.addAll(step.params.keys);
-
     final inputJson = input.toMap();
 
     // Add input parameters (excluding internal ones)
     for (final key in inputJson.keys) {
-      if (!key.startsWith('_') && !required.contains(key)) {
+      if (!key.startsWith('_')) {
         required.add(key);
       }
     }
@@ -198,7 +191,7 @@ class DefaultOpenAiToolService implements OpenAiToolService {
       for (int i = 0; i < input.previousResults.length; i++) {
         final result = input.previousResults[i];
         buffer.writeln(
-          '  Step ${i + 1}: ${result.toolName} -> Output keys: ${result.output.keys.join(', ')}',
+          '  Step ${i + 1}: ${result.toolName} -> Output keys: ${result.output.toMap().keys.join(', ')}',
         );
 
         // Include issues associated with this specific result

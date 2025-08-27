@@ -2,6 +2,65 @@ import 'package:openai_toolflow/openai_toolflow.dart';
 import 'package:test/test.dart';
 import '../example/audit_functions.dart';
 
+/// Simple test implementation of ToolInput
+class TestToolInput extends ToolInput {
+  final Map<String, dynamic> data;
+
+  const TestToolInput({
+    this.data = const {},
+    super.round = 0,
+    super.previousResults = const [],
+    super.model = 'gpt-4',
+    super.temperature,
+    super.maxTokens,
+  }) : super(customData: data);
+
+  factory TestToolInput.fromMap(Map<String, dynamic> map) {
+    final customData = Map<String, dynamic>.from(map);
+    final round = customData.remove('_round') as int? ?? 0;
+    final previousResultsJson = customData.remove('_previous_results') as List? ?? [];
+    final previousResults = previousResultsJson
+        .cast<Map<String, dynamic>>()
+        .map((json) => ToolResult.fromJson(json))
+        .toList();
+    final model = customData.remove('_model') as String? ?? 'gpt-4';
+    final temperature = customData.remove('_temperature') as double?;
+    final maxTokens = customData.remove('_max_tokens') as int?;
+
+    return TestToolInput(
+      data: customData,
+      round: round,
+      previousResults: previousResults,
+      model: model,
+      temperature: temperature,
+      maxTokens: maxTokens,
+    );
+  }
+}
+
+/// Simple test implementation of ToolOutput
+class TestToolOutput extends ToolOutput {
+  final Map<String, dynamic> data;
+
+  const TestToolOutput(this.data) : super.subclass();
+
+  factory TestToolOutput.fromMap(Map<String, dynamic> map) {
+    return TestToolOutput(Map<String, dynamic>.from(map));
+  }
+
+  @override
+  Map<String, dynamic> toMap() => Map<String, dynamic>.from(data);
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is TestToolOutput && other.data.toString() == data.toString();
+  }
+
+  @override
+  int get hashCode => data.toString().hashCode;
+}
+
 void main() {
   group('Issue', () {
     test('should create an issue with required fields', () {
@@ -42,15 +101,18 @@ void main() {
 
   group('ToolResult', () {
     test('should create a tool result with required fields', () {
+      final input = TestToolInput(data: {'param': 'value'});
+      final output = TestToolOutput({'result': 'success'});
+      
       final result = ToolResult(
         toolName: 'test_tool',
-        input: {'param': 'value'},
-        output: {'result': 'success'},
+        input: input,
+        output: output,
       );
 
       expect(result.toolName, equals('test_tool'));
-      expect(result.input['param'], equals('value'));
-      expect(result.output['result'], equals('success'));
+      expect(result.input.customData['param'], equals('value'));
+      expect(result.output.toMap()['result'], equals('success'));
       expect(result.issues, isEmpty);
       expect(result.hasIssues, isFalse);
     });
@@ -64,10 +126,13 @@ void main() {
         suggestions: [],
       );
 
+      final input = TestToolInput(data: {'param': 'value'});
+      final output = TestToolOutput({'result': 'success'});
+
       final result = ToolResult(
         toolName: 'test_tool',
-        input: {'param': 'value'},
-        output: {'result': 'success'},
+        input: input,
+        output: output,
         issues: [issue],
       );
 
@@ -75,8 +140,8 @@ void main() {
       final restored = ToolResult.fromJson(json);
 
       expect(restored.toolName, equals(result.toolName));
-      expect(restored.input.toString(), equals(result.input.toString()));
-      expect(restored.output.toString(), equals(result.output.toString()));
+      expect(restored.input.toMap().toString(), equals(result.input.toMap().toString()));
+      expect(restored.output.toMap().toString(), equals(result.output.toMap().toString()));
       expect(restored.issues.length, equals(1));
       expect(restored.hasIssues, isTrue);
     });
@@ -111,27 +176,31 @@ void main() {
       final step = ToolCallStep(
         toolName: 'extract_colors',
         model: 'gpt-4',
-        params: {'max_colors': 5},
+        inputBuilder: (previousResults) => {'max_colors': 5},
       );
 
       expect(step.toolName, equals('extract_colors'));
       expect(step.model, equals('gpt-4'));
-      expect(step.params['max_colors'], equals(5));
+      expect(step.inputBuilder([]).containsKey('max_colors'), isTrue);
+      expect(step.inputBuilder([])['max_colors'], equals(5));
     });
 
     test('should serialize to and from JSON', () {
       final step = ToolCallStep(
         toolName: 'extract_colors',
         model: 'gpt-4',
-        params: {'max_colors': 5},
+        inputBuilder: (previousResults) => {'max_colors': 5},
       );
 
       final json = step.toJson();
-      final restored = ToolCallStep.fromJson(json);
-
-      expect(restored.toolName, equals(step.toolName));
-      expect(restored.model, equals(step.model));
-      expect(restored.params.toString(), equals(step.params.toString()));
+      
+      // Verify JSON contains expected fields
+      expect(json['toolName'], equals('extract_colors'));
+      expect(json['model'], equals('gpt-4'));
+      expect(json.containsKey('_note'), isTrue);
+      
+      // fromJson should throw since functions can't be deserialized
+      expect(() => ToolCallStep.fromJson(json), throwsUnsupportedError);
     });
   });
 
@@ -152,8 +221,8 @@ void main() {
 
       final result = ToolResult(
         toolName: 'test',
-        input: {},
-        output: {},
+        input: TestToolInput(),
+        output: TestToolOutput({}),
       );
 
       final issues = audit.run(result);
@@ -185,7 +254,7 @@ void main() {
           ToolCallStep(
             toolName: 'extract_palette',
             model: 'gpt-4',
-            params: {'max_colors': 3},
+            inputBuilder: (previousResults) => {'max_colors': 3},
           ),
         ],
         openAiService: mockService,
@@ -227,6 +296,7 @@ void main() {
           ToolCallStep(
             toolName: 'extract_palette',
             model: 'gpt-4',
+            inputBuilder: (previousResults) => {},
             stepConfig: StepConfig(audits: [audit]),
           ),
         ],
@@ -259,10 +329,12 @@ void main() {
           ToolCallStep(
             toolName: 'extract_palette',
             model: 'gpt-4',
+            inputBuilder: (previousResults) => {},
           ),
           ToolCallStep(
             toolName: 'refine_colors',
             model: 'gpt-4',
+            inputBuilder: (previousResults) => {},
           ),
         ],
         openAiService: mockService,
@@ -303,7 +375,7 @@ void main() {
             id: 'color-issue',
             severity: IssueSeverity.low,
             description: 'Color needs adjustment',
-            context: {'color': result.output['colors']?.first ?? 'unknown'},
+            context: {'color': result.output.toMap()['colors']?.first ?? 'unknown'},
             suggestions: ['Increase saturation'],
           )
         ],
@@ -322,11 +394,13 @@ void main() {
           ToolCallStep(
             toolName: 'extract_palette',
             model: 'gpt-4',
+            inputBuilder: (previousResults) => {},
             stepConfig: StepConfig(audits: [audit]),
           ),
           ToolCallStep(
             toolName: 'refine_colors',
             model: 'gpt-4',
+            inputBuilder: (previousResults) => {},
             stepConfig: StepConfig(
               includeOutputsFrom: [0], // Include outputs from step 0
             ),
@@ -342,8 +416,8 @@ void main() {
       
       // Check that second step received outputs from first step
       final secondStepResult = result.results[1];
-      expect(secondStepResult.input.containsKey('extract_palette_colors'), isTrue);
-      expect(secondStepResult.input['extract_palette_colors'], equals(['#FF0000']));
+      expect(secondStepResult.input.toMap().containsKey('extract_palette_colors'), isTrue);
+      expect(secondStepResult.input.toMap()['extract_palette_colors'], equals(['#FF0000']));
     });
 
     test('should handle duplicate tool names correctly', () async {
@@ -366,12 +440,12 @@ void main() {
           ToolCallStep(
             toolName: 'refine_colors',
             model: 'gpt-4',
-            params: {'iteration': 1},
+            inputBuilder: (previousResults) => {'iteration': 1},
           ),
           ToolCallStep(
             toolName: 'refine_colors', // Same tool name
             model: 'gpt-4',
-            params: {'iteration': 2},
+            inputBuilder: (previousResults) => {'iteration': 2},
           ),
         ],
         openAiService: mockService,
@@ -384,13 +458,13 @@ void main() {
       // Check that resultsByToolName contains the most recent result
       final latestResult = result.getResultByToolName('refine_colors');
       expect(latestResult, isNotNull);
-      expect(latestResult!.input['iteration'], equals(2));
+      expect(latestResult!.input.toMap()['iteration'], equals(2));
       
       // Check that getAllResultsByToolName returns both results
       final allResults = result.getAllResultsByToolName('refine_colors');
       expect(allResults.length, equals(2));
-      expect(allResults[0].input['iteration'], equals(1));
-      expect(allResults[1].input['iteration'], equals(2));
+      expect(allResults[0].input.toMap()['iteration'], equals(1));
+      expect(allResults[1].input.toMap()['iteration'], equals(2));
     });
   });
 
@@ -406,8 +480,8 @@ void main() {
 
       final previousResult = ToolResult(
         toolName: 'previous_tool',
-        input: {'input': 'data'},
-        output: {'output': 'data'},
+        input: TestToolInput(data: {'input': 'data'}),
+        output: TestToolOutput({'output': 'data'}),
         issues: [issue],
       );
 
@@ -441,8 +515,8 @@ void main() {
 
       final previousResult = ToolResult(
         toolName: 'test_tool',
-        input: {'input': 'data'},
-        output: {'result': 'output'},
+        input: TestToolInput(data: {'input': 'data'}),
+        output: TestToolOutput({'result': 'output'}),
         issues: [issue],
       );
 
@@ -478,8 +552,8 @@ void main() {
 
       final originalResult = ToolResult(
         toolName: 'original_tool',
-        input: {'test': 'input'},
-        output: {'test': 'output'},
+        input: TestToolInput(data: {'test': 'input'}),
+        output: TestToolOutput({'test': 'output'}),
         issues: [originalIssue],
       );
 
@@ -520,20 +594,20 @@ void main() {
     test('should create copy with modified fields', () {
       final originalResult = ToolResult(
         toolName: 'original_tool',
-        input: {'original': 'input'},
-        output: {'original': 'output'},
+        input: TestToolInput(data: {'original': 'input'}),
+        output: TestToolOutput({'original': 'output'}),
         issues: [],
       );
 
       final copiedResult = originalResult.copyWith(
         toolName: 'modified_tool',
-        output: {'modified': 'output'},
+        output: TestToolOutput({'modified': 'output'}),
       );
 
       expect(copiedResult.toolName, equals('modified_tool'));
-      expect(copiedResult.input['original'], equals('input')); // Unchanged
-      expect(copiedResult.output['modified'], equals('output')); // Changed
-      expect(copiedResult.output.containsKey('original'), isFalse); // Old value replaced
+      expect(copiedResult.input.customData['original'], equals('input')); // Unchanged
+      expect(copiedResult.output.toMap()['modified'], equals('output')); // Changed
+      expect(copiedResult.output.toMap().containsKey('original'), isFalse); // Old value replaced
       expect(copiedResult.issues, isEmpty);
     });
 
@@ -548,18 +622,18 @@ void main() {
 
       final originalResult = ToolResult(
         toolName: 'tool',
-        input: {'key': 'value'},
-        output: {'result': 'data'},
+        input: TestToolInput(data: {'key': 'value'}),
+        output: TestToolOutput({'result': 'data'}),
         issues: [issue],
       );
 
       final copiedResult = originalResult.copyWith(
-        output: {'new': 'result'},
+        output: TestToolOutput({'new': 'result'}),
       );
 
       expect(copiedResult.toolName, equals('tool')); // Preserved
-      expect(copiedResult.input['key'], equals('value')); // Preserved
-      expect(copiedResult.output['new'], equals('result')); // Changed
+      expect(copiedResult.input.customData['key'], equals('value')); // Preserved
+      expect(copiedResult.output.toMap()['new'], equals('result')); // Changed
       expect(copiedResult.issues.length, equals(1)); // Preserved
       expect(copiedResult.issues.first.id, equals('test-issue'));
     });
@@ -586,17 +660,17 @@ void main() {
           ToolCallStep(
             toolName: 'step1_tool',
             model: 'gpt-4',
-            params: {},
+            inputBuilder: (previousResults) => {},
           ),
           ToolCallStep(
             toolName: 'step2_tool',
             model: 'gpt-4',
-            params: {},
+            inputBuilder: (previousResults) => {},
           ),
           ToolCallStep(
             toolName: 'step3_tool',
             model: 'gpt-4',
-            params: {},
+            inputBuilder: (previousResults) => {},
             stepConfig: StepConfig(
               includeOutputsFrom: ['step1_tool'], // Only include step1
             ),

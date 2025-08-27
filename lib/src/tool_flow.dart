@@ -117,8 +117,8 @@ class ToolFlow {
           );
           stepResult = ToolResult(
             toolName: step.toolName,
-            input: errorStepInput.toMap(),
-            output: {'error': e.toString()},
+            input: errorStepInput,
+            output: ToolOutput({'error': e.toString()}),
             issues: [
               Issue(
                 id: 'error_${step.toolName}_${i}_attempt_$attemptCount',
@@ -153,7 +153,7 @@ class ToolFlow {
 
         // Update state with step results
         _state['step_${i}_result'] = stepResult.toJson();
-        _state.addAll(stepResult.output);
+        _state.addAll(stepResult.output.toMap());
       }
 
       // Check if we should stop on failure
@@ -197,27 +197,36 @@ class ToolFlow {
         : response;
 
     // Try to create typed interfaces if available
-    ToolOutput? typedOutput;
+    late ToolOutput typedOutput;
+
+    if (!ToolOutputRegistry.hasTypedOutput(step.toolName)) {
+      throw Exception('No typed output registered for ${step.toolName}');
+    }
 
     // Attempt to create typed output if registry has a creator using sanitized data
-    if (ToolOutputRegistry.hasTypedOutput(step.toolName)) {
-      try {
-        typedOutput = ToolOutputRegistry.create(step.toolName, sanitizedOutput);
-      } catch (e) {
+
+    try {
+      // TODO: Consider trying to make this a non-null return type for cleaner code here. Maybe this create function throws if a null object is trying to be returned.
+      final trialTypedOutput = ToolOutputRegistry.create(
+        toolName: step.toolName,
+        data: sanitizedOutput,
+      );
+      if (trialTypedOutput == null) {
         throw Exception(
-          'Failed to create typed output for ${step.toolName}: $e',
+          'No typed output could be created for ${step.toolName}',
         );
       }
+      typedOutput = trialTypedOutput;
+    } catch (e) {
+      throw Exception('Failed to create typed output for ${step.toolName}: $e');
     }
 
     // Create initial result without issues (audits will add them)
     final result = ToolResult(
       toolName: step.toolName,
-      input: stepInput.toMap(),
-      output: sanitizedOutput,
+      input: stepInput,
+      output: typedOutput,
       issues: [],
-      typedInput: stepInput,
-      typedOutput: typedOutput,
     );
 
     return result;
@@ -244,7 +253,10 @@ class ToolFlow {
               context: issue.context,
               suggestions: issue.suggestions,
               round:
-                  int.tryParse(result.input['_round']?.toString() ?? '0') ?? 0,
+                  int.tryParse(
+                    result.input.toMap()['_round']?.toString() ?? '0',
+                  ) ??
+                  0,
               relatedData: {
                 'step_index': stepIndex,
                 'audit_name': audit.name,
@@ -260,32 +272,26 @@ class ToolFlow {
     return auditedResult;
   }
 
-  /// Builds input for a step based on current state and step parameters
+  /// Builds input for a step based on inputBuilder and step configuration
   ToolInput _buildStepInput({
     required ToolCallStep step,
     required int stepIndex,
     required int round,
   }) {
-    final customData = <String, dynamic>{};
+    // Get the results to pass to the inputBuilder
+    final inputBuilderResults = _getInputBuilderResults(step: step);
 
-    // TODO: What the heck is going on here?
-    // Are we just adding the results of every previous step to input here?
-    // Then below we are adding only the forwarded input. Would it be better to
-    // only add the forwarded input?
-
-    // TODO: Yeah, we are totally just adding the stored data (not necessarily results) of EVERY step into here, so definitely some fluff we don't need, especially if it's not sanitized out.
-
-    // Add current state (excluding internal fields)
-    for (final entry in _state.entries) {
-      if (!entry.key.startsWith('_') && !entry.key.startsWith('step_')) {
-        customData[entry.key] = entry.value;
-      }
+    // Execute the inputBuilder to get custom input data
+    Map<String, dynamic> customData;
+    try {
+      customData = step.inputBuilder(inputBuilderResults);
+    } catch (e) {
+      throw Exception(
+        'Failed to execute inputBuilder for step "${step.toolName}": $e',
+      );
     }
 
-    // Add step-specific parameters
-    customData.addAll(step.params);
-
-    // Include results from previous steps if configured
+    // Include results from previous steps if configured (for includeOutputsFrom)
     List<ToolResult> includedResults = [];
     if (step.stepConfig.hasOutputInclusion) {
       includedResults = _getIncludedResults(stepConfig: step.stepConfig);
@@ -311,14 +317,40 @@ class ToolFlow {
       // TODO: We don't actually use the sanitizedInput in our example.
       // So, I'm not certain it works as expected.
       final sanitizedInput = step.stepConfig.sanitizeInput(
-        stepInput.toMap(),
+        rawInput: stepInput.toMap(),
         // TODO: Why does sanitizeInput take in the entire list of results?
-        _results,
+        previousResults: _results,
       );
       stepInput = ToolInput.fromMap(sanitizedInput);
     }
 
     return stepInput;
+  }
+
+  /// Gets the list of results that should be passed to inputBuilder
+  // TODO: This logic seems really similar to how we get the includeOutputsFrom list.
+  /// // Consider consolidating the logic to a reusable helper function.
+  List<ToolResult> _getInputBuilderResults({required ToolCallStep step}) {
+    final inputResults = <ToolResult>[];
+
+    for (final reference in step.buildInputsFrom) {
+      ToolResult? sourceResult;
+
+      // Find the source result by index or tool name
+      if (reference is int) {
+        if (reference >= 0 && reference < _results.length) {
+          sourceResult = _results[reference];
+        }
+      } else if (reference is String) {
+        sourceResult = _resultsByToolName[reference];
+      }
+
+      if (sourceResult != null) {
+        inputResults.add(sourceResult);
+      }
+    }
+
+    return inputResults;
   }
 
   /// Gets the list of results that should be included based on step configuration
@@ -381,6 +413,7 @@ class ToolFlowResult {
   /// Results from all executed steps
   final List<ToolResult> results;
 
+  // TODO: Is finalState ever used? It's basically the _state collection that was passed around, and is also now not used I don't think.
   /// Final state after all steps completed
   final Map<String, dynamic> finalState;
 
@@ -428,7 +461,7 @@ class ToolFlowResult {
   /// Returns the final output from the last successful step
   Map<String, dynamic>? get finalOutput {
     if (results.isEmpty) return null;
-    return results.last.output;
+    return results.last.output.toMap();
   }
 
   /// Gets the result for a specific tool by name

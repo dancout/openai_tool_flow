@@ -11,20 +11,14 @@ class ToolResult {
   /// Name of the tool that was executed
   final String toolName;
 
-  /// Input parameters that were passed to the tool
-  final Map<String, dynamic> input;
+  /// Strongly-typed input that was passed to the tool
+  final ToolInput input;
 
-  /// Output data returned by the tool
-  final Map<String, dynamic> output;
+  /// Strongly-typed output data returned by the tool
+  final ToolOutput output;
 
   /// Issues identified during tool execution or subsequent audits
   final List<Issue> issues;
-
-  /// Optional strongly-typed input (when available)
-  final ToolInput? typedInput;
-
-  /// Optional strongly-typed output (when available)
-  final ToolOutput? typedOutput;
 
   /// Creates a ToolResult with required fields
   const ToolResult({
@@ -32,24 +26,38 @@ class ToolResult {
     required this.input,
     required this.output,
     this.issues = const [],
-    this.typedInput,
-    this.typedOutput,
   });
 
   /// Creates a ToolResult from a JSON map
   factory ToolResult.fromJson(Map<String, dynamic> json) {
     final toolName = json['toolName'] as String;
-    final output = Map<String, dynamic>.from(json['output'] as Map);
+    final inputMap = Map<String, dynamic>.from(json['input'] as Map);
+    final outputMap = Map<String, dynamic>.from(json['output'] as Map);
+
+    // Create typed input from map data
+    final typedInput = ToolInput.fromMap(inputMap);
+
+    if (!ToolOutputRegistry.hasTypedOutput(toolName)) {
+      throw Exception('No typed output registered for tool "$toolName".');
+    }
 
     // Try to create typed output if registry has a creator for this tool
-    final typedOutput = ToolOutputRegistry.hasTypedOutput(toolName)
-        ? ToolOutputRegistry.create(toolName, output)
-        : null;
+    final typedOutput = ToolOutputRegistry.create(
+      toolName: toolName,
+      data: outputMap,
+    );
+
+    if (typedOutput == null) {
+      throw Exception(
+        'Failed to create typed output for tool "$toolName". '
+        'This should not happen as ToolOutput should always work.',
+      );
+    }
 
     return ToolResult(
       toolName: toolName,
-      input: Map<String, dynamic>.from(json['input'] as Map),
-      output: output,
+      input: typedInput,
+      output: typedOutput,
       issues:
           (json['issues'] as List?)
               ?.map(
@@ -58,7 +66,6 @@ class ToolResult {
               )
               .toList() ??
           [],
-      typedOutput: typedOutput,
     );
   }
 
@@ -69,11 +76,9 @@ class ToolResult {
   Map<String, dynamic> toJson() {
     return {
       'toolName': toolName,
-      'input': input,
-      'output': output,
+      'input': input.toMap(),
+      'output': output.toMap(),
       'issues': issues.map((issue) => issue.toJson()).toList(),
-      if (typedInput != null) 'typedInput': typedInput!.toMap(),
-      if (typedOutput != null) 'typedOutput': typedOutput!.toMap(),
     };
   }
 
@@ -84,27 +89,21 @@ class ToolResult {
       input: input,
       output: output,
       issues: [...issues, ...newIssues],
-      typedInput: typedInput,
-      typedOutput: typedOutput,
     );
   }
 
   /// Creates a copy of this ToolResult with optional field overrides
   ToolResult copyWith({
     String? toolName,
-    Map<String, dynamic>? input,
-    Map<String, dynamic>? output,
+    ToolInput? input,
+    ToolOutput? output,
     List<Issue>? issues,
-    ToolInput? typedInput,
-    ToolOutput? typedOutput,
   }) {
     return ToolResult(
       toolName: toolName ?? this.toolName,
       input: input ?? this.input,
       output: output ?? this.output,
       issues: issues ?? this.issues,
-      typedInput: typedInput ?? this.typedInput,
-      typedOutput: typedOutput ?? this.typedOutput,
     );
   }
 
@@ -126,10 +125,10 @@ class ToolResult {
     if (identical(this, other)) return true;
     return other is ToolResult &&
         other.toolName == toolName &&
-        other.input.toString() == input.toString() &&
-        other.output.toString() == output.toString();
+        other.input.toMap().toString() == input.toMap().toString() &&
+        other.output.toMap().toString() == output.toMap().toString();
   }
 
   @override
-  int get hashCode => Object.hash(toolName, input, output);
+  int get hashCode => Object.hash(toolName, input.toMap(), output.toMap());
 }

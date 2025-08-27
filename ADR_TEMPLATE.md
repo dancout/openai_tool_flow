@@ -34,7 +34,9 @@ You must also update the adr_appendix.md file with this ADR's Title, Round Numbe
 The documentation file must follow the template below, ensuring that all sections are filled out appropriately. The front matter for the markdown should be structured correctly as per the example following:
 
 ```md
----
+
+------
+
 title: "ADR-NNNN: [Decision Title]"
 status: "Proposed"
 date: "YYYY-MM-DD"
@@ -42,7 +44,10 @@ authors: "[Stakeholder Names/Roles]"
 tags: ["architecture", "decision"]
 supersedes: ""
 superseded_by: ""
----
+adr_references: ["ADR-NNNN", "ADR-NNNN", ...] # List ADRs referenced as resources for this ADR
+used_as_resource_in: ["ADR-NNNN", "ADR-NNNN", ...] # List ADRs that have used this ADR as a resource
+
+------
 
 # ADR-NNNN: [Decision Title]
 

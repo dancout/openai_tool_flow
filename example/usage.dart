@@ -70,7 +70,7 @@ void main() async {
     ToolCallStep(
       toolName: 'extract_palette',
       model: 'gpt-4',
-      params: PaletteExtractionInput(
+      inputBuilder: (previousResults) => PaletteExtractionInput(
         imagePath: 'assets/sample_image.jpg',
         maxColors: 8,
         minSaturation: 0.3,
@@ -83,17 +83,21 @@ void main() async {
     ToolCallStep(
       toolName: 'refine_colors',
       model: 'gpt-4',
-      // TODO: These params cannot possibly all be defined yet, especially if they rely on the previous step.
-      // Note the colors below" "Will be populated..."
-      // Figure out a better way to do this, either by only including static params
-      // OR would it be better to force a TypedInput here?
-      //  We could build the Typed Input from the previous output, populating the colors in a more elegant way.
-      //    Yeah, I like the latter way.
-      params: ColorRefinementInput(
-        colors: [], // Will be populated from previous step
-        enhanceContrast: true,
-        targetAccessibility: 'AA',
-      ).toMap(),
+      buildInputsFrom: [
+        'extract_palette',
+      ], // Get results from palette extraction
+      inputBuilder: (previousResults) {
+        // Now we can dynamically build input based on actual previous results!
+        final paletteResult = previousResults.first;
+        final extractedColors =
+            paletteResult.output.toMap()['colors'] as List<String>;
+
+        return ColorRefinementInput(
+          colors: extractedColors, // Populated from previous step!
+          enhanceContrast: true,
+          targetAccessibility: 'AA',
+        ).toMap();
+      },
       stepConfig: StepConfig(
         audits: [colorFormatAudit],
         maxRetries: 5, // Override default retries for this step
@@ -110,11 +114,26 @@ void main() async {
       ),
     ),
 
-    // Step 3: Generate final theme
+    // Step 3: Generate final theme using refined colors
     ToolCallStep(
       toolName: 'generate_theme',
       model: 'gpt-4',
-      params: {'theme_type': 'material_design', 'include_variants': true},
+      buildInputsFrom: [
+        'refine_colors',
+      ], // Use refined colors from previous step
+      inputBuilder: (previousResults) {
+        // Extract refined colors from the previous step
+        final refinementResult = previousResults.first;
+        final refinedColors =
+            refinementResult.output.toMap()['refined_colors'] as List<String>;
+
+        return {
+          'theme_type': 'material_design',
+          'include_variants': true,
+          'base_colors':
+              refinedColors, // Use the refined colors as base for theme generation
+        };
+      },
       stepConfig: StepConfig(
         audits: [],
         maxRetries: 1,
@@ -163,14 +182,11 @@ void main() async {
     for (int i = 0; i < result.results.length; i++) {
       final stepResult = result.results[i];
       print('Step ${i + 1}: ${stepResult.toolName}');
-      print('  Output keys: ${stepResult.output.keys.join(', ')}');
-      print('  Has typed output: ${stepResult.typedOutput != null}');
+      print('  Output keys: ${stepResult.output.toMap().keys.join(', ')}');
       print('  Issues: ${stepResult.issues.length}');
 
-      // Show typed output information if available
-      if (stepResult.typedOutput != null) {
-        print('  Typed output type: ${stepResult.typedOutput.runtimeType}');
-      }
+      // Show typed output information
+      print('  Typed output type: ${stepResult.output.runtimeType}');
 
       if (stepResult.issues.isNotEmpty) {
         for (final issue in stepResult.issues) {
@@ -204,8 +220,8 @@ void main() async {
 
     // Demonstrate typed output usage
     final lastResult = result.results.last;
-    if (lastResult.typedOutput is ThemeGenerationOutput) {
-      final typedTheme = lastResult.typedOutput as ThemeGenerationOutput;
+    if (lastResult.output is ThemeGenerationOutput) {
+      final typedTheme = lastResult.output as ThemeGenerationOutput;
       print('🔧 Typed Theme Access:');
       typedTheme.theme.forEach((key, value) {
         print('  $key: $value');
@@ -357,7 +373,7 @@ class ColorRefinementOutput extends ToolOutput {
     required this.refinedColors,
     required this.improvementsMade,
     this.accessibilityScores = const {},
-  });
+  }) : super.subclass();
 
   factory ColorRefinementOutput.fromMap(Map<String, dynamic> map) {
     return ColorRefinementOutput(
@@ -384,7 +400,8 @@ class ThemeGenerationOutput extends ToolOutput {
   final Map<String, String> theme;
   final Map<String, dynamic> metadata;
 
-  const ThemeGenerationOutput({required this.theme, this.metadata = const {}});
+  const ThemeGenerationOutput({required this.theme, this.metadata = const {}})
+    : super.subclass();
 
   factory ThemeGenerationOutput.fromMap(Map<String, dynamic> map) {
     return ThemeGenerationOutput(
@@ -462,7 +479,7 @@ class PaletteExtractionOutput extends ToolOutput {
     required this.confidence,
     required this.imageAnalyzed,
     this.metadata = const {},
-  });
+  }) : super.subclass();
 
   factory PaletteExtractionOutput.fromMap(Map<String, dynamic> map) {
     return PaletteExtractionOutput(
@@ -481,34 +498,6 @@ class PaletteExtractionOutput extends ToolOutput {
       'image_analyzed': imageAnalyzed,
       'metadata': metadata,
     };
-  }
-}
-
-/// Example of extending the ToolResult class for custom data
-class ColorExtractionResult extends ToolResult {
-  /// Confidence score for the extraction
-  final double confidence;
-
-  /// Image metadata
-  final Map<String, dynamic> imageMetadata;
-
-  ColorExtractionResult({
-    required super.toolName,
-    required super.input,
-    required super.output,
-    super.issues,
-    super.typedInput,
-    super.typedOutput,
-    required this.confidence,
-    required this.imageMetadata,
-  });
-
-  @override
-  Map<String, dynamic> toJson() {
-    final json = super.toJson();
-    json['confidence'] = confidence;
-    json['imageMetadata'] = imageMetadata;
-    return json;
   }
 }
 

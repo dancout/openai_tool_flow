@@ -6,6 +6,8 @@ authors: ["AI Assistant", "Package Maintainer"]
 tags: ["architecture", "configuration", "issue-forwarding", "state-management"]
 supersedes: ""
 superseded_by: ""
+adr_references: []
+used_as_resource_in: []
 ---
 
 # ADR-0002: Issue Forwarding and Step Configuration Enhancement

@@ -1,9 +1,10 @@
 /// Main usage example for the openai_toolflow package.
 ///
 /// This example demonstrates how to create a color theme generation pipeline
-/// that extracts colors from an image, refines them, and generates a final theme.
-/// Features the new service injection architecture and enhanced step configuration.
-library;
+/// that extracts colors from an image, refines them, and generates a final
+/// theme. Features the new service injection architecture and enhanced step
+/// configuration.
+library color_theme_example;
 
 import 'package:openai_toolflow/openai_toolflow.dart';
 
@@ -11,6 +12,7 @@ import 'audit_functions.dart';
 import 'step_configs.dart';
 import 'typed_interfaces.dart';
 
+// TODO: ColorThemeExample and Usage are kinda both showing an example of a color theme extraction. We should probably pick one and stick with it.
 void main() async {
   print('🎨 Color Theme Generator Example (Round 3)');
   print('==========================================\n');
@@ -107,7 +109,6 @@ void main() async {
 
     // Export enhanced results
     _exportEnhancedResults(result);
-
   } catch (e) {
     print('❌ Flow execution failed: $e');
   }
@@ -119,26 +120,35 @@ void _displayExecutionSummary(ToolFlowResult result) {
   print('Steps executed: ${result.results.length}');
   print('Tools used: ${result.resultsByToolName.keys.join(', ')}');
   print('Total issues found: ${result.allIssues.length}');
-  print('Critical issues: ${result.issuesWithSeverity(IssueSeverity.critical).length}');
+  print(
+    'Critical issues: ${result.issuesWithSeverity(IssueSeverity.critical).length}',
+  );
   print('High issues: ${result.issuesWithSeverity(IssueSeverity.high).length}');
-  print('Medium issues: ${result.issuesWithSeverity(IssueSeverity.medium).length}');
+  print(
+    'Medium issues: ${result.issuesWithSeverity(IssueSeverity.medium).length}',
+  );
   print('Low issues: ${result.issuesWithSeverity(IssueSeverity.low).length}\n');
 }
 
 /// Demonstrate tool name-based result retrieval
 void _demonstrateToolNameRetrieval(ToolFlowResult result) {
   print('🔍 Tool Name-Based Retrieval:');
-  
+
   // Single tool retrieval
   final paletteResult = result.getResultByToolName('extract_palette');
   if (paletteResult != null) {
-    print('  Extract Palette: Found result with ${paletteResult.output.keys.length} output keys');
+    print(
+      '  Extract Palette: Found result with ${paletteResult.output.toMap().keys.length} output keys',
+    );
   }
-  
+
   // Multiple tool retrieval
-  final multipleResults = result.getResultsByToolNames(['extract_palette', 'refine_colors']);
+  final multipleResults = result.getResultsByToolNames([
+    'extract_palette',
+    'refine_colors',
+  ]);
   print('  Multiple tools: Retrieved ${multipleResults.length} results');
-  
+
   // Results where condition
   final successfulResults = result.getResultsWhere((r) => r.issues.isEmpty);
   print('  Successful steps: ${successfulResults.length} steps had no issues');
@@ -148,31 +158,36 @@ void _demonstrateToolNameRetrieval(ToolFlowResult result) {
 /// Display step results with forwarding information
 void _displayStepResultsWithForwarding(ToolFlowResult result) {
   print('📋 Step Results with Forwarding Info:');
-  
+
   for (int i = 0; i < result.results.length; i++) {
     final stepResult = result.results[i];
     print('Step ${i + 1}: ${stepResult.toolName}');
-    print('  Output keys: ${stepResult.output.keys.join(', ')}');
-    print('  Has typed output: ${stepResult.typedOutput != null}');
+    print('  Output keys: ${stepResult.output.toMap().keys.join(', ')}');
     print('  Issues: ${stepResult.issues.length}');
-    
+
     // Check for forwarded data
-    final forwardedKeys = stepResult.input.keys
+    final forwardedKeys = stepResult.input
+        .toMap()
+        .keys
         .where((key) => key.startsWith('_forwarded_') || key.contains('_'))
         .toList();
-    
+
     if (forwardedKeys.isNotEmpty) {
       print('  Forwarded data: ${forwardedKeys.join(', ')}');
     }
-    
+
     if (stepResult.issues.isNotEmpty) {
       for (final issue in stepResult.issues) {
         final roundInfo = issue.round > 0 ? ' (Round ${issue.round})' : '';
-        print('    ⚠️ ${issue.severity.name.toUpperCase()}$roundInfo: ${issue.description}');
-        
+        print(
+          '    ⚠️ ${issue.severity.name.toUpperCase()}$roundInfo: ${issue.description}',
+        );
+
         if (issue is ColorQualityIssue) {
           print('      🎨 Problematic color: ${issue.problematicColor}');
-          print('      📊 Quality score: ${issue.qualityScore.toStringAsFixed(2)}');
+          print(
+            '      📊 Quality score: ${issue.qualityScore.toStringAsFixed(2)}',
+          );
         }
       }
     }
@@ -183,15 +198,22 @@ void _displayStepResultsWithForwarding(ToolFlowResult result) {
 /// Display typed output usage examples
 void _displayTypedOutputUsage(ToolFlowResult result) {
   print('🔧 Typed Output Usage:');
-  
+
   final lastResult = result.results.last;
-  if (lastResult.typedOutput is ThemeGenerationOutput) {
-    final typedTheme = lastResult.typedOutput as ThemeGenerationOutput;
-    print('  Typed Theme Access:');
-    typedTheme.theme.forEach((key, value) {
-      print('    $key: $value');
-    });
-    print('    Generated at: ${typedTheme.metadata['generated_at']}');
+  // In Round 6, we use the output directly as ToolOutput
+  final outputMap = lastResult.output.toMap();
+  if (outputMap.containsKey('theme')) {
+    print('  Theme Output:');
+    final theme = outputMap['theme'] as Map<String, dynamic>?;
+    if (theme != null) {
+      theme.forEach((key, value) {
+        print('    $key: $value');
+      });
+    }
+    final metadata = outputMap['metadata'] as Map<String, dynamic>?;
+    if (metadata != null && metadata.containsKey('generated_at')) {
+      print('    Generated at: ${metadata['generated_at']}');
+    }
   }
   print('');
 }
@@ -214,7 +236,7 @@ void _displayIssuesAnalysis(ToolFlowResult result) {
     print('  Round $round: ${issues.length} issues');
     for (final issue in issues) {
       print('    - ${issue.severity.name}: ${issue.description}');
-      
+
       // Show related data if available
       if (issue.relatedData != null && issue.relatedData!.isNotEmpty) {
         final stepIndex = issue.relatedData!['step_index'];
@@ -241,7 +263,7 @@ void _displayIssuesAnalysis(ToolFlowResult result) {
 /// Export enhanced results with new features
 void _exportEnhancedResults(ToolFlowResult result) {
   print('📄 Enhanced Results Export:');
-  
+
   // Show final theme
   final finalOutput = result.finalOutput;
   if (finalOutput != null && finalOutput.containsKey('theme')) {
@@ -259,7 +281,7 @@ void _exportEnhancedResults(ToolFlowResult result) {
     'successful_steps': result.results.where((r) => r.issues.isEmpty).length,
     'total_issues': result.allIssues.length,
     'tools_used': result.resultsByToolName.keys.toList(),
-    'has_typed_outputs': result.results.any((r) => r.typedOutput != null),
+    'outputs_available': result.results.isNotEmpty,
   };
 
   print('📊 Execution Statistics:');

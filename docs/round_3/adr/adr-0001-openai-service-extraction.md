@@ -6,6 +6,8 @@ authors: ["AI Assistant", "Package Maintainer"]
 tags: ["architecture", "service", "testing", "dependency-injection"]
 supersedes: ""
 superseded_by: ""
+adr_references: []
+used_as_resource_in: []
 ---
 
 # ADR-0001: OpenAI Service Extraction and Dependency Injection

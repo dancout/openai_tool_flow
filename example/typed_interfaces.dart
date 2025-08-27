@@ -31,6 +31,9 @@ class PaletteExtractionInput extends ToolInput {
     );
   }
 
+  // TODO: Consider changing all toMap to toJson.
+  // - [ ] Consolidate usages of `toJson` and `toMap` to all be named identically, since these are doing the same thing.
+  //   - Uniformity is nice. Let's go with toJson.
   @override
   Map<String, dynamic> toMap() {
     return {
@@ -124,7 +127,7 @@ class PaletteExtractionOutput extends ToolOutput {
     required this.confidence,
     required this.imageAnalyzed,
     this.metadata = const {},
-  });
+  }) : super.subclass();
 
   factory PaletteExtractionOutput.fromMap(Map<String, dynamic> map) {
     return PaletteExtractionOutput(
@@ -156,7 +159,7 @@ class ColorRefinementOutput extends ToolOutput {
     required this.refinedColors,
     required this.improvementsMade,
     this.accessibilityScores = const {},
-  });
+  }) : super.subclass();
 
   factory ColorRefinementOutput.fromMap(Map<String, dynamic> map) {
     return ColorRefinementOutput(
@@ -183,7 +186,8 @@ class ThemeGenerationOutput extends ToolOutput {
   final Map<String, String> theme;
   final Map<String, dynamic> metadata;
 
-  const ThemeGenerationOutput({required this.theme, this.metadata = const {}});
+  const ThemeGenerationOutput({required this.theme, this.metadata = const {}})
+    : super.subclass();
 
   factory ThemeGenerationOutput.fromMap(Map<String, dynamic> map) {
     return ThemeGenerationOutput(
@@ -195,34 +199,6 @@ class ThemeGenerationOutput extends ToolOutput {
   @override
   Map<String, dynamic> toMap() {
     return {'theme': theme, 'metadata': metadata};
-  }
-}
-
-/// Example of extending the ToolResult class for custom data
-class ColorExtractionResult extends ToolResult {
-  /// Confidence score for the extraction
-  final double confidence;
-
-  /// Image metadata
-  final Map<String, dynamic> imageMetadata;
-
-  ColorExtractionResult({
-    required super.toolName,
-    required super.input,
-    required super.output,
-    super.issues,
-    super.typedInput,
-    super.typedOutput,
-    required this.confidence,
-    required this.imageMetadata,
-  });
-
-  @override
-  Map<String, dynamic> toJson() {
-    final json = super.toJson();
-    json['confidence'] = confidence;
-    json['imageMetadata'] = imageMetadata;
-    return json;
   }
 }
 
