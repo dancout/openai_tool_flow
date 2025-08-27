@@ -18,3 +18,8 @@ I need your help with the following content.
 
 ### REQUESTS
 - [ ] 
+
+### FINAL REQUIREMENTS
+- [ ] Ensure any necessary ADR files are generated for core decisions made from the above requests.
+- [ ] Ensure all completed requests have been committed to the PR Branch before moving beyond this task
+- [ ] Add an entry in the docs/adr_appendix.md for each of the ADR files that were created above
