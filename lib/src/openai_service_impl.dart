@@ -117,6 +117,7 @@ class DefaultOpenAiToolService implements OpenAiToolService {
           'required': _getRequiredParameters(step: step, input: input),
         },
       },
+      "strict": true,
     };
   }
 
