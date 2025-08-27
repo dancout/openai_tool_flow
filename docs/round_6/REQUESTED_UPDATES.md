@@ -1,4 +1,4 @@
-# ROUND {round_number}
+# ROUND 6
 
 I need your help with the following content.
 
@@ -15,10 +15,10 @@ I need your help with the following content.
 - Be sure to commit at checkpoints throughout your work so that in the event of an error in your process, all your good work is not lost.
 - When adding comments, do so for the sake of good documentation and not for the sake of letting the user know you were following instructions.
 - You do not need to worry about backwards compatibility, so don't keep legacy code and make the codebase more bloated. We are still working on version 0.0, so feel free to make breaking changes.
-- Do not remove existing TODOs unless you are directly addressing them.
 
 ### REQUESTS
-- [ ] 
+- [ ] Go through the lib/src directory and convert any method that takes more than 1 parameter to use named parameters
+    - It is easier to understand exactly what parameter should be passed, especially with maps that could be a super or a subset of a collection.
 
 ### FINAL REQUIREMENTS
 - [ ] Ensure any necessary ADR files are generated for core decisions made from the above requests.

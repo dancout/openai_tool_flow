@@ -1,4 +1,4 @@
-import 'issue.dart';
+import 'tool_result.dart';
 
 /// Base class for strongly-typed tool inputs.
 ///
@@ -9,9 +9,8 @@ class ToolInput {
   /// Current retry round (0 for first attempt)
   final int round;
 
-  // TODO: Instead of passing forward the previous issues, we should pass forward the previous results, which includes both the previous steps' output and issues all in the same object.
-  /// Issues from previous steps that may be relevant
-  final List<Issue> previousIssues;
+  /// Results from previous steps that may be relevant
+  final List<ToolResult> previousResults;
 
   /// Custom input data specific to this tool
   final Map<String, dynamic> customData;
@@ -28,7 +27,7 @@ class ToolInput {
   /// Creates a ToolInput with structured fields and custom data
   const ToolInput({
     this.round = 0,
-    this.previousIssues = const [],
+    this.previousResults = const [],
     this.customData = const {},
     this.model = 'gpt-4',
     this.temperature,
@@ -39,8 +38,8 @@ class ToolInput {
   Map<String, dynamic> toMap() {
     return {
       '_round': round,
-      '_previous_issues': previousIssues
-          .map((issue) => issue.toJson())
+      '_previous_results': previousResults
+          .map((result) => result.toJson())
           .toList(),
       '_model': model,
       if (temperature != null) '_temperature': temperature,
@@ -55,11 +54,11 @@ class ToolInput {
 
     // Remove known fields from custom data
     final round = customData.remove('_round') as int? ?? 0;
-    final previousIssuesJson =
-        customData.remove('_previous_issues') as List? ?? [];
-    final previousIssues = previousIssuesJson
+    final previousResultsJson =
+        customData.remove('_previous_results') as List? ?? [];
+    final previousResults = previousResultsJson
         .cast<Map<String, dynamic>>()
-        .map((json) => Issue.fromJson(json))
+        .map((json) => ToolResult.fromJson(json))
         .toList();
     final model = customData.remove('_model') as String? ?? 'gpt-4';
     final temperature = customData.remove('_temperature') as double?;
@@ -67,7 +66,7 @@ class ToolInput {
 
     return ToolInput(
       round: round,
-      previousIssues: previousIssues,
+      previousResults: previousResults,
       customData: customData,
       model: model,
       temperature: temperature,
@@ -100,25 +99,6 @@ class ToolInput {
     return issues;
   }
 }
-
-/// Structured input for a tool execution step.
-///
-/// This is now a type alias to ToolInput for backward compatibility.
-/// Use ToolInput directly for new code.
-///
-/// **Example usage:**
-/// ```dart
-/// final stepInput = ToolInput(
-///   round: 0,
-///   previousIssues: [],
-///   customData: {
-///     'colors': ['#FF0000', '#00FF00'],
-///     'enhance_contrast': true,
-///   },
-///   model: 'gpt-4',
-/// );
-/// ```
-typedef StepInput = ToolInput;
 
 /// Abstract base class for strongly-typed tool outputs.
 ///

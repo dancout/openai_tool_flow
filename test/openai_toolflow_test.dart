@@ -395,7 +395,7 @@ void main() {
   });
 
   group('ToolInput', () {
-    test('should create input with structured data and Issue objects', () {
+    test('should create input with structured data and ToolResult objects', () {
       final issue = Issue(
         id: 'test-issue',
         severity: IssueSeverity.low,
@@ -404,9 +404,16 @@ void main() {
         suggestions: [],
       );
 
+      final previousResult = ToolResult(
+        toolName: 'previous_tool',
+        input: {'input': 'data'},
+        output: {'output': 'data'},
+        issues: [issue],
+      );
+
       final input = ToolInput(
         round: 1,
-        previousIssues: [issue],
+        previousResults: [previousResult],
         customData: {'test': 'value'},
         model: 'gpt-4',
         temperature: 0.8,
@@ -414,15 +421,16 @@ void main() {
       );
 
       expect(input.round, equals(1));
-      expect(input.previousIssues.length, equals(1));
-      expect(input.previousIssues.first.id, equals('test-issue'));
+      expect(input.previousResults.length, equals(1));
+      expect(input.previousResults.first.toolName, equals('previous_tool'));
+      expect(input.previousResults.first.issues.first.id, equals('test-issue'));
       expect(input.customData['test'], equals('value'));
       expect(input.model, equals('gpt-4'));
       expect(input.temperature, equals(0.8));
       expect(input.maxTokens, equals(1000));
     });
 
-    test('should serialize to Map with structured previousIssues', () {
+    test('should serialize to Map with structured previousResults', () {
       final issue = Issue(
         id: 'test-issue',
         severity: IssueSeverity.medium,
@@ -431,9 +439,16 @@ void main() {
         suggestions: ['suggestion'],
       );
 
+      final previousResult = ToolResult(
+        toolName: 'test_tool',
+        input: {'input': 'data'},
+        output: {'result': 'output'},
+        issues: [issue],
+      );
+
       final input = ToolInput(
         round: 2,
-        previousIssues: [issue],
+        previousResults: [previousResult],
         customData: {'param': 'data'},
         model: 'gpt-3.5-turbo',
       );
@@ -443,14 +458,16 @@ void main() {
       expect(map['_round'], equals(2));
       expect(map['_model'], equals('gpt-3.5-turbo'));
       expect(map['param'], equals('data'));
-      expect(map['_previous_issues'], isA<List>());
+      expect(map['_previous_results'], isA<List>());
       
-      final issueJson = map['_previous_issues'][0] as Map<String, dynamic>;
-      expect(issueJson['id'], equals('test-issue'));
-      expect(issueJson['severity'], equals('medium'));
+      final resultJson = map['_previous_results'][0] as Map<String, dynamic>;
+      expect(resultJson['toolName'], equals('test_tool'));
+      expect(resultJson['issues'], isA<List>());
+      expect(resultJson['issues'][0]['id'], equals('test-issue'));
+      expect(resultJson['issues'][0]['severity'], equals('medium'));
     });
 
-    test('should restore from Map with structured previousIssues', () {
+    test('should restore from Map with structured previousResults', () {
       final originalIssue = Issue(
         id: 'original-issue',
         severity: IssueSeverity.high,
@@ -459,9 +476,16 @@ void main() {
         suggestions: ['fix it'],
       );
 
+      final originalResult = ToolResult(
+        toolName: 'original_tool',
+        input: {'test': 'input'},
+        output: {'test': 'output'},
+        issues: [originalIssue],
+      );
+
       final originalInput = ToolInput(
         round: 3,
-        previousIssues: [originalIssue],
+        previousResults: [originalResult],
         customData: {'custom': 'value'},
         model: 'gpt-4',
         temperature: 0.5,
@@ -473,18 +497,22 @@ void main() {
       expect(restoredInput.round, equals(3));
       expect(restoredInput.model, equals('gpt-4'));
       expect(restoredInput.customData['custom'], equals('value'));
-      expect(restoredInput.previousIssues.length, equals(1));
+      expect(restoredInput.previousResults.length, equals(1));
       
-      final restoredIssue = restoredInput.previousIssues.first;
+      final restoredResult = restoredInput.previousResults.first;
+      expect(restoredResult.toolName, equals('original_tool'));
+      expect(restoredResult.issues.length, equals(1));
+      
+      final restoredIssue = restoredResult.issues.first;
       expect(restoredIssue.id, equals('original-issue'));
       expect(restoredIssue.severity, equals(IssueSeverity.high));
       expect(restoredIssue.description, equals('Original description'));
     });
 
-    test('StepInput should be alias to ToolInput', () {
-      final stepInput = StepInput(customData: {'test': 'value'});
-      expect(stepInput, isA<ToolInput>());
-      expect(stepInput.customData['test'], equals('value'));
+    test('ToolInput should work without StepInput alias', () {
+      final toolInput = ToolInput(customData: {'test': 'value'});
+      expect(toolInput, isA<ToolInput>());
+      expect(toolInput.customData['test'], equals('value'));
     });
   });
 
