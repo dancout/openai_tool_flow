@@ -198,6 +198,7 @@ class ThemeGenerationOutput extends ToolOutput {
   }
 }
 
+// TODO: Is this ever used?
 /// Example of extending the ToolResult class for custom data
 class ColorExtractionResult extends ToolResult {
   /// Confidence score for the extraction

@@ -168,7 +168,6 @@ void main() async {
       final stepResult = result.results[i];
       print('Step ${i + 1}: ${stepResult.toolName}');
       print('  Output keys: ${stepResult.output.toMap().keys.join(', ')}');
-      print('  Has typed output: true'); // Always true now
       print('  Issues: ${stepResult.issues.length}');
 
       // Show typed output information
@@ -486,6 +485,7 @@ class PaletteExtractionOutput extends ToolOutput {
   }
 }
 
+// TODO: Is this ever used?
 /// Example of extending the ToolResult class for custom data
 class ColorExtractionResult extends ToolResult {
   /// Confidence score for the extraction
