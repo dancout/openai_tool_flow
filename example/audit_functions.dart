@@ -90,6 +90,8 @@ class ColorQualityAuditFunction extends AuditFunction {
   List<Issue> run(ToolResult result) {
     final issues = <Issue>[];
     
+    // TODO: If we could specify this AuditFunction's run method to intake a more specifc ToolResult, then we wouldn't have to convert it to a map and then hope that we find a list of colors at ['colors']
+
     // Check if colors are in valid hex format
     final colors = result.output.toMap()['colors'] as List?;
     if (colors != null) {
