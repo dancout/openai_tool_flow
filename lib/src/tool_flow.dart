@@ -201,7 +201,6 @@ class ToolFlow {
     ToolOutput? typedOutput;
 
     // Attempt to create typed output if registry has a creator using sanitized data
-    // If this fails and there is a registered creator, the step should fail
     if (ToolOutputRegistry.hasTypedOutput(step.toolName)) {
       try {
         typedOutput = ToolOutputRegistry.create(step.toolName, sanitizedOutput);
@@ -273,6 +272,13 @@ class ToolFlow {
   }) {
     final customData = <String, dynamic>{};
 
+    // TODO: What the heck is going on here?
+    // Are we just adding the results of every previous step to input here?
+    // Then below we are adding only the forwarded input. Would it be better to
+    // only add the forwarded input?
+
+    // TODO: Yeah, we are totally just adding the stored data (not necessarily results) of EVERY step into here, so definitely some fluff we don't need, especially if it's not sanitized out.
+
     // Add current state (excluding internal fields)
     for (final entry in _state.entries) {
       if (!entry.key.startsWith('_') && !entry.key.startsWith('step_')) {
@@ -306,8 +312,11 @@ class ToolFlow {
 
     // Apply input sanitization if configured (before execution)
     if (step.stepConfig.hasInputSanitizer) {
+      // TODO: We don't actually use the sanitizedInput in our example.
+      // So, I'm not certain it works as expected.
       final sanitizedInput = step.stepConfig.sanitizeInput(
         stepInput.toMap(),
+        // TODO: Why does sanitizeInput take in the entire list of results?
         _results,
       );
       stepInput = ToolInput.fromMap(sanitizedInput);

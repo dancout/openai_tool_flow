@@ -145,7 +145,6 @@ class SystemMessageInput {
   final String stepDescription;
 
   /// Previous step results relevant to this step
-  /// Contains both outputs and issues from previous tool executions
   final List<ToolResult> previousResults;
 
   /// Additional context data

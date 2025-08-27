@@ -10,7 +10,6 @@ class ToolInput {
   final int round;
 
   /// Results from previous steps that may be relevant
-  /// Contains both outputs and issues from previous tool executions
   final List<ToolResult> previousResults;
 
   /// Custom input data specific to this tool
