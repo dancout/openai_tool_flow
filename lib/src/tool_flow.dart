@@ -118,7 +118,7 @@ class ToolFlow {
           stepResult = ToolResult(
             toolName: step.toolName,
             input: errorStepInput,
-            output: GenericToolOutput({'error': e.toString()}),
+            output: ToolOutput({'error': e.toString()}),
             issues: [
               Issue(
                 id: 'error_${step.toolName}_${i}_attempt_$attemptCount',
@@ -214,7 +214,7 @@ class ToolFlow {
     }
 
     // Ensure we have a typed output
-    typedOutput ??= GenericToolOutput(sanitizedOutput);
+    typedOutput ??= ToolOutput(sanitizedOutput);
 
     // Create initial result without issues (audits will add them)
     final result = ToolResult(

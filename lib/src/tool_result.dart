@@ -40,12 +40,12 @@ class ToolResult {
     // Try to create typed output if registry has a creator for this tool
     final typedOutput = ToolOutputRegistry.hasTypedOutput(toolName)
         ? ToolOutputRegistry.create(toolName: toolName, data: outputMap)
-        : GenericToolOutput.fromMap(outputMap);
+        : ToolOutput.fromMap(outputMap);
 
     if (typedOutput == null) {
       throw Exception(
         'Failed to create typed output for tool "$toolName". '
-        'This should not happen as GenericToolOutput should always work.',
+        'This should not happen as ToolOutput should always work.',
       );
     }
 

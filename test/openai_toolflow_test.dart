@@ -42,7 +42,7 @@ class TestToolInput extends ToolInput {
 class TestToolOutput extends ToolOutput {
   final Map<String, dynamic> data;
 
-  const TestToolOutput(this.data);
+  const TestToolOutput(this.data) : super.subclass();
 
   factory TestToolOutput.fromMap(Map<String, dynamic> map) {
     return TestToolOutput(Map<String, dynamic>.from(map));

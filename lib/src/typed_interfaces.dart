@@ -100,49 +100,42 @@ class ToolInput {
   }
 }
 
-/// Abstract base class for strongly-typed tool outputs.
+/// Base class for strongly-typed tool outputs.
 ///
 /// Provides type safety for tool results while maintaining
 /// backward compatibility with Map-based interface.
-abstract class ToolOutput {
-  /// Allows const constructors in subclasses
-  const ToolOutput();
+/// Can be extended for custom tool outputs or used directly for simple cases.
+class ToolOutput {
+  /// The output data (only used when ToolOutput is used directly)
+  final Map<String, dynamic>? _data;
 
-  /// Converts this output to a Map for serialization
-  Map<String, dynamic> toMap();
+  /// Creates a ToolOutput with the given data (for direct usage)
+  const ToolOutput(this._data);
+
+  /// Creates a ToolOutput for subclasses (they provide their own toMap implementation)
+  const ToolOutput.subclass() : _data = null;
 
   /// Creates a ToolOutput from a Map
-  ///
-  /// Subclasses should implement this factory constructor
-  /// to enable deserialization from generic maps.
-  static ToolOutput fromMap(Map<String, dynamic> map) {
-    throw UnimplementedError('Subclasses must implement fromMap');
-  }
-}
-
-/// Generic implementation of ToolOutput for simple cases
-/// where a custom typed output is not needed.
-class GenericToolOutput extends ToolOutput {
-  /// The raw output data
-  final Map<String, dynamic> data;
-
-  const GenericToolOutput(this.data);
-
-  factory GenericToolOutput.fromMap(Map<String, dynamic> map) {
-    return GenericToolOutput(Map<String, dynamic>.from(map));
+  factory ToolOutput.fromMap(Map<String, dynamic> map) {
+    return ToolOutput(Map<String, dynamic>.from(map));
   }
 
-  @override
-  Map<String, dynamic> toMap() => Map<String, dynamic>.from(data);
+  /// Converts this output to a Map for serialization
+  Map<String, dynamic> toMap() {
+    if (_data != null) {
+      return Map<String, dynamic>.from(_data!);
+    }
+    throw UnimplementedError('Subclasses must override toMap() when using ToolOutput.subclass()');
+  }
 
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
-    return other is GenericToolOutput && other.data.toString() == data.toString();
+    return other is ToolOutput && other.toMap().toString() == toMap().toString();
   }
 
   @override
-  int get hashCode => data.toString().hashCode;
+  int get hashCode => toMap().toString().hashCode;
 }
 
 /// Registry for creating typed outputs from tool results

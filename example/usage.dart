@@ -366,7 +366,7 @@ class ColorRefinementOutput extends ToolOutput {
     required this.refinedColors,
     required this.improvementsMade,
     this.accessibilityScores = const {},
-  });
+  }) : super.subclass();
 
   factory ColorRefinementOutput.fromMap(Map<String, dynamic> map) {
     return ColorRefinementOutput(
@@ -393,7 +393,7 @@ class ThemeGenerationOutput extends ToolOutput {
   final Map<String, String> theme;
   final Map<String, dynamic> metadata;
 
-  const ThemeGenerationOutput({required this.theme, this.metadata = const {}});
+  const ThemeGenerationOutput({required this.theme, this.metadata = const {}}) : super.subclass();
 
   factory ThemeGenerationOutput.fromMap(Map<String, dynamic> map) {
     return ThemeGenerationOutput(
@@ -471,7 +471,7 @@ class PaletteExtractionOutput extends ToolOutput {
     required this.confidence,
     required this.imageAnalyzed,
     this.metadata = const {},
-  });
+  }) : super.subclass();
 
   factory PaletteExtractionOutput.fromMap(Map<String, dynamic> map) {
     return PaletteExtractionOutput(
