@@ -120,6 +120,31 @@ abstract class ToolOutput {
   }
 }
 
+/// Generic implementation of ToolOutput for simple cases
+/// where a custom typed output is not needed.
+class GenericToolOutput extends ToolOutput {
+  /// The raw output data
+  final Map<String, dynamic> data;
+
+  const GenericToolOutput(this.data);
+
+  factory GenericToolOutput.fromMap(Map<String, dynamic> map) {
+    return GenericToolOutput(Map<String, dynamic>.from(map));
+  }
+
+  @override
+  Map<String, dynamic> toMap() => Map<String, dynamic>.from(data);
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is GenericToolOutput && other.data.toString() == data.toString();
+  }
+
+  @override
+  int get hashCode => data.toString().hashCode;
+}
+
 /// Registry for creating typed outputs from tool results
 class ToolOutputRegistry {
   static final Map<String, ToolOutput Function(Map<String, dynamic>)>

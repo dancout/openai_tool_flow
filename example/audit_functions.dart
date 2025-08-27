@@ -91,7 +91,7 @@ class ColorQualityAuditFunction extends AuditFunction {
     final issues = <Issue>[];
     
     // Check if colors are in valid hex format
-    final colors = result.output['colors'] as List?;
+    final colors = result.output.toMap()['colors'] as List?;
     if (colors != null) {
       for (int i = 0; i < colors.length; i++) {
         final color = colors[i] as String;
@@ -161,7 +161,7 @@ class ColorDiversityAuditFunction extends AuditFunction {
     final issues = <Issue>[];
     
     // Check if we have enough colors
-    final colors = result.output['colors'] as List?;
+    final colors = result.output.toMap()['colors'] as List?;
     if (colors == null || colors.length < minimumColors) {
       issues.add(Issue(
         id: 'insufficient_colors',

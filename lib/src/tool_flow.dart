@@ -117,8 +117,8 @@ class ToolFlow {
           );
           stepResult = ToolResult(
             toolName: step.toolName,
-            input: errorStepInput.toMap(),
-            output: {'error': e.toString()},
+            input: errorStepInput,
+            output: GenericToolOutput({'error': e.toString()}),
             issues: [
               Issue(
                 id: 'error_${step.toolName}_${i}_attempt_$attemptCount',
@@ -153,7 +153,7 @@ class ToolFlow {
 
         // Update state with step results
         _state['step_${i}_result'] = stepResult.toJson();
-        _state.addAll(stepResult.output);
+        _state.addAll(stepResult.output.toMap());
       }
 
       // Check if we should stop on failure
@@ -213,14 +213,17 @@ class ToolFlow {
       }
     }
 
+    // Ensure we have a typed output
+    if (typedOutput == null) {
+      typedOutput = GenericToolOutput(sanitizedOutput);
+    }
+
     // Create initial result without issues (audits will add them)
     final result = ToolResult(
       toolName: step.toolName,
-      input: stepInput.toMap(),
-      output: sanitizedOutput,
+      input: stepInput,
+      output: typedOutput,
       issues: [],
-      typedInput: stepInput,
-      typedOutput: typedOutput,
     );
 
     return result;
@@ -247,7 +250,7 @@ class ToolFlow {
               context: issue.context,
               suggestions: issue.suggestions,
               round:
-                  int.tryParse(result.input['_round']?.toString() ?? '0') ?? 0,
+                  int.tryParse(result.input.toMap()['_round']?.toString() ?? '0') ?? 0,
               relatedData: {
                 'step_index': stepIndex,
                 'audit_name': audit.name,
@@ -431,7 +434,7 @@ class ToolFlowResult {
   /// Returns the final output from the last successful step
   Map<String, dynamic>? get finalOutput {
     if (results.isEmpty) return null;
-    return results.last.output;
+    return results.last.output.toMap();
   }
 
   /// Gets the result for a specific tool by name

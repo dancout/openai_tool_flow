@@ -199,7 +199,7 @@ class StepConfig {
       if (sourceResult == null) continue;
 
       // Include all output with tool name prefix to avoid conflicts
-      for (final entry in sourceResult.output.entries) {
+      for (final entry in sourceResult.output.toMap().entries) {
         // TODO: Why do we need to prepend the toolName and the key again?
         // I don't think that really adds anything to this custom data.
         // TODO: I don't think we should add the output entries key by key, but instead we should just throw the entire typedOutput.toJson() onto there, and have the sanitizeInput take care of wittling down to what we do and don't need.

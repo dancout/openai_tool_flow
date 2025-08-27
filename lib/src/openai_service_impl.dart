@@ -201,7 +201,7 @@ class DefaultOpenAiToolService implements OpenAiToolService {
       for (int i = 0; i < input.previousResults.length; i++) {
         final result = input.previousResults[i];
         buffer.writeln(
-          '  Step ${i + 1}: ${result.toolName} -> Output keys: ${result.output.keys.join(', ')}',
+          '  Step ${i + 1}: ${result.toolName} -> Output keys: ${result.output.toMap().keys.join(', ')}',
         );
 
         // Include issues associated with this specific result
