@@ -214,9 +214,7 @@ class ToolFlow {
     }
 
     // Ensure we have a typed output
-    if (typedOutput == null) {
-      typedOutput = GenericToolOutput(sanitizedOutput);
-    }
+    typedOutput ??= GenericToolOutput(sanitizedOutput);
 
     // Create initial result without issues (audits will add them)
     final result = ToolResult(
@@ -266,32 +264,26 @@ class ToolFlow {
     return auditedResult;
   }
 
-  /// Builds input for a step based on current state and step parameters
+  /// Builds input for a step based on inputBuilder and step configuration
   ToolInput _buildStepInput({
     required ToolCallStep step,
     required int stepIndex,
     required int round,
   }) {
-    final customData = <String, dynamic>{};
+    // Get the results to pass to the inputBuilder
+    final inputBuilderResults = _getInputBuilderResults(step: step);
 
-    // TODO: What the heck is going on here?
-    // Are we just adding the results of every previous step to input here?
-    // Then below we are adding only the forwarded input. Would it be better to
-    // only add the forwarded input?
-
-    // TODO: Yeah, we are totally just adding the stored data (not necessarily results) of EVERY step into here, so definitely some fluff we don't need, especially if it's not sanitized out.
-
-    // Add current state (excluding internal fields)
-    for (final entry in _state.entries) {
-      if (!entry.key.startsWith('_') && !entry.key.startsWith('step_')) {
-        customData[entry.key] = entry.value;
-      }
+    // Execute the inputBuilder to get custom input data
+    Map<String, dynamic> customData;
+    try {
+      customData = step.inputBuilder(inputBuilderResults);
+    } catch (e) {
+      throw Exception(
+        'Failed to execute inputBuilder for step "${step.toolName}": $e',
+      );
     }
 
-    // Add step-specific parameters
-    customData.addAll(step.params);
-
-    // Include results from previous steps if configured
+    // Include results from previous steps if configured (for includeOutputsFrom)
     List<ToolResult> includedResults = [];
     if (step.stepConfig.hasOutputInclusion) {
       includedResults = _getIncludedResults(stepConfig: step.stepConfig);
@@ -325,6 +317,30 @@ class ToolFlow {
     }
 
     return stepInput;
+  }
+
+  /// Gets the list of results that should be passed to inputBuilder
+  List<ToolResult> _getInputBuilderResults({required ToolCallStep step}) {
+    final inputResults = <ToolResult>[];
+
+    for (final reference in step.buildInputsFrom) {
+      ToolResult? sourceResult;
+
+      // Find the source result by index or tool name
+      if (reference is int) {
+        if (reference >= 0 && reference < _results.length) {
+          sourceResult = _results[reference];
+        }
+      } else if (reference is String) {
+        sourceResult = _resultsByToolName[reference];
+      }
+
+      if (sourceResult != null) {
+        inputResults.add(sourceResult);
+      }
+    }
+
+    return inputResults;
   }
 
   /// Gets the list of results that should be included based on step configuration

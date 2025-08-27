@@ -126,23 +126,14 @@ class DefaultOpenAiToolService implements OpenAiToolService {
     required ToolInput input,
   }) {
     final schema = <String, dynamic>{};
-
-    // Add parameters from step configuration
-    for (final key in step.params.keys) {
-      schema[key] = {
-        'type': _inferParameterType(step.params[key]),
-        'description': 'Parameter $key for ${step.toolName}',
-      };
-    }
-
     final inputJson = input.toMap();
 
     // Add parameters from input (excluding internal ones)
     for (final key in inputJson.keys) {
-      if (!key.startsWith('_') && !schema.containsKey(key)) {
+      if (!key.startsWith('_')) {
         schema[key] = {
           'type': _inferParameterType(inputJson[key]),
-          'description': 'Input parameter $key',
+          'description': 'Input parameter $key for ${step.toolName}',
         };
       }
     }
@@ -168,15 +159,11 @@ class DefaultOpenAiToolService implements OpenAiToolService {
   }) {
     // For now, treat all non-internal parameters as required
     final required = <String>[];
-
-    // Add step parameters
-    required.addAll(step.params.keys);
-
     final inputJson = input.toMap();
 
     // Add input parameters (excluding internal ones)
     for (final key in inputJson.keys) {
-      if (!key.startsWith('_') && !required.contains(key)) {
+      if (!key.startsWith('_')) {
         required.add(key);
       }
     }

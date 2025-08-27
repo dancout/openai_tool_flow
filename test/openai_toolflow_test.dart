@@ -176,27 +176,31 @@ void main() {
       final step = ToolCallStep(
         toolName: 'extract_colors',
         model: 'gpt-4',
-        params: {'max_colors': 5},
+        inputBuilder: (previousResults) => {'max_colors': 5},
       );
 
       expect(step.toolName, equals('extract_colors'));
       expect(step.model, equals('gpt-4'));
-      expect(step.params['max_colors'], equals(5));
+      expect(step.inputBuilder([]).containsKey('max_colors'), isTrue);
+      expect(step.inputBuilder([])['max_colors'], equals(5));
     });
 
     test('should serialize to and from JSON', () {
       final step = ToolCallStep(
         toolName: 'extract_colors',
         model: 'gpt-4',
-        params: {'max_colors': 5},
+        inputBuilder: (previousResults) => {'max_colors': 5},
       );
 
       final json = step.toJson();
-      final restored = ToolCallStep.fromJson(json);
-
-      expect(restored.toolName, equals(step.toolName));
-      expect(restored.model, equals(step.model));
-      expect(restored.params.toString(), equals(step.params.toString()));
+      
+      // Verify JSON contains expected fields
+      expect(json['toolName'], equals('extract_colors'));
+      expect(json['model'], equals('gpt-4'));
+      expect(json.containsKey('_note'), isTrue);
+      
+      // fromJson should throw since functions can't be deserialized
+      expect(() => ToolCallStep.fromJson(json), throwsUnsupportedError);
     });
   });
 
@@ -250,7 +254,7 @@ void main() {
           ToolCallStep(
             toolName: 'extract_palette',
             model: 'gpt-4',
-            params: {'max_colors': 3},
+            inputBuilder: (previousResults) => {'max_colors': 3},
           ),
         ],
         openAiService: mockService,
@@ -292,6 +296,7 @@ void main() {
           ToolCallStep(
             toolName: 'extract_palette',
             model: 'gpt-4',
+            inputBuilder: (previousResults) => {},
             stepConfig: StepConfig(audits: [audit]),
           ),
         ],
@@ -324,10 +329,12 @@ void main() {
           ToolCallStep(
             toolName: 'extract_palette',
             model: 'gpt-4',
+            inputBuilder: (previousResults) => {},
           ),
           ToolCallStep(
             toolName: 'refine_colors',
             model: 'gpt-4',
+            inputBuilder: (previousResults) => {},
           ),
         ],
         openAiService: mockService,
@@ -387,11 +394,13 @@ void main() {
           ToolCallStep(
             toolName: 'extract_palette',
             model: 'gpt-4',
+            inputBuilder: (previousResults) => {},
             stepConfig: StepConfig(audits: [audit]),
           ),
           ToolCallStep(
             toolName: 'refine_colors',
             model: 'gpt-4',
+            inputBuilder: (previousResults) => {},
             stepConfig: StepConfig(
               includeOutputsFrom: [0], // Include outputs from step 0
             ),
@@ -431,12 +440,12 @@ void main() {
           ToolCallStep(
             toolName: 'refine_colors',
             model: 'gpt-4',
-            params: {'iteration': 1},
+            inputBuilder: (previousResults) => {'iteration': 1},
           ),
           ToolCallStep(
             toolName: 'refine_colors', // Same tool name
             model: 'gpt-4',
-            params: {'iteration': 2},
+            inputBuilder: (previousResults) => {'iteration': 2},
           ),
         ],
         openAiService: mockService,
@@ -651,17 +660,17 @@ void main() {
           ToolCallStep(
             toolName: 'step1_tool',
             model: 'gpt-4',
-            params: {},
+            inputBuilder: (previousResults) => {},
           ),
           ToolCallStep(
             toolName: 'step2_tool',
             model: 'gpt-4',
-            params: {},
+            inputBuilder: (previousResults) => {},
           ),
           ToolCallStep(
             toolName: 'step3_tool',
             model: 'gpt-4',
-            params: {},
+            inputBuilder: (previousResults) => {},
             stepConfig: StepConfig(
               includeOutputsFrom: ['step1_tool'], // Only include step1
             ),
