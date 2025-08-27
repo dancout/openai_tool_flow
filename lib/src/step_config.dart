@@ -111,6 +111,10 @@ class StepConfig {
     this.auditOnlyFinalAttempt = false,
     // TODO(DJC): Have I been thinking about includeOutputsFrom wrong? Are we more concerned with building the input of this step from the previous output than we are with pulling forward the raw output and issues from previous steps?
     /// So, all in all, does this go away?
+    /// I think that yes, we have been thinking about something wrong. Look at the StepConfig.inputSanitizer. It intakes a Map input AND a list of previous tool results.
+    /// // That is basically like the same thing as the buildInputsFrom, right? Since that populates the list of ToolResult coming forward.
+    ///
+    /// Maybe we should ask the AI agent which of these it thinks is better.
     this.includeOutputsFrom = const [],
     this.inputSanitizer,
     this.outputSanitizer,

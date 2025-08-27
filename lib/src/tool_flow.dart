@@ -320,6 +320,8 @@ class ToolFlow {
   }
 
   /// Gets the list of results that should be passed to inputBuilder
+  // TODO: This logic seems really similar to how we get the includeOutputsFrom list.
+  /// // Consider consolidating the logic to a reusable helper function.
   List<ToolResult> _getInputBuilderResults({required ToolCallStep step}) {
     final inputResults = <ToolResult>[];
 
@@ -403,6 +405,7 @@ class ToolFlowResult {
   /// Results from all executed steps
   final List<ToolResult> results;
 
+  // TODO: Is finalState ever used? It's basically the _state collection that was passed around, and is also now not used I don't think.
   /// Final state after all steps completed
   final Map<String, dynamic> finalState;
 

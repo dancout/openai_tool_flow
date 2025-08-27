@@ -264,6 +264,9 @@ Map<String, ToolCallStep> createColorThemeWorkflow() {
       toolName: 'refine_colors',
       model: 'gpt-4',
       inputBuilder: (previousResults) {
+        
+        // TODO: Does it make more sense to always include ALL previous results and then just intelligently filter which ones you want directly within this inputBuilder?
+        /// OR - Is that bad because now the logic of finding which tool output you want is placed upon the user instead of being handled automatically?
         // Extract colors from previous palette step
         final paletteResult = previousResults
             .where((r) => r.toolName == 'extract_palette')
