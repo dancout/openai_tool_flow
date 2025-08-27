@@ -212,8 +212,6 @@ class ColorExtractionResult extends ToolResult {
     required super.input,
     required super.output,
     super.issues,
-    super.typedInput,
-    super.typedOutput,
     required this.confidence,
     required this.imageMetadata,
   });

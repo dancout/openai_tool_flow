@@ -112,7 +112,8 @@ class ToolOutput {
   /// Creates a ToolOutput with the given data (for direct usage)
   const ToolOutput(this._data);
 
-  /// Creates a ToolOutput for subclasses (they provide their own toMap implementation)
+  /// Creates a ToolOutput for subclasses 
+  /// (they provide their own toMap implementation)
   const ToolOutput.subclass() : _data = null;
 
   /// Creates a ToolOutput from a Map
@@ -123,15 +124,18 @@ class ToolOutput {
   /// Converts this output to a Map for serialization
   Map<String, dynamic> toMap() {
     if (_data != null) {
-      return Map<String, dynamic>.from(_data!);
+      return Map<String, dynamic>.from(_data);
     }
-    throw UnimplementedError('Subclasses must override toMap() when using ToolOutput.subclass()');
+    throw UnimplementedError(
+      'Subclasses must override toMap() when using ToolOutput.subclass()',
+    );
   }
 
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
-    return other is ToolOutput && other.toMap().toString() == toMap().toString();
+    return other is ToolOutput &&
+        other.toMap().toString() == toMap().toString();
   }
 
   @override
@@ -141,7 +145,7 @@ class ToolOutput {
 /// Registry for creating typed outputs from tool results
 class ToolOutputRegistry {
   static final Map<String, ToolOutput Function(Map<String, dynamic>)>
-  _creators = {};
+      _creators = {};
 
   /// Registers a creator function for a specific tool
   static void register<T extends ToolOutput>(
