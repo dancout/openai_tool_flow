@@ -1,11 +1,11 @@
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
+import 'package:openai_toolflow/src/typed_interfaces.dart';
 
 import 'openai_config.dart';
 import 'openai_service.dart';
 import 'tool_call_step.dart';
-import 'tool_result.dart';
 
 /// Default implementation of OpenAiToolService that makes actual API calls.
 class DefaultOpenAiToolService implements OpenAiToolService {
@@ -21,13 +21,13 @@ class DefaultOpenAiToolService implements OpenAiToolService {
   @override
   Future<Map<String, dynamic>> executeToolCall(
     ToolCallStep step,
-    Map<String, dynamic> input,
+    ToolInput input,
   ) async {
     final client = _httpClient ?? http.Client();
 
     try {
       // Build the OpenAI request
-      final request = _buildOpenAiRequest(step, input);
+      final request = _buildOpenAiRequest(step: step, input: input);
 
       final response = await client.post(
         Uri.parse('${config.baseUrl}/chat/completions'),
@@ -57,15 +57,16 @@ class DefaultOpenAiToolService implements OpenAiToolService {
   }
 
   /// Builds the OpenAI request from step and input
-  OpenAiRequest _buildOpenAiRequest(
-    ToolCallStep step,
-    Map<String, dynamic> input,
-  ) {
+  OpenAiRequest _buildOpenAiRequest({
+    required ToolCallStep step,
+    required ToolInput input,
+  }) {
     // Create tool definition
     final toolDefinition = _buildToolDefinition(step, input);
 
     // Extract previous results from input
-    final previousResults = _extractPreviousResults(input);
+    // Create tool definition
+    final previousResults = input.previousResults;
 
     // Build system message
     final systemMessageInput = SystemMessageInput(
@@ -103,7 +104,7 @@ class DefaultOpenAiToolService implements OpenAiToolService {
   /// Builds tool definition for OpenAI
   Map<String, dynamic> _buildToolDefinition(
     ToolCallStep step,
-    Map<String, dynamic> input,
+    ToolInput input,
   ) {
     return {
       'type': 'function',
@@ -122,7 +123,7 @@ class DefaultOpenAiToolService implements OpenAiToolService {
   /// Builds parameter schema based on step configuration and input
   Map<String, dynamic> _buildParameterSchema(
     ToolCallStep step,
-    Map<String, dynamic> input,
+    ToolInput input,
   ) {
     final schema = <String, dynamic>{};
 
@@ -134,11 +135,13 @@ class DefaultOpenAiToolService implements OpenAiToolService {
       };
     }
 
+    final inputJson = input.toMap();
+
     // Add parameters from input (excluding internal ones)
-    for (final key in input.keys) {
+    for (final key in inputJson.keys) {
       if (!key.startsWith('_') && !schema.containsKey(key)) {
         schema[key] = {
-          'type': _inferParameterType(input[key]),
+          'type': _inferParameterType(inputJson[key]),
           'description': 'Input parameter $key',
         };
       }
@@ -159,18 +162,17 @@ class DefaultOpenAiToolService implements OpenAiToolService {
   }
 
   /// Gets required parameters from step configuration
-  List<String> _getRequiredParameters(
-    ToolCallStep step,
-    Map<String, dynamic> input,
-  ) {
+  List<String> _getRequiredParameters(ToolCallStep step, ToolInput input) {
     // For now, treat all non-internal parameters as required
     final required = <String>[];
 
     // Add step parameters
     required.addAll(step.params.keys);
 
+    final inputJson = input.toMap();
+
     // Add input parameters (excluding internal ones)
-    for (final key in input.keys) {
+    for (final key in inputJson.keys) {
       if (!key.startsWith('_') && !required.contains(key)) {
         required.add(key);
       }
@@ -198,12 +200,14 @@ class DefaultOpenAiToolService implements OpenAiToolService {
         buffer.writeln(
           '  Step ${i + 1}: ${result.toolName} -> Output keys: ${result.output.keys.join(', ')}',
         );
-        
+
         // Include issues associated with this specific result
         if (result.issues.isNotEmpty) {
           buffer.writeln('    Associated issues:');
           for (final issue in result.issues) {
-            buffer.writeln('      - ${issue.severity.name.toUpperCase()}: ${issue.description}');
+            buffer.writeln(
+              '      - ${issue.severity.name.toUpperCase()}: ${issue.description}',
+            );
             if (issue.suggestions.isNotEmpty) {
               buffer.writeln(
                 '        Suggestions: ${issue.suggestions.join(', ')}',
@@ -249,30 +253,6 @@ class DefaultOpenAiToolService implements OpenAiToolService {
     }
 
     return buffer.toString();
-  }
-
-  /// Extracts previous results from input for context
-  List<ToolResult> _extractPreviousResults(
-    Map<String, dynamic> input,
-  ) {
-    final results = <ToolResult>[];
-
-    // Look for _previous_results in the input (new structure)
-    final previousResults = input['_previous_results'];
-    if (previousResults is List) {
-      for (final result in previousResults) {
-        if (result is Map<String, dynamic>) {
-          try {
-            results.add(ToolResult.fromJson(result));
-          } catch (e) {
-            // Skip invalid result entries
-            print('Warning: Failed to parse previous result: $e');
-          }
-        }
-      }
-    }
-
-    return results;
   }
 
   /// Extracts tool call result from OpenAI response
@@ -344,17 +324,18 @@ class MockOpenAiToolService implements OpenAiToolService {
   @override
   Future<Map<String, dynamic>> executeToolCall(
     ToolCallStep step,
-    Map<String, dynamic> input,
+    ToolInput input,
   ) async {
     // Simulate some processing time
     await Future.delayed(const Duration(milliseconds: 100));
+    final inputJson = input.toMap();
 
     // Return predefined response if available
     if (responses.containsKey(step.toolName)) {
       final response = Map<String, dynamic>.from(responses[step.toolName]!);
 
       // Add input information for testing
-      response['_mock_input_received'] = input.keys.toList();
+      response['_mock_input_received'] = inputJson.keys.toList();
       response['_mock_model_used'] = step.model;
 
       return response;
@@ -363,7 +344,7 @@ class MockOpenAiToolService implements OpenAiToolService {
     // Return default response with some input context
     final response = Map<String, dynamic>.from(defaultResponse);
     response['toolName'] = step.toolName;
-    response['inputKeys'] = input.keys.toList();
+    response['inputKeys'] = inputJson.keys.toList();
     response['model'] = step.model;
 
     return response;

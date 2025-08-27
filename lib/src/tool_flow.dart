@@ -188,11 +188,8 @@ class ToolFlow {
       round: round,
     );
 
-    // Convert to map for service call
-    final inputMap = stepInput.toMap();
-
     // Execute using the injected OpenAI service
-    final response = await openAiService.executeToolCall(step, inputMap);
+    final response = await openAiService.executeToolCall(step, stepInput);
 
     // Apply output sanitization first if configured
     final sanitizedOutput = step.stepConfig.hasOutputSanitizer
@@ -221,7 +218,7 @@ class ToolFlow {
     // Create initial result without issues (audits will add them)
     final result = ToolResult(
       toolName: step.toolName,
-      input: inputMap,
+      input: stepInput.toMap(),
       output: sanitizedOutput,
       issues: [],
       typedInput: typedInput,

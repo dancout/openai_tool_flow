@@ -1,3 +1,5 @@
+import 'package:openai_toolflow/src/typed_interfaces.dart';
+
 import 'tool_call_step.dart';
 import 'tool_result.dart';
 
@@ -11,7 +13,7 @@ abstract class OpenAiToolService {
   /// Returns the raw tool output as a Map that will be used to create ToolResult.
   Future<Map<String, dynamic>> executeToolCall(
     ToolCallStep step,
-    Map<String, dynamic> input,
+    ToolInput input,
   );
 }
 
@@ -73,7 +75,8 @@ class OpenAiRequest {
     int? maxTokens,
     Map<String, dynamic> additionalParams = const {},
   }) {
-    final isGpt5Plus = model.toLowerCase().contains('gpt-5') ||
+    final isGpt5Plus =
+        model.toLowerCase().contains('gpt-5') ||
         model.toLowerCase().contains('o1') ||
         model.toLowerCase().contains('o3');
 
@@ -175,7 +178,9 @@ class SystemMessageInput {
     return {
       'toolFlowContext': toolFlowContext,
       'stepDescription': stepDescription,
-      'previousResults': previousResults.map((result) => result.toJson()).toList(),
+      'previousResults': previousResults
+          .map((result) => result.toJson())
+          .toList(),
       'additionalContext': additionalContext,
     };
   }
@@ -184,7 +189,7 @@ class SystemMessageInput {
 /// Strongly-typed input for user message building
 class UserMessageInput {
   /// The actual input data for the tool
-  final Map<String, dynamic> toolInput;
+  final ToolInput toolInput;
 
   /// Instructions for the tool execution
   final String instructions;
@@ -206,7 +211,7 @@ class UserMessageInput {
   List<String> validate() {
     final errors = <String>[];
 
-    if (toolInput.isEmpty) {
+    if (toolInput.toMap().isEmpty) {
       errors.add('toolInput cannot be empty');
     }
 
@@ -225,11 +230,11 @@ class UserMessageInput {
 
   /// Gets a cleaned version of the tool input with sensitive data removed
   Map<String, dynamic> getCleanToolInput() {
-    final cleanInput = Map<String, dynamic>.from(toolInput);
-    
+    final cleanInput = Map<String, dynamic>.from(toolInput.toMap());
+
     // Remove internal fields that shouldn't be passed to the model
     cleanInput.removeWhere((key, value) => key.startsWith('_'));
-    
+
     return cleanInput;
   }
 }
