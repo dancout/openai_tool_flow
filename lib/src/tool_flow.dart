@@ -33,15 +33,15 @@ class ToolFlow {
   final Map<String, dynamic> _state = {};
 
   /// Results from completed steps (ordered list)
-  final List<ToolResult> _results = [];
+  final List<ToolResult<ToolOutput>> _results = [];
 
   /// Results keyed by tool name for easy retrieval
   /// For duplicate tool names, this contains the MOST RECENT result
-  final Map<String, ToolResult> _resultsByToolName = {};
+  final Map<String, ToolResult<ToolOutput>> _resultsByToolName = {};
 
   /// All results grouped by tool name (handles duplicates)
   /// Each tool name maps to a list of results in execution order
-  final Map<String, List<ToolResult>> _allResultsByToolName = {};
+  final Map<String, List<ToolResult<ToolOutput>>> _allResultsByToolName = {};
 
   /// Creates a ToolFlow with configuration and steps
   ToolFlow({
@@ -65,7 +65,7 @@ class ToolFlow {
       final step = steps[i];
       final stepConfig = step.stepConfig;
 
-      ToolResult? stepResult;
+      ToolResult<ToolOutput>? stepResult;
       bool stepPassed = false;
       int attemptCount = 0;
       final maxRetries = stepConfig.getEffectiveMaxRetries(step.maxRetries);
@@ -115,7 +115,7 @@ class ToolFlow {
             stepIndex: i,
             round: attemptCount,
           );
-          stepResult = ToolResult(
+          stepResult = ToolResult<ToolOutput>(
             toolName: step.toolName,
             input: errorStepInput,
             output: ToolOutput({'error': e.toString()}),
@@ -171,13 +171,13 @@ class ToolFlow {
       allIssues: _getAllIssues(),
       resultsByToolName: Map.unmodifiable(_resultsByToolName),
       allResultsByToolName: _allResultsByToolName.map(
-        (key, value) => MapEntry(key, List<ToolResult>.unmodifiable(value)),
+        (key, value) => MapEntry(key, List<ToolResult<ToolOutput>>.unmodifiable(value)),
       ),
     );
   }
 
   /// Executes a single step
-  Future<ToolResult> _executeStep({
+  Future<ToolResult<ToolOutput>> _executeStep({
     required ToolCallStep step,
     required int stepIndex,
     required int round,
@@ -222,7 +222,7 @@ class ToolFlow {
     }
 
     // Create initial result without issues (audits will add them)
-    final result = ToolResult(
+    final result = ToolResult<ToolOutput>(
       toolName: step.toolName,
       input: stepInput,
       output: typedOutput,
@@ -233,8 +233,8 @@ class ToolFlow {
   }
 
   /// Runs audits for a step and returns the result with any issues found
-  Future<ToolResult> _runAuditsForStep({
-    required ToolResult result,
+  Future<ToolResult<ToolOutput>> _runAuditsForStep({
+    required ToolResult<ToolOutput> result,
     required StepConfig stepConfig,
     required int stepIndex,
   }) async {
@@ -292,7 +292,7 @@ class ToolFlow {
     }
 
     // Include results from previous steps if configured (for includeOutputsFrom)
-    List<ToolResult> includedResults = [];
+    List<ToolResult<ToolOutput>> includedResults = [];
     if (step.stepConfig.hasOutputInclusion) {
       includedResults = _getIncludedResults(stepConfig: step.stepConfig);
       final includedOutputs = step.stepConfig.buildIncludedOutputs(
@@ -330,11 +330,11 @@ class ToolFlow {
   /// Gets the list of results that should be passed to inputBuilder
   // TODO: This logic seems really similar to how we get the includeOutputsFrom list.
   /// // Consider consolidating the logic to a reusable helper function.
-  List<ToolResult> _getInputBuilderResults({required ToolCallStep step}) {
-    final inputResults = <ToolResult>[];
+  List<ToolResult<ToolOutput>> _getInputBuilderResults({required ToolCallStep step}) {
+    final inputResults = <ToolResult<ToolOutput>>[];
 
     for (final reference in step.buildInputsFrom) {
-      ToolResult? sourceResult;
+      ToolResult<ToolOutput>? sourceResult;
 
       // Find the source result by index or tool name
       if (reference is int) {
@@ -354,8 +354,8 @@ class ToolFlow {
   }
 
   /// Gets the list of results that should be included based on step configuration
-  List<ToolResult> _getIncludedResults({required StepConfig stepConfig}) {
-    final includedResults = <ToolResult>[];
+  List<ToolResult<ToolOutput>> _getIncludedResults({required StepConfig stepConfig}) {
+    final includedResults = <ToolResult<ToolOutput>>[];
 
     for (final include in stepConfig.includeOutputsFrom) {
       if (include is int) {
@@ -391,16 +391,16 @@ class ToolFlow {
 
   /// Gets the current results (for testing/debugging)
   @visibleForTesting
-  List<ToolResult> get currentResults => List.unmodifiable(_results);
+  List<ToolResult<ToolOutput>> get currentResults => List.unmodifiable(_results);
 
   /// Gets the current results by tool name (for testing/debugging)
   @visibleForTesting
-  Map<String, ToolResult> get currentResultsByToolName =>
+  Map<String, ToolResult<ToolOutput>> get currentResultsByToolName =>
       Map.unmodifiable(_resultsByToolName);
 
   /// Gets the current all results by tool name (for testing/debugging)
   @visibleForTesting
-  Map<String, List<ToolResult>> get currentAllResultsByToolName =>
+  Map<String, List<ToolResult<ToolOutput>>> get currentAllResultsByToolName =>
       Map.unmodifiable(
         _allResultsByToolName.map(
           (key, value) => MapEntry(key, List.unmodifiable(value)),
@@ -411,7 +411,7 @@ class ToolFlow {
 /// Result of executing a ToolFlow
 class ToolFlowResult {
   /// Results from all executed steps
-  final List<ToolResult> results;
+  final List<ToolResult<ToolOutput>> results;
 
   // TODO: Is finalState ever used? It's basically the _state collection that was passed around, and is also now not used I don't think.
   /// Final state after all steps completed
@@ -427,7 +427,7 @@ class ToolFlowResult {
   /// ```dart
   /// final latestPaletteResult = result.resultsByToolName['extract_palette'];
   /// ```
-  final Map<String, ToolResult> resultsByToolName;
+  final Map<String, ToolResult<ToolOutput>> resultsByToolName;
 
   /// All results grouped by tool name (handles duplicates)
   /// Each tool name maps to a list of results in execution order
@@ -439,7 +439,7 @@ class ToolFlowResult {
   ///   print('Palette from step ${result.input['_round']}: ${result.output}');
   /// }
   /// ```
-  final Map<String, List<ToolResult>> allResultsByToolName;
+  final Map<String, List<ToolResult<ToolOutput>>> allResultsByToolName;
 
   /// Creates a ToolFlowResult
   const ToolFlowResult({
@@ -474,7 +474,7 @@ class ToolFlowResult {
   ///   final colors = paletteResult.output['colors'];
   /// }
   /// ```
-  ToolResult? getResultByToolName(String toolName) {
+  ToolResult<ToolOutput>? getResultByToolName(String toolName) {
     return resultsByToolName[toolName];
   }
 
@@ -488,26 +488,26 @@ class ToolFlowResult {
   ///   print('Refinement iteration ${i + 1}: ${allRefinements[i].output}');
   /// }
   /// ```
-  List<ToolResult> getAllResultsByToolName(String toolName) {
+  List<ToolResult<ToolOutput>> getAllResultsByToolName(String toolName) {
     return allResultsByToolName[toolName] ?? [];
   }
 
   /// Gets all results for tools matching a pattern
-  List<ToolResult> getResultsWhere(bool Function(ToolResult) predicate) {
+  List<ToolResult<ToolOutput>> getResultsWhere(bool Function(ToolResult<ToolOutput>) predicate) {
     return results.where(predicate).toList();
   }
 
   /// Gets results by tool names (most recent for each tool)
-  List<ToolResult> getResultsByToolNames(List<String> toolNames) {
+  List<ToolResult<ToolOutput>> getResultsByToolNames(List<String> toolNames) {
     return toolNames
         .map((name) => resultsByToolName[name])
         .where((result) => result != null)
-        .cast<ToolResult>()
+        .cast<ToolResult<ToolOutput>>()
         .toList();
   }
 
   /// Gets all results by tool names (including duplicates)
-  List<ToolResult> getAllResultsByToolNames(List<String> toolNames) {
+  List<ToolResult<ToolOutput>> getAllResultsByToolNames(List<String> toolNames) {
     return toolNames.expand((name) => getAllResultsByToolName(name)).toList();
   }
 

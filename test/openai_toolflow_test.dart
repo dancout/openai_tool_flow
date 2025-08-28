@@ -62,6 +62,15 @@ class TestToolOutput extends ToolOutput {
 }
 
 void main() {
+  // Register test output types for deserialization
+  setUpAll(() {
+    ToolOutputRegistry.register('test_tool', (data) => TestToolOutput.fromMap(data));
+    ToolOutputRegistry.register('original_tool', (data) => TestToolOutput.fromMap(data));
+    ToolOutputRegistry.register('extract_palette', (data) => TestToolOutput.fromMap(data));
+    ToolOutputRegistry.register('refine_colors', (data) => TestToolOutput.fromMap(data));
+    ToolOutputRegistry.register('generate_theme', (data) => TestToolOutput.fromMap(data));
+  });
+
   group('Issue', () {
     test('should create an issue with required fields', () {
       final issue = Issue(
@@ -206,7 +215,7 @@ void main() {
 
   group('AuditFunction', () {
     test('should execute simple audit function', () {
-      final audit = SimpleAuditFunction(
+      final audit = SimpleAuditFunction<ToolOutput>(
         name: 'test_audit',
         auditFunction: (result) => [
           Issue(
@@ -275,7 +284,7 @@ void main() {
         defaultModel: 'gpt-4',
       );
 
-      final audit = SimpleAuditFunction(
+      final audit = SimpleAuditFunction<ToolOutput>(
         name: 'test_audit',
         auditFunction: (result) => [
           Issue(
@@ -368,7 +377,7 @@ void main() {
       );
 
       // Create an audit that generates issues
-      final audit = SimpleAuditFunction(
+      final audit = SimpleAuditFunction<ToolOutput>(
         name: 'color_audit',
         auditFunction: (result) => [
           Issue(

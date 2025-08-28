@@ -10,7 +10,7 @@ class ToolInput {
   final int round;
 
   /// Results from previous steps that may be relevant
-  final List<ToolResult> previousResults;
+  final List<ToolResult<ToolOutput>> previousResults;
 
   /// Custom input data specific to this tool
   final Map<String, dynamic> customData;
@@ -58,7 +58,7 @@ class ToolInput {
         customData.remove('_previous_results') as List? ?? [];
     final previousResults = previousResultsJson
         .cast<Map<String, dynamic>>()
-        .map((json) => ToolResult.fromJson(json))
+        .map((json) => ToolResult<ToolOutput>.fromJson(json))
         .toList();
     final model = customData.remove('_model') as String? ?? 'gpt-4';
     final temperature = customData.remove('_temperature') as double?;

@@ -1,21 +1,22 @@
 import 'package:openai_toolflow/openai_toolflow.dart';
+import 'typed_interfaces.dart';
 
 /// A simple audit function that can be created with a function
 /// 
 /// This implementation is provided in the example for flexibility,
 /// allowing projects to use it or create their own audit implementations.
-class SimpleAuditFunction extends AuditFunction {
+class SimpleAuditFunction<T extends ToolOutput> extends AuditFunction<T> {
   @override
   final String name;
   
-  final List<Issue> Function(ToolResult) _auditFunction;
+  final List<Issue> Function(ToolResult<T>) _auditFunction;
   final bool Function(List<Issue>)? _passedCriteriaFunction;
   final String Function(List<Issue>)? _failureReasonFunction;
 
   /// Creates a simple audit function with a name and audit function
   SimpleAuditFunction({
     required this.name,
-    required List<Issue> Function(ToolResult) auditFunction,
+    required List<Issue> Function(ToolResult<T>) auditFunction,
     bool Function(List<Issue>)? passedCriteriaFunction,
     String Function(List<Issue>)? failureReasonFunction,
   }) : _auditFunction = auditFunction,
@@ -23,7 +24,7 @@ class SimpleAuditFunction extends AuditFunction {
        _failureReasonFunction = failureReasonFunction;
 
   @override
-  List<Issue> run(ToolResult result) => _auditFunction(result);
+  List<Issue> run(ToolResult<T> result) => _auditFunction(result);
 
   @override
   bool passedCriteria(List<Issue> issues) {
@@ -82,36 +83,32 @@ class ColorQualityIssue extends Issue {
 }
 
 /// Example of a comprehensive color audit function
-class ColorQualityAuditFunction extends AuditFunction {
+class ColorQualityAuditFunction extends AuditFunction<PaletteExtractionOutput> {
   @override
   String get name => 'color_quality_audit';
 
   @override
-  List<Issue> run(ToolResult result) {
+  List<Issue> run(ToolResult<PaletteExtractionOutput> result) {
     final issues = <Issue>[];
     
-    // TODO: If we could specify this AuditFunction's run method to intake a more specifc ToolResult, then we wouldn't have to convert it to a map and then hope that we find a list of colors at ['colors']
-
-    // Check if colors are in valid hex format
-    final colors = result.output.toMap()['colors'] as List?;
-    if (colors != null) {
-      for (int i = 0; i < colors.length; i++) {
-        final color = colors[i] as String;
-        if (!RegExp(r'^#[0-9A-Fa-f]{6}$').hasMatch(color)) {
-          issues.add(ColorQualityIssue(
-            id: 'invalid_color_format_$i',
-            severity: IssueSeverity.medium,
-            description: 'Color $color is not in valid hex format',
-            context: {
-              'color_index': i,
-              'color_value': color,
-              'expected_format': '#RRGGBB',
-            },
-            suggestions: ['Convert to valid hex format'],
-            problematicColor: color,
-            qualityScore: 0.0,
-          ));
-        }
+    // Now we can safely access the strongly-typed output
+    final colors = result.output.colors;
+    for (int i = 0; i < colors.length; i++) {
+      final color = colors[i];
+      if (!RegExp(r'^#[0-9A-Fa-f]{6}$').hasMatch(color)) {
+        issues.add(ColorQualityIssue(
+          id: 'invalid_color_format_$i',
+          severity: IssueSeverity.medium,
+          description: 'Color $color is not in valid hex format',
+          context: {
+            'color_index': i,
+            'color_value': color,
+            'expected_format': '#RRGGBB',
+          },
+          suggestions: ['Convert to valid hex format'],
+          problematicColor: color,
+          qualityScore: 0.0,
+        ));
       }
     }
     
@@ -146,7 +143,7 @@ class ColorQualityAuditFunction extends AuditFunction {
 }
 
 /// Example of a diversity audit function with weighted threshold
-class ColorDiversityAuditFunction extends AuditFunction {
+class ColorDiversityAuditFunction extends AuditFunction<PaletteExtractionOutput> {
   final int minimumColors;
   final double weightedThreshold;
 
@@ -159,18 +156,18 @@ class ColorDiversityAuditFunction extends AuditFunction {
   String get name => 'color_diversity_audit';
 
   @override
-  List<Issue> run(ToolResult result) {
+  List<Issue> run(ToolResult<PaletteExtractionOutput> result) {
     final issues = <Issue>[];
     
-    // Check if we have enough colors
-    final colors = result.output.toMap()['colors'] as List?;
-    if (colors == null || colors.length < minimumColors) {
+    // Check if we have enough colors using strongly-typed access
+    final colors = result.output.colors;
+    if (colors.length < minimumColors) {
       issues.add(Issue(
         id: 'insufficient_colors',
         severity: IssueSeverity.high,
         description: 'Not enough colors extracted for a diverse palette',
         context: {
-          'colors_found': colors?.length ?? 0,
+          'colors_found': colors.length,
           'minimum_required': minimumColors,
         },
         suggestions: [

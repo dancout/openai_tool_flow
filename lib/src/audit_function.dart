@@ -1,11 +1,12 @@
 import 'issue.dart';
 import 'tool_result.dart';
+import 'typed_interfaces.dart';
 
 /// Abstract base class for audit functions.
 ///
 /// Developers implement this class to provide domain-specific audit logic.
 /// An audit inspects tool outputs and produces Issue objects.
-abstract class AuditFunction {
+abstract class AuditFunction<T extends ToolOutput> {
   /// Name of this audit function
   String get name;
 
@@ -13,7 +14,7 @@ abstract class AuditFunction {
   ///
   /// This method should be implemented by subclasses to provide
   /// domain-specific audit logic.
-  List<Issue> run(ToolResult result);
+  List<Issue> run(ToolResult<T> result);
 
   /// Determines if the audit criteria are met for the given issues
   ///
