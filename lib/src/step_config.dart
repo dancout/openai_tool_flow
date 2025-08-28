@@ -108,7 +108,7 @@ class StepConfig {
 
   /// Schema definition for the expected tool output.
   /// This defines the structure that OpenAI tool calls should conform to.
-  /// 
+  ///
   /// **When to use:** Define the exact output structure you expect from the tool call,
   /// ensuring type safety and consistent data formats.
   ///
@@ -132,7 +132,11 @@ class StepConfig {
   ///   'required': ['colors', 'confidence']
   /// }
   /// ```
-  final Map<String, dynamic>? outputSchema;
+  final
+  // TODO: The output schema should be more structured so that a user doesn't accidentally forget to define the high level type: object, or the properties collection or the required collection.
+  /// It could even be an object that has those main sections outlined above as the parameters on the object. And then maybe properties could be a List<Map<String, dynamic>> that represents properties, confidence, etc.
+  Map<String, dynamic>?
+  outputSchema;
 
   const StepConfig({
     this.audits = const [],

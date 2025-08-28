@@ -54,19 +54,22 @@ class ToolResult<T extends ToolOutput> {
       );
     }
 
+    // TODO: We need a better constructor here, because what if the extended <T> has other parameters that aren't included in the base ToolResult?
     return ToolResult<ToolOutput>(
-      toolName: toolName,
-      input: typedInput,
-      output: typedOutput,
-      issues:
-          (json['issues'] as List?)
-              ?.map(
-                (issueJson) =>
-                    Issue.fromJson(issueJson as Map<String, dynamic>),
-              )
-              .toList() ??
-          [],
-    ) as ToolResult<T>;
+          toolName: toolName,
+          input: typedInput,
+          output: typedOutput,
+          issues:
+              (json['issues'] as List?)
+                  ?.map(
+                    (issueJson) =>
+                        Issue.fromJson(issueJson as Map<String, dynamic>),
+                  )
+                  .toList() ??
+              [],
+        )
+        // TODO: Related to above, should this be as ToolResult<T>, or just as ToolResult<ToolOutput>? Can it be a <T> without knowing all its params?
+        as ToolResult<T>;
   }
 
   /// Converts this ToolResult to a JSON map

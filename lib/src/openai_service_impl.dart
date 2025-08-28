@@ -121,6 +121,7 @@ class DefaultOpenAiToolService implements OpenAiToolService {
   Map<String, dynamic> _buildOutputSchema({required ToolCallStep step}) {
     // Check if step has a custom output schema configured
     if (step.stepConfig.outputSchema != null) {
+      // TODO: Should we make outputSchema required? That way we force the end user to think about the output structure from the get-go when defining their tool steps.
       return step.stepConfig.outputSchema!;
     }
 
