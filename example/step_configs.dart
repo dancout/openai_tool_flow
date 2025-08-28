@@ -2,7 +2,6 @@
 ///
 /// This file demonstrates various ways to configure steps, audits, and
 /// forwarding patterns for complex workflows.
-library step_configs;
 
 import 'package:openai_toolflow/openai_toolflow.dart';
 
