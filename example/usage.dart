@@ -68,18 +68,31 @@ void main() async {
   final steps = [
     // Step 1: Extract base colors from image
     ToolCallStep(
-      // TODO: We don't actually use the sanitizedInput in our example.
       toolName: 'extract_palette',
       model: 'gpt-4',
-      inputBuilder: (previousResults) => PaletteExtractionInput(
-        imagePath: 'assets/sample_image.jpg',
-        maxColors: 8,
-        minSaturation: 0.3,
-        userPreferences: {'style': 'modern', 'mood': 'energetic'},
-      ).toMap(),
+      inputBuilder: (previousResults) {
+        // Build the raw input
+        // Note: This is the first step, so there are no previousResults to pull
+        // from, which is why we are building an input and then converting it to
+        // a map.
+        final rawInput = PaletteExtractionInput(
+          imagePath: 'assets/sample_image.jpg',
+          maxColors: 8,
+          minSaturation: 0.3,
+          userPreferences: {'style': 'modern', 'mood': 'energetic'},
+        ).toMap();
+        // Add debugInfo for sanitizer demonstration
+        return rawInput;
+      },
       stepConfig: StepConfig(
         audits: [diversityAudit],
         maxRetries: 3,
+        inputSanitizer: (input) {
+          final sanitized = Map<String, dynamic>.from(input);
+          // Remove unnecessary metadata to avoid token bloat
+          sanitized.remove('metadata');
+          return sanitized;
+        },
         outputSchema: {
           'type': 'object',
           'properties': {
@@ -394,6 +407,7 @@ class PaletteExtractionInput extends ToolInput {
       'maxColors': maxColors,
       'minSaturation': minSaturation,
       'userPreferences': userPreferences,
+      'metadata': {'generated_at': DateTime.now().toIso8601String()},
     };
   }
 

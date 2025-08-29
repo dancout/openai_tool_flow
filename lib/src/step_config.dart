@@ -52,14 +52,17 @@ class StepConfig {
   ///   it becomes `{'extract_palette_colors': [...]}` in the receiving step
   final List<dynamic> includeOutputsFrom;
 
-  /// Function to sanitize/transform the input BEFORE executing the step.
-  /// Takes the raw input map and returns cleaned input.
-  /// Called BEFORE step execution.
+  /// Function to sanitize or transform the input before executing the step.
   ///
-  /// **When to use:** Transform data between steps, clean up field names,
-  /// filter out unwanted data, or standardize input format.
+  /// This function receives the result of the `inputBuilder` step as its input,
+  /// allowing you to clean, filter, or standardize the input data before the main
+  /// step execution. Typical use cases include transforming data between steps,
+  /// cleaning up field names, filtering out unwanted data, or standardizing the
+  /// input format.
   ///
-  /// **Example:**
+  /// Called before step execution.
+  ///
+  /// Example usage:
   /// ```dart
   /// inputSanitizer: (input) {
   ///   final cleaned = Map<String, dynamic>.from(input);

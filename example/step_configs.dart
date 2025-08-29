@@ -176,18 +176,10 @@ class ExampleSanitizers {
   ) {
     final sanitized = <String, dynamic>{};
 
-    // Ensure colors are in the right format if present
-    if (input.containsKey('colors')) {
-      final colors = input['colors'] as List?;
-      if (colors != null) {
-        final cleanColors = colors
-            .cast<String>()
-            .where((color) => RegExp(r'^#[0-9A-Fa-f]{6}$').hasMatch(color))
-            .take(8)
-            .toList();
-        sanitized['colors'] = cleanColors;
-      }
-    }
+    // Remove extra metadata or debug fields if present
+    sanitized.addAll(input);
+    sanitized.remove('metadata');
+    sanitized.remove('debugInfo');
 
     // Add confidence as context if present
     if (input.containsKey('confidence')) {
@@ -211,10 +203,23 @@ class ExampleSanitizers {
     // Ensure colors are properly formatted
     final colors = sanitized['colors'] as List?;
     if (colors != null) {
-      sanitized['colors'] = colors
+      final cleanColors = colors
           .cast<String>()
-          .where((color) => RegExp(r'^#[0-9A-Fa-f]{6}$').hasMatch(color))
+          .map((color) {
+            // If already a valid hex code with hashtag, keep as is
+            if (RegExp(r'^#[0-9A-Fa-f]{6}$').hasMatch(color)) {
+              return color;
+            }
+            // If it's a 6-digit hex string without hashtag, add hashtag
+            if (RegExp(r'^[0-9A-Fa-f]{6}$').hasMatch(color)) {
+              return '#$color';
+            }
+            // Otherwise, skip
+            return null;
+          })
+          .whereType<String>()
           .toList();
+      sanitized['colors'] = cleanColors;
     }
 
     return sanitized;
@@ -307,15 +312,23 @@ Map<String, ToolCallStep> createColorThemeWorkflow() {
     'extract_palette': ToolCallStep(
       toolName: 'extract_palette',
       model: 'gpt-4',
-      inputBuilder: (previousResults) => PaletteExtractionInput(
-        imagePath: 'assets/sample_image.jpg',
-        maxColors: 8,
-        minSaturation: 0.3,
-        userPreferences: {'style': 'modern', 'mood': 'energetic'},
-      ).toMap(),
+      inputBuilder: (previousResults) {
+        final input = PaletteExtractionInput(
+          imagePath: 'assets/sample_image.jpg',
+          maxColors: 8,
+          minSaturation: 0.3,
+          userPreferences: {'style': 'modern', 'mood': 'energetic'},
+        ).toMap();
+        input['debugInfo'] = {
+          'timestamp': DateTime.now().toIso8601String(),
+          'message': 'Palette extraction debug log',
+        };
+        return input;
+      },
       stepConfig: StepConfig(
         audits: [diversityAudit],
         maxRetries: 3,
+        outputSanitizer: ExampleSanitizers.paletteOutputSanitizer,
         outputSchema: {
           'type': 'object',
           'properties': {

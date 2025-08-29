@@ -32,10 +32,13 @@ void main() async {
   final mockService = MockOpenAiToolService(
     responses: {
       'extract_palette': {
-        'colors': ['#FF5733', '#33FF57', '#3357FF', '#F333FF', '#FF33F5'],
+        // NOTE: Some of these colors are missing the leading '#', which will
+        // be taken care of by the ExampleSanitizers.paletteOutputSanitizer
+        'colors': ['#FF5733', '33FF57', '3357FF', '#F333FF', '#FF33F5'],
         'confidence': 0.85,
         'image_analyzed': 'assets/sample_image.jpg',
         'metadata': {'extraction_method': 'k-means', 'processing_time': 2.3},
+        'debugInfo': 'Palette extraction debug log',
       },
       'refine_colors': {
         'refined_colors': ['#E74C3C', '#2ECC71', '#3498DB', '#9B59B6'],

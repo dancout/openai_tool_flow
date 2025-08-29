@@ -285,6 +285,8 @@ class ToolFlow {
     // Execute the inputBuilder to get custom input data
     Map<String, dynamic> customData;
     try {
+      // TODO: Should the output of the inputBuilder be more like a structured object that always has a schema, a toMap, any of the internal custom data, etc?
+      /// And then we could pass that value into ToolInput under what is currently customData as a more structured object that we can call .toMap on later just before the open ai tool call.
       customData = step.inputBuilder(inputBuilderResults);
     } catch (e) {
       throw Exception(
