@@ -73,6 +73,10 @@ class ExampleStepConfigs {
   static StepConfig forwardingIssuesConfig(List<int> stepIndexes) {
     return StepConfig(
       audits: [ColorQualityAuditFunction()],
+      // TODO: Related to how we can easily pull previous outputs/issues forward automatically for the user so they don't have to parse it.
+      // This could be a tuple or new object with a bool that represents if we should include that step's issues in the final tool call.
+      // That way, the user doesn't have to worry about how to parse it.
+      // Or they could even have the option to override the issue parser for that step if they'd like.
       includeOutputsFrom: stepIndexes,
       outputSchema: {
         'type': 'object',
