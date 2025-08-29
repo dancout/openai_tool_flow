@@ -235,37 +235,6 @@ void main() {
       expect(step.inputBuilder([]).containsKey('max_colors'), isTrue);
       expect(step.inputBuilder([])['max_colors'], equals(5));
     });
-
-    test('should serialize to and from JSON', () {
-      final step = ToolCallStep(
-        toolName: 'extract_colors',
-        model: 'gpt-4',
-        inputBuilder: (previousResults) => {'max_colors': 5},
-        stepConfig: StepConfig(
-          outputSchema: {
-            'type': 'object',
-            'properties': {
-              'colors': {
-                'type': 'array',
-                'items': {'type': 'string'},
-                'description': 'Extracted color hex codes',
-              },
-            },
-            'required': ['colors'],
-          },
-        ),
-      );
-
-      final json = step.toJson();
-
-      // Verify JSON contains expected fields
-      expect(json['toolName'], equals('extract_colors'));
-      expect(json['model'], equals('gpt-4'));
-      expect(json.containsKey('_note'), isTrue);
-
-      // fromJson should throw since functions can't be deserialized
-      expect(() => ToolCallStep.fromJson(json), throwsUnsupportedError);
-    });
   });
 
   group('AuditFunction', () {

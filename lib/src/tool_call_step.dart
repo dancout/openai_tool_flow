@@ -66,37 +66,6 @@ class ToolCallStep {
     required this.stepConfig,
   });
 
-  // TODO: Does it make sense to simply not include this method, instead of declaring it and assigning an unsupported error, then writing a test that checks it throws an error, and that's the only ever usage?
-  /// // This is an example to give where we shouldn't declare something just to declare it.
-  /// // Only create things you are actively going using.
-
-  /// Creates a ToolCallStep from a JSON map
-  ///
-  /// NOTE: inputBuilder functions cannot be serialized, so this method
-  /// is not supported for ToolCallStep with dynamic input builders.
-  factory ToolCallStep.fromJson(Map<String, dynamic> json) {
-    throw UnsupportedError(
-      'ToolCallStep.fromJson is not supported because inputBuilder functions cannot be serialized. '
-      'Create ToolCallStep instances directly with the required inputBuilder function.',
-    );
-  }
-
-  /// Converts this ToolCallStep to a JSON map
-  ///
-  /// NOTE: inputBuilder functions cannot be serialized, so this method
-  /// only includes basic metadata about the step.
-  Map<String, dynamic> toJson() {
-    return {
-      'toolName': toolName,
-      'model': model,
-      'buildInputsFrom': buildInputsFrom,
-      'issues': issues.map((issue) => issue.toJson()).toList(),
-      'maxRetries': maxRetries,
-      'stepConfig': stepConfig.toJson(),
-      '_note': 'inputBuilder function not serialized',
-    };
-  }
-
   /// Creates a copy of this ToolCallStep with updated parameters
   ToolCallStep copyWith({
     String? toolName,
