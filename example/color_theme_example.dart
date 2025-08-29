@@ -4,6 +4,7 @@
 /// that extracts colors from an image, refines them, and generates a final
 /// theme. Features the new service injection architecture and enhanced step
 /// configuration.
+library;
 
 import 'package:openai_toolflow/openai_toolflow.dart';
 

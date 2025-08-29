@@ -135,7 +135,7 @@ class StepConfig {
   final
   // TODO: The output schema should be more structured so that a user doesn't accidentally forget to define the high level type: object, or the properties collection or the required collection.
   /// It could even be an object that has those main sections outlined above as the parameters on the object. And then maybe properties could be a List<Map<String, dynamic>> that represents properties, confidence, etc.
-  Map<String, dynamic>?
+  Map<String, dynamic>
   outputSchema;
 
   const StepConfig({
@@ -154,7 +154,7 @@ class StepConfig {
     this.includeOutputsFrom = const [],
     this.inputSanitizer,
     this.outputSanitizer,
-    this.outputSchema,
+    required this.outputSchema,
   });
 
   /// Returns true if this step has any audits configured
@@ -285,6 +285,7 @@ class StepConfig {
       // Note: Functions cannot be serialized
       includeOutputsFrom:
           json['includeOutputsFrom'] as List<dynamic>? ?? const [],
+      outputSchema: json['outputSchema'] as Map<String, dynamic>? ?? {},
     );
   }
 
@@ -299,20 +300,7 @@ class StepConfig {
       'hasInputSanitizer': hasInputSanitizer,
       'hasOutputSanitizer': hasOutputSanitizer,
       'includeOutputsFrom': includeOutputsFrom,
+      'outputSchema': outputSchema,
     };
-  }
-}
-
-/// Extension methods for working with step configurations
-extension StepConfigExtension on Map<int, StepConfig> {
-  /// Gets the configuration for a specific step index
-  /// Returns a default configuration if none is specified
-  StepConfig getConfigForStep(int stepIndex) {
-    return this[stepIndex] ?? const StepConfig();
-  }
-
-  /// Checks if a specific step has any audits configured
-  bool stepHasAudits(int stepIndex) {
-    return getConfigForStep(stepIndex).hasAudits;
   }
 }

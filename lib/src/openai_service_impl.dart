@@ -111,34 +111,9 @@ class DefaultOpenAiToolService implements OpenAiToolService {
       'function': {
         'name': step.toolName,
         'description': 'Execute ${step.toolName} tool with provided parameters',
-        'parameters': _buildOutputSchema(step: step),
+        'parameters': step.stepConfig.outputSchema,
       },
       "strict": true,
-    };
-  }
-
-  /// Builds output schema for OpenAI based on step configuration
-  Map<String, dynamic> _buildOutputSchema({required ToolCallStep step}) {
-    // Check if step has a custom output schema configured
-    if (step.stepConfig.outputSchema != null) {
-      // TODO: Should we make outputSchema required? That way we force the end user to think about the output structure from the get-go when defining their tool steps.
-      return step.stepConfig.outputSchema!;
-    }
-
-    // Fallback to a generic schema if no specific schema is provided
-    return {
-      'type': 'object',
-      'properties': {
-        'result': {
-          'type': 'string',
-          'description': 'The result of executing ${step.toolName}',
-        },
-        'success': {
-          'type': 'boolean',
-          'description': 'Whether the operation was successful',
-        },
-      },
-      'required': ['result'],
     };
   }
 

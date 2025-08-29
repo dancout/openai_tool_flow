@@ -1,5 +1,6 @@
 import 'package:openai_toolflow/openai_toolflow.dart';
 import 'package:test/test.dart';
+
 import '../example/audit_functions.dart';
 
 /// Simple test implementation of ToolInput
@@ -18,7 +19,8 @@ class TestToolInput extends ToolInput {
   factory TestToolInput.fromMap(Map<String, dynamic> map) {
     final customData = Map<String, dynamic>.from(map);
     final round = customData.remove('_round') as int? ?? 0;
-    final previousResultsJson = customData.remove('_previous_results') as List? ?? [];
+    final previousResultsJson =
+        customData.remove('_previous_results') as List? ?? [];
     final previousResults = previousResultsJson
         .cast<Map<String, dynamic>>()
         .map((json) => ToolResult.fromJson(json))
@@ -64,11 +66,38 @@ class TestToolOutput extends ToolOutput {
 void main() {
   // Register test output types for deserialization
   setUpAll(() {
-    ToolOutputRegistry.register('test_tool', (data) => TestToolOutput.fromMap(data));
-    ToolOutputRegistry.register('original_tool', (data) => TestToolOutput.fromMap(data));
-    ToolOutputRegistry.register('extract_palette', (data) => TestToolOutput.fromMap(data));
-    ToolOutputRegistry.register('refine_colors', (data) => TestToolOutput.fromMap(data));
-    ToolOutputRegistry.register('generate_theme', (data) => TestToolOutput.fromMap(data));
+    ToolOutputRegistry.register(
+      'test_tool',
+      (data) => TestToolOutput.fromMap(data),
+    );
+    ToolOutputRegistry.register(
+      'original_tool',
+      (data) => TestToolOutput.fromMap(data),
+    );
+    ToolOutputRegistry.register(
+      'extract_palette',
+      (data) => TestToolOutput.fromMap(data),
+    );
+    ToolOutputRegistry.register(
+      'refine_colors',
+      (data) => TestToolOutput.fromMap(data),
+    );
+    ToolOutputRegistry.register(
+      'generate_theme',
+      (data) => TestToolOutput.fromMap(data),
+    );
+    ToolOutputRegistry.register(
+      'step1_tool',
+      (data) => TestToolOutput.fromMap(data),
+    );
+    ToolOutputRegistry.register(
+      'step2_tool',
+      (data) => TestToolOutput.fromMap(data),
+    );
+    ToolOutputRegistry.register(
+      'step3_tool',
+      (data) => TestToolOutput.fromMap(data),
+    );
   });
 
   group('Issue', () {
@@ -112,7 +141,7 @@ void main() {
     test('should create a tool result with required fields', () {
       final input = TestToolInput(data: {'param': 'value'});
       final output = TestToolOutput({'result': 'success'});
-      
+
       final result = ToolResult(
         toolName: 'test_tool',
         input: input,
@@ -149,8 +178,14 @@ void main() {
       final restored = ToolResult.fromJson(json);
 
       expect(restored.toolName, equals(result.toolName));
-      expect(restored.input.toMap().toString(), equals(result.input.toMap().toString()));
-      expect(restored.output.toMap().toString(), equals(result.output.toMap().toString()));
+      expect(
+        restored.input.toMap().toString(),
+        equals(result.input.toMap().toString()),
+      );
+      expect(
+        restored.output.toMap().toString(),
+        equals(result.output.toMap().toString()),
+      );
       expect(restored.issues.length, equals(1));
       expect(restored.hasIssues, isTrue);
     });
@@ -158,10 +193,7 @@ void main() {
 
   group('OpenAIConfig', () {
     test('should create config with required fields', () {
-      final config = OpenAIConfig(
-        apiKey: 'test-key',
-        defaultModel: 'gpt-4',
-      );
+      final config = OpenAIConfig(apiKey: 'test-key', defaultModel: 'gpt-4');
 
       expect(config.apiKey, equals('test-key'));
       expect(config.defaultModel, equals('gpt-4'));
@@ -169,10 +201,7 @@ void main() {
     });
 
     test('should not include API key in JSON output', () {
-      final config = OpenAIConfig(
-        apiKey: 'secret-key',
-        defaultModel: 'gpt-4',
-      );
+      final config = OpenAIConfig(apiKey: 'secret-key', defaultModel: 'gpt-4');
 
       final json = config.toJson();
       expect(json, isNot(contains('secret-key')));
@@ -186,6 +215,19 @@ void main() {
         toolName: 'extract_colors',
         model: 'gpt-4',
         inputBuilder: (previousResults) => {'max_colors': 5},
+        stepConfig: StepConfig(
+          outputSchema: {
+            'type': 'object',
+            'properties': {
+              'colors': {
+                'type': 'array',
+                'items': {'type': 'string'},
+                'description': 'Extracted color hex codes',
+              },
+            },
+            'required': ['colors'],
+          },
+        ),
       );
 
       expect(step.toolName, equals('extract_colors'));
@@ -199,15 +241,28 @@ void main() {
         toolName: 'extract_colors',
         model: 'gpt-4',
         inputBuilder: (previousResults) => {'max_colors': 5},
+        stepConfig: StepConfig(
+          outputSchema: {
+            'type': 'object',
+            'properties': {
+              'colors': {
+                'type': 'array',
+                'items': {'type': 'string'},
+                'description': 'Extracted color hex codes',
+              },
+            },
+            'required': ['colors'],
+          },
+        ),
       );
 
       final json = step.toJson();
-      
+
       // Verify JSON contains expected fields
       expect(json['toolName'], equals('extract_colors'));
       expect(json['model'], equals('gpt-4'));
       expect(json.containsKey('_note'), isTrue);
-      
+
       // fromJson should throw since functions can't be deserialized
       expect(() => ToolCallStep.fromJson(json), throwsUnsupportedError);
     });
@@ -224,7 +279,7 @@ void main() {
             description: 'Audit found issue',
             context: {},
             suggestions: [],
-          )
+          ),
         ],
       );
 
@@ -242,10 +297,7 @@ void main() {
 
   group('ToolFlow', () {
     test('should execute simple flow with mock service', () async {
-      final config = OpenAIConfig(
-        apiKey: 'test-key',
-        defaultModel: 'gpt-4',
-      );
+      final config = OpenAIConfig(apiKey: 'test-key', defaultModel: 'gpt-4');
 
       // Create mock service with predefined responses
       final mockService = MockOpenAiToolService(
@@ -264,6 +316,19 @@ void main() {
             toolName: 'extract_palette',
             model: 'gpt-4',
             inputBuilder: (previousResults) => {'max_colors': 3},
+            stepConfig: StepConfig(
+              outputSchema: {
+                'type': 'object',
+                'properties': {
+                  'colors': {
+                    'type': 'array',
+                    'items': {'type': 'string'},
+                    'description': 'Extracted color hex codes',
+                  },
+                },
+                'required': ['colors'],
+              },
+            ),
           ),
         ],
         openAiService: mockService,
@@ -279,10 +344,7 @@ void main() {
     });
 
     test('should collect issues from audits', () async {
-      final config = OpenAIConfig(
-        apiKey: 'test-key',
-        defaultModel: 'gpt-4',
-      );
+      final config = OpenAIConfig(apiKey: 'test-key', defaultModel: 'gpt-4');
 
       final audit = SimpleAuditFunction<ToolOutput>(
         name: 'test_audit',
@@ -293,7 +355,7 @@ void main() {
             description: 'Test audit issue',
             context: {},
             suggestions: [],
-          )
+          ),
         ],
       );
 
@@ -306,7 +368,20 @@ void main() {
             toolName: 'extract_palette',
             model: 'gpt-4',
             inputBuilder: (previousResults) => {},
-            stepConfig: StepConfig(audits: [audit]),
+            stepConfig: StepConfig(
+              audits: [audit],
+              outputSchema: {
+                'type': 'object',
+                'properties': {
+                  'colors': {
+                    'type': 'array',
+                    'items': {'type': 'string'},
+                    'description': 'Extracted color hex codes',
+                  },
+                },
+                'required': ['colors'],
+              },
+            ),
           ),
         ],
         openAiService: mockService,
@@ -320,15 +395,16 @@ void main() {
     });
 
     test('should support tool name-based result retrieval', () async {
-      final config = OpenAIConfig(
-        apiKey: 'test-key',
-        defaultModel: 'gpt-4',
-      );
+      final config = OpenAIConfig(apiKey: 'test-key', defaultModel: 'gpt-4');
 
       final mockService = MockOpenAiToolService(
         responses: {
-          'extract_palette': {'colors': ['#FF0000', '#00FF00']},
-          'refine_colors': {'refined_colors': ['#FF5733', '#33FF57']},
+          'extract_palette': {
+            'colors': ['#FF0000', '#00FF00'],
+          },
+          'refine_colors': {
+            'refined_colors': ['#FF5733', '#33FF57'],
+          },
         },
       );
 
@@ -339,11 +415,37 @@ void main() {
             toolName: 'extract_palette',
             model: 'gpt-4',
             inputBuilder: (previousResults) => {},
+            stepConfig: StepConfig(
+              outputSchema: {
+                'type': 'object',
+                'properties': {
+                  'colors': {
+                    'type': 'array',
+                    'items': {'type': 'string'},
+                    'description': 'Extracted color hex codes',
+                  },
+                },
+                'required': ['colors'],
+              },
+            ),
           ),
           ToolCallStep(
             toolName: 'refine_colors',
             model: 'gpt-4',
             inputBuilder: (previousResults) => {},
+            stepConfig: StepConfig(
+              outputSchema: {
+                'type': 'object',
+                'properties': {
+                  'refined_colors': {
+                    'type': 'array',
+                    'items': {'type': 'string'},
+                    'description': 'Refined color hex codes',
+                  },
+                },
+                'required': ['refined_colors'],
+              },
+            ),
           ),
         ],
         openAiService: mockService,
@@ -352,29 +454,29 @@ void main() {
       final result = await flow.run();
 
       expect(result.results.length, equals(2));
-      
+
       // Test tool name-based retrieval
       final paletteResult = result.getResultByToolName('extract_palette');
       expect(paletteResult, isNotNull);
       expect(paletteResult!.toolName, equals('extract_palette'));
-      
+
       final refineResult = result.getResultByToolName('refine_colors');
       expect(refineResult, isNotNull);
       expect(refineResult!.toolName, equals('refine_colors'));
-      
+
       // Test non-existent tool
       expect(result.getResultByToolName('nonexistent'), isNull);
-      
+
       // Test multiple tool retrieval
-      final multipleResults = result.getResultsByToolNames(['extract_palette', 'refine_colors']);
+      final multipleResults = result.getResultsByToolNames([
+        'extract_palette',
+        'refine_colors',
+      ]);
       expect(multipleResults.length, equals(2));
     });
 
     test('should support output inclusion between steps', () async {
-      final config = OpenAIConfig(
-        apiKey: 'test-key',
-        defaultModel: 'gpt-4',
-      );
+      final config = OpenAIConfig(apiKey: 'test-key', defaultModel: 'gpt-4');
 
       // Create an audit that generates issues
       final audit = SimpleAuditFunction<ToolOutput>(
@@ -384,16 +486,22 @@ void main() {
             id: 'color-issue',
             severity: IssueSeverity.low,
             description: 'Color needs adjustment',
-            context: {'color': result.output.toMap()['colors']?.first ?? 'unknown'},
+            context: {
+              'color': result.output.toMap()['colors']?.first ?? 'unknown',
+            },
             suggestions: ['Increase saturation'],
-          )
+          ),
         ],
       );
 
       final mockService = MockOpenAiToolService(
         responses: {
-          'extract_palette': {'colors': ['#FF0000']},
-          'refine_colors': {'refined_colors': ['#FF5733']},
+          'extract_palette': {
+            'colors': ['#FF0000'],
+          },
+          'refine_colors': {
+            'refined_colors': ['#FF5733'],
+          },
         },
       );
 
@@ -404,7 +512,20 @@ void main() {
             toolName: 'extract_palette',
             model: 'gpt-4',
             inputBuilder: (previousResults) => {},
-            stepConfig: StepConfig(audits: [audit]),
+            stepConfig: StepConfig(
+              audits: [audit],
+              outputSchema: {
+                'type': 'object',
+                'properties': {
+                  'colors': {
+                    'type': 'array',
+                    'items': {'type': 'string'},
+                    'description': 'Extracted color hex codes',
+                  },
+                },
+                'required': ['colors'],
+              },
+            ),
           ),
           ToolCallStep(
             toolName: 'refine_colors',
@@ -412,6 +533,13 @@ void main() {
             inputBuilder: (previousResults) => {},
             stepConfig: StepConfig(
               includeOutputsFrom: [0], // Include outputs from step 0
+              outputSchema: {
+                'type': 'object',
+                'properties': {
+                  'result': {'type': 'string'},
+                },
+                'required': ['result'],
+              },
             ),
           ),
         ],
@@ -422,18 +550,21 @@ void main() {
 
       expect(result.results.length, equals(2));
       expect(result.allIssues.length, equals(1)); // One issue from first step
-      
+
       // Check that second step received outputs from first step
       final secondStepResult = result.results[1];
-      expect(secondStepResult.input.toMap().containsKey('extract_palette_colors'), isTrue);
-      expect(secondStepResult.input.toMap()['extract_palette_colors'], equals(['#FF0000']));
+      expect(
+        secondStepResult.input.toMap().containsKey('extract_palette_colors'),
+        isTrue,
+      );
+      expect(
+        secondStepResult.input.toMap()['extract_palette_colors'],
+        equals(['#FF0000']),
+      );
     });
 
     test('should handle duplicate tool names correctly', () async {
-      final config = OpenAIConfig(
-        apiKey: 'test-key',
-        defaultModel: 'gpt-4',
-      );
+      final config = OpenAIConfig(apiKey: 'test-key', defaultModel: 'gpt-4');
 
       final mockService = MockOpenAiToolService(
         responses: {
@@ -450,11 +581,37 @@ void main() {
             toolName: 'refine_colors',
             model: 'gpt-4',
             inputBuilder: (previousResults) => {'iteration': 1},
+            stepConfig: StepConfig(
+              outputSchema: {
+                'type': 'object',
+                'properties': {
+                  'refined_colors': {
+                    'type': 'array',
+                    'items': {'type': 'string'},
+                    'description': 'Refined color hex codes',
+                  },
+                },
+                'required': ['refined_colors'],
+              },
+            ),
           ),
           ToolCallStep(
             toolName: 'refine_colors', // Same tool name
             model: 'gpt-4',
             inputBuilder: (previousResults) => {'iteration': 2},
+            stepConfig: StepConfig(
+              outputSchema: {
+                'type': 'object',
+                'properties': {
+                  'refined_colors': {
+                    'type': 'array',
+                    'items': {'type': 'string'},
+                    'description': 'Refined color hex codes',
+                  },
+                },
+                'required': ['refined_colors'],
+              },
+            ),
           ),
         ],
         openAiService: mockService,
@@ -463,12 +620,12 @@ void main() {
       final result = await flow.run();
 
       expect(result.results.length, equals(2));
-      
+
       // Check that resultsByToolName contains the most recent result
       final latestResult = result.getResultByToolName('refine_colors');
       expect(latestResult, isNotNull);
       expect(latestResult!.input.toMap()['iteration'], equals(2));
-      
+
       // Check that getAllResultsByToolName returns both results
       final allResults = result.getAllResultsByToolName('refine_colors');
       expect(allResults.length, equals(2));
@@ -542,7 +699,7 @@ void main() {
       expect(map['_model'], equals('gpt-3.5-turbo'));
       expect(map['param'], equals('data'));
       expect(map['_previous_results'], isA<List>());
-      
+
       final resultJson = map['_previous_results'][0] as Map<String, dynamic>;
       expect(resultJson['toolName'], equals('test_tool'));
       expect(resultJson['issues'], isA<List>());
@@ -581,11 +738,11 @@ void main() {
       expect(restoredInput.model, equals('gpt-4'));
       expect(restoredInput.customData['custom'], equals('value'));
       expect(restoredInput.previousResults.length, equals(1));
-      
+
       final restoredResult = restoredInput.previousResults.first;
       expect(restoredResult.toolName, equals('original_tool'));
       expect(restoredResult.issues.length, equals(1));
-      
+
       final restoredIssue = restoredResult.issues.first;
       expect(restoredIssue.id, equals('original-issue'));
       expect(restoredIssue.severity, equals(IssueSeverity.high));
@@ -614,9 +771,18 @@ void main() {
       );
 
       expect(copiedResult.toolName, equals('modified_tool'));
-      expect(copiedResult.input.customData['original'], equals('input')); // Unchanged
-      expect(copiedResult.output.toMap()['modified'], equals('output')); // Changed
-      expect(copiedResult.output.toMap().containsKey('original'), isFalse); // Old value replaced
+      expect(
+        copiedResult.input.customData['original'],
+        equals('input'),
+      ); // Unchanged
+      expect(
+        copiedResult.output.toMap()['modified'],
+        equals('output'),
+      ); // Changed
+      expect(
+        copiedResult.output.toMap().containsKey('original'),
+        isFalse,
+      ); // Old value replaced
       expect(copiedResult.issues, isEmpty);
     });
 
@@ -641,7 +807,10 @@ void main() {
       );
 
       expect(copiedResult.toolName, equals('tool')); // Preserved
-      expect(copiedResult.input.customData['key'], equals('value')); // Preserved
+      expect(
+        copiedResult.input.customData['key'],
+        equals('value'),
+      ); // Preserved
       expect(copiedResult.output.toMap()['new'], equals('result')); // Changed
       expect(copiedResult.issues.length, equals(1)); // Preserved
       expect(copiedResult.issues.first.id, equals('test-issue'));
@@ -650,10 +819,7 @@ void main() {
 
   group('ToolFlow with filtered previousIssues', () {
     test('should only include issues from included output steps', () async {
-      final config = OpenAIConfig(
-        apiKey: 'test-key',
-        defaultModel: 'gpt-4',
-      );
+      final config = OpenAIConfig(apiKey: 'test-key', defaultModel: 'gpt-4');
 
       final mockService = MockOpenAiToolService(
         responses: {
@@ -670,11 +836,29 @@ void main() {
             toolName: 'step1_tool',
             model: 'gpt-4',
             inputBuilder: (previousResults) => {},
+            stepConfig: StepConfig(
+              outputSchema: {
+                'type': 'object',
+                'properties': {
+                  'result': {'type': 'string'},
+                },
+                'required': ['result'],
+              },
+            ),
           ),
           ToolCallStep(
             toolName: 'step2_tool',
             model: 'gpt-4',
             inputBuilder: (previousResults) => {},
+            stepConfig: StepConfig(
+              outputSchema: {
+                'type': 'object',
+                'properties': {
+                  'result': {'type': 'string'},
+                },
+                'required': ['result'],
+              },
+            ),
           ),
           ToolCallStep(
             toolName: 'step3_tool',
@@ -682,6 +866,13 @@ void main() {
             inputBuilder: (previousResults) => {},
             stepConfig: StepConfig(
               includeOutputsFrom: ['step1_tool'], // Only include step1
+              outputSchema: {
+                'type': 'object',
+                'properties': {
+                  'result': {'type': 'string'},
+                },
+                'required': ['result'],
+              },
             ),
           ),
         ],
@@ -690,7 +881,7 @@ void main() {
 
       final result = await flow.run();
       expect(result.results.length, equals(3));
-      
+
       // Verify that the flow completed successfully
       expect(result.results[0].toolName, equals('step1_tool'));
       expect(result.results[1].toolName, equals('step2_tool'));

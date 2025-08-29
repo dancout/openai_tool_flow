@@ -2,6 +2,7 @@
 ///
 /// This file demonstrates various ways to configure steps, audits, and
 /// forwarding patterns for complex workflows.
+library;
 
 import 'package:openai_toolflow/openai_toolflow.dart';
 
@@ -12,7 +13,26 @@ import 'typed_interfaces.dart';
 class ExampleStepConfigs {
   /// Basic configuration with simple audit
   static StepConfig get basicAuditConfig {
-    return StepConfig(audits: [ColorQualityAuditFunction()]);
+    return StepConfig(
+      audits: [ColorQualityAuditFunction()],
+      outputSchema: {
+        'type': 'object',
+        'properties': {
+          'colors': {
+            'type': 'array',
+            'items': {'type': 'string'},
+            'description': 'Array of hex color codes',
+          },
+          'confidence': {
+            'type': 'number',
+            'minimum': 0.0,
+            'maximum': 1.0,
+            'description': 'Confidence score for the extraction',
+          },
+        },
+        'required': ['colors', 'confidence'],
+      },
+    );
   }
 
   /// Configuration with custom retry logic
@@ -29,6 +49,23 @@ class ExampleStepConfigs {
               issue.severity == IssueSeverity.critical,
         );
       },
+      outputSchema: {
+        'type': 'object',
+        'properties': {
+          'colors': {
+            'type': 'array',
+            'items': {'type': 'string'},
+            'description': 'Array of hex color codes',
+          },
+          'confidence': {
+            'type': 'number',
+            'minimum': 0.0,
+            'maximum': 1.0,
+            'description': 'Confidence score for the extraction',
+          },
+        },
+        'required': ['colors', 'confidence'],
+      },
     );
   }
 
@@ -37,19 +74,74 @@ class ExampleStepConfigs {
     return StepConfig(
       audits: [ColorQualityAuditFunction()],
       includeOutputsFrom: stepIndexes,
+      outputSchema: {
+        'type': 'object',
+        'properties': {
+          'colors': {
+            'type': 'array',
+            'items': {'type': 'string'},
+            'description': 'Array of hex color codes',
+          },
+          'confidence': {
+            'type': 'number',
+            'minimum': 0.0,
+            'maximum': 1.0,
+            'description': 'Confidence score for the extraction',
+          },
+        },
+        'required': ['colors', 'confidence'],
+      },
     );
   }
 
   /// Configuration that forwards specific outputs
   static StepConfig forwardingOutputConfig(String toolName) {
-    return StepConfig(includeOutputsFrom: [toolName]);
+    return StepConfig(
+      includeOutputsFrom: [toolName],
+      outputSchema: {
+        'type': 'object',
+        'properties': {
+          'colors': {
+            'type': 'array',
+            'items': {'type': 'string'},
+            'description': 'Array of hex color codes',
+          },
+          'confidence': {
+            'type': 'number',
+            'minimum': 0.0,
+            'maximum': 1.0,
+            'description': 'Confidence score for the extraction',
+          },
+        },
+        'required': ['colors', 'confidence'],
+      },
+    );
   }
 
   /// Configuration with output sanitization
   static StepConfig sanitizingConfig(
     Map<String, dynamic> Function(Map<String, dynamic>) outputSanitizer,
   ) {
-    return StepConfig(outputSanitizer: outputSanitizer);
+    return StepConfig(
+      outputSanitizer: outputSanitizer,
+      outputSchema: {
+        'type': 'object',
+        'properties': {
+          'colors': {
+            'type': 'array',
+            'items': {'type': 'string'},
+            'description': 'Array of hex color codes',
+          },
+          'confidence': {
+            'type': 'number',
+            'minimum': 0.0,
+            'maximum': 1.0,
+            'description': 'Confidence score for the extraction',
+          },
+        },
+        'required': ['colors', 'confidence'],
+      },
+    );
   }
 
   /// Configuration that doesn't stop flow on failure
@@ -57,6 +149,17 @@ class ExampleStepConfigs {
     return StepConfig(
       audits: [ColorDiversityAuditFunction()],
       stopOnFailure: false,
+      outputSchema: {
+        'type': 'object',
+        'properties': {
+          'diversityScore': {'type': 'number'},
+          'colors': {
+            'type': 'array',
+            'items': {'type': 'string'},
+          },
+        },
+        'required': ['diversityScore', 'colors'],
+      },
     );
   }
 }
@@ -243,7 +346,25 @@ Map<String, ToolCallStep> createColorThemeWorkflow() {
         minSaturation: 0.3,
         userPreferences: {'style': 'modern', 'mood': 'energetic'},
       ).toMap(),
-      stepConfig: StepConfig(audits: [diversityAudit], maxRetries: 3),
+      stepConfig: StepConfig(
+        audits: [diversityAudit],
+        maxRetries: 3,
+        outputSchema: {
+          'type': 'object',
+          'properties': {
+            'colors': {
+              'type': 'array',
+              'items': {'type': 'string'},
+              'description': 'Extracted palette colors',
+            },
+            'diversityScore': {
+              'type': 'number',
+              'description': 'Score for color diversity',
+            },
+          },
+          'required': ['colors', 'diversityScore'],
+        },
+      ),
     ),
 
     'refine_colors': ToolCallStep(
@@ -281,6 +402,21 @@ Map<String, ToolCallStep> createColorThemeWorkflow() {
                 issue.severity == IssueSeverity.critical,
           );
         },
+        outputSchema: {
+          'type': 'object',
+          'properties': {
+            'colors': {
+              'type': 'array',
+              'items': {'type': 'string'},
+              'description': 'Refined color list',
+            },
+            'contrastEnhanced': {
+              'type': 'boolean',
+              'description': 'Whether contrast was enhanced',
+            },
+          },
+          'required': ['colors', 'contrastEnhanced'],
+        },
       ),
     ),
 
@@ -296,6 +432,21 @@ Map<String, ToolCallStep> createColorThemeWorkflow() {
         stopOnFailure: false,
         includeOutputsFrom: ['refine_colors'],
         inputSanitizer: ExampleSanitizers.refinementToThemeInputSanitizer,
+        outputSchema: {
+          'type': 'object',
+          'properties': {
+            'theme': {
+              'type': 'object',
+              'description': 'Generated theme object',
+            },
+            'variants': {
+              'type': 'array',
+              'items': {'type': 'object'},
+              'description': 'Theme variants',
+            },
+          },
+          'required': ['theme', 'variants'],
+        },
       ),
     ),
   };

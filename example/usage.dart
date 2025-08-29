@@ -76,16 +76,40 @@ void main() async {
         minSaturation: 0.3,
         userPreferences: {'style': 'modern', 'mood': 'energetic'},
       ).toMap(),
-      stepConfig: StepConfig(audits: [diversityAudit], maxRetries: 3),
+      stepConfig: StepConfig(
+        audits: [diversityAudit],
+        maxRetries: 3,
+        outputSchema: {
+          'type': 'object',
+          'properties': {
+            'colors': {
+              'type': 'array',
+              'items': {'type': 'string'},
+              'description': 'Extracted color hex codes',
+            },
+            'confidence': {
+              'type': 'number',
+              'description': 'Confidence score for extraction',
+            },
+            'image_analyzed': {
+              'type': 'string',
+              'description': 'Path to analyzed image',
+            },
+            'metadata': {
+              'type': 'object',
+              'description': 'Extraction metadata',
+            },
+          },
+          'required': ['colors', 'confidence', 'image_analyzed'],
+        },
+      ),
     ),
 
     // Step 2: Refine the extracted colors
     ToolCallStep(
       toolName: 'refine_colors',
       model: 'gpt-4',
-      buildInputsFrom: [
-        'extract_palette',
-      ], // Get results from palette extraction
+      buildInputsFrom: ['extract_palette'],
       inputBuilder: (previousResults) {
         // Now we can dynamically build input based on actual previous results!
         final paletteResult = previousResults.first;
@@ -111,6 +135,22 @@ void main() async {
           );
         },
         includeOutputsFrom: ['extract_palette'],
+        outputSchema: {
+          'type': 'object',
+          'properties': {
+            'refined_colors': {
+              'type': 'array',
+              'items': {'type': 'string'},
+              'description': 'Refined color hex codes',
+            },
+            'improvements_made': {
+              'type': 'array',
+              'items': {'type': 'string'},
+              'description': 'List of improvements applied',
+            },
+          },
+          'required': ['refined_colors'],
+        },
       ),
     ),
 
@@ -130,14 +170,27 @@ void main() async {
         return {
           'theme_type': 'material_design',
           'include_variants': true,
-          'base_colors':
-              refinedColors, // Use the refined colors as base for theme generation
+          'base_colors': refinedColors,
         };
       },
       stepConfig: StepConfig(
         audits: [],
         maxRetries: 1,
         stopOnFailure: false, // Continue even if this step fails
+        outputSchema: {
+          'type': 'object',
+          'properties': {
+            'theme': {
+              'type': 'object',
+              'description': 'Generated theme object',
+            },
+            'metadata': {
+              'type': 'object',
+              'description': 'Theme generation metadata',
+            },
+          },
+          'required': ['theme'],
+        },
       ),
     ),
   ];
@@ -508,6 +561,21 @@ void demonstrateStepConfigUsage() {
   // Step with specific audits only
   final step1Config = StepConfig(
     audits: [ColorQualityAuditFunction(), ColorDiversityAuditFunction()],
+    outputSchema: {
+      'type': 'object',
+      'properties': {
+        'colors': {
+          'type': 'array',
+          'items': {'type': 'string'},
+          'description': 'Extracted color hex codes',
+        },
+        'diversityScore': {
+          'type': 'number',
+          'description': 'Score for color diversity',
+        },
+      },
+      'required': ['colors', 'diversityScore'],
+    },
   );
   print('Step 1: ${step1Config.audits.length} audits configured');
 
@@ -515,13 +583,27 @@ void demonstrateStepConfigUsage() {
   final step2Config = StepConfig(
     maxRetries: 5,
     audits: [ColorQualityAuditFunction()],
+    outputSchema: {
+      'type': 'object',
+      'properties': {
+        'colors': {
+          'type': 'array',
+          'items': {'type': 'string'},
+          'description': 'Extracted color hex codes',
+        },
+        'confidence': {
+          'type': 'number',
+          'description': 'Confidence score for extraction',
+        },
+      },
+      'required': ['colors', 'confidence'],
+    },
   );
   print('Step 2: Max retries = ${step2Config.maxRetries}');
 
   // Step with custom pass/fail criteria
   final step3Config = StepConfig(
     customPassCriteria: (issues) {
-      // Custom logic: fail only if there are 3+ high severity issues
       final highIssues = issues
           .where(
             (i) =>
@@ -533,13 +615,27 @@ void demonstrateStepConfigUsage() {
     },
     customFailureReason: (issues) =>
         'Too many high-severity issues: ${issues.length}',
+    outputSchema: {
+      'type': 'object',
+      'properties': {
+        'result': {'type': 'string'},
+        'issues': {
+          'type': 'array',
+          'items': {'type': 'string'},
+          'description': 'List of issue descriptions',
+        },
+      },
+      'required': ['result'],
+    },
   );
   print(
     'Step 3: Has custom criteria = ${step3Config.customPassCriteria != null}',
   );
 
   // Step with no audits
-  final step4Config = StepConfig();
+  final step4Config = StepConfig(
+    outputSchema: {'type': 'object', 'properties': {}},
+  );
   print('Step 4: Has audits = ${step4Config.hasAudits}');
 
   print('Step config examples demonstrated successfully');

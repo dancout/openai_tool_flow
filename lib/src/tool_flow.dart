@@ -171,7 +171,8 @@ class ToolFlow {
       allIssues: _getAllIssues(),
       resultsByToolName: Map.unmodifiable(_resultsByToolName),
       allResultsByToolName: _allResultsByToolName.map(
-        (key, value) => MapEntry(key, List<ToolResult<ToolOutput>>.unmodifiable(value)),
+        (key, value) =>
+            MapEntry(key, List<ToolResult<ToolOutput>>.unmodifiable(value)),
       ),
     );
   }
@@ -330,7 +331,9 @@ class ToolFlow {
   /// Gets the list of results that should be passed to inputBuilder
   // TODO: This logic seems really similar to how we get the includeOutputsFrom list.
   /// // Consider consolidating the logic to a reusable helper function.
-  List<ToolResult<ToolOutput>> _getInputBuilderResults({required ToolCallStep step}) {
+  List<ToolResult<ToolOutput>> _getInputBuilderResults({
+    required ToolCallStep step,
+  }) {
     final inputResults = <ToolResult<ToolOutput>>[];
 
     for (final reference in step.buildInputsFrom) {
@@ -354,7 +357,9 @@ class ToolFlow {
   }
 
   /// Gets the list of results that should be included based on step configuration
-  List<ToolResult<ToolOutput>> _getIncludedResults({required StepConfig stepConfig}) {
+  List<ToolResult<ToolOutput>> _getIncludedResults({
+    required StepConfig stepConfig,
+  }) {
     final includedResults = <ToolResult<ToolOutput>>[];
 
     for (final include in stepConfig.includeOutputsFrom) {
@@ -391,7 +396,8 @@ class ToolFlow {
 
   /// Gets the current results (for testing/debugging)
   @visibleForTesting
-  List<ToolResult<ToolOutput>> get currentResults => List.unmodifiable(_results);
+  List<ToolResult<ToolOutput>> get currentResults =>
+      List.unmodifiable(_results);
 
   /// Gets the current results by tool name (for testing/debugging)
   @visibleForTesting
@@ -493,7 +499,9 @@ class ToolFlowResult {
   }
 
   /// Gets all results for tools matching a pattern
-  List<ToolResult<ToolOutput>> getResultsWhere(bool Function(ToolResult<ToolOutput>) predicate) {
+  List<ToolResult<ToolOutput>> getResultsWhere(
+    bool Function(ToolResult<ToolOutput>) predicate,
+  ) {
     return results.where(predicate).toList();
   }
 
@@ -507,7 +515,9 @@ class ToolFlowResult {
   }
 
   /// Gets all results by tool names (including duplicates)
-  List<ToolResult<ToolOutput>> getAllResultsByToolNames(List<String> toolNames) {
+  List<ToolResult<ToolOutput>> getAllResultsByToolNames(
+    List<String> toolNames,
+  ) {
     return toolNames.expand((name) => getAllResultsByToolName(name)).toList();
   }
 

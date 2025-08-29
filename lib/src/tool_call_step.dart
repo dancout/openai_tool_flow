@@ -63,7 +63,7 @@ class ToolCallStep {
     this.buildInputsFrom = const [],
     this.issues = const [],
     this.maxRetries = 3,
-    this.stepConfig = const StepConfig(),
+    required this.stepConfig,
   });
 
   // TODO: Does it make sense to simply not include this method, instead of declaring it and assigning an unsupported error, then writing a test that checks it throws an error, and that's the only ever usage?
