@@ -292,21 +292,9 @@ class ToolFlow {
       );
     }
 
-    // Include results from previous steps if configured (for includeOutputsFrom)
-    List<ToolResult<ToolOutput>> includedResults = [];
-    if (step.stepConfig.hasOutputInclusion) {
-      includedResults = _getIncludedResults(stepConfig: step.stepConfig);
-      final includedOutputs = step.stepConfig.buildIncludedOutputs(
-        _results,
-        _resultsByToolName,
-      );
-      customData.addAll(includedOutputs);
-    }
-
     // Create structured input with previous results
     ToolInput stepInput = ToolInput(
       round: round,
-      previousResults: includedResults,
       customData: customData,
       model: step.model,
       temperature: config.defaultTemperature,
@@ -315,7 +303,6 @@ class ToolFlow {
 
     // Apply input sanitization if configured (before execution)
     if (step.stepConfig.hasInputSanitizer) {
-      // TODO: We don't actually use the sanitizedInput in our example.
       // So, I'm not certain it works as expected.
       final sanitizedInput = step.stepConfig.sanitizeInput(stepInput.toMap());
       stepInput = ToolInput.fromMap(sanitizedInput);
@@ -350,30 +337,6 @@ class ToolFlow {
     }
 
     return inputResults;
-  }
-
-  /// Gets the list of results that should be included based on step configuration
-  List<ToolResult<ToolOutput>> _getIncludedResults({
-    required StepConfig stepConfig,
-  }) {
-    final includedResults = <ToolResult<ToolOutput>>[];
-
-    for (final include in stepConfig.includeOutputsFrom) {
-      if (include is int) {
-        // Include by step index
-        if (include >= 0 && include < _results.length) {
-          includedResults.add(_results[include]);
-        }
-      } else if (include is String) {
-        // Include by tool name (most recent)
-        final result = _resultsByToolName[include];
-        if (result != null) {
-          includedResults.add(result);
-        }
-      }
-    }
-
-    return includedResults;
   }
 
   /// Gets all issues from all completed steps

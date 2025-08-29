@@ -68,6 +68,7 @@ void main() async {
   final steps = [
     // Step 1: Extract base colors from image
     ToolCallStep(
+      // TODO: We don't actually use the sanitizedInput in our example.
       toolName: 'extract_palette',
       model: 'gpt-4',
       inputBuilder: (previousResults) => PaletteExtractionInput(

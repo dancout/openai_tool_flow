@@ -64,15 +64,11 @@ class DefaultOpenAiToolService implements OpenAiToolService {
     // Create tool definition
     final toolDefinition = _buildToolDefinition(step: step, input: input);
 
-    // Extract previous results from input
-    // Create tool definition
-    final previousResults = input.previousResults;
-
-    // Build system message
+    // previousResults removed from ToolInput; pass workflow context to inputBuilder and messaging as needed
     final systemMessageInput = SystemMessageInput(
       toolFlowContext: 'Executing tool call in a structured workflow',
       stepDescription: 'Tool: ${step.toolName}, Model: ${step.model}',
-      previousResults: previousResults,
+      previousResults: [], // No previousResults on ToolInput
       additionalContext: {'step_tool': step.toolName, 'step_model': step.model},
     );
 
@@ -128,31 +124,7 @@ class DefaultOpenAiToolService implements OpenAiToolService {
     buffer.writeln('Context: ${input.toolFlowContext}');
     buffer.writeln('Current Step: ${input.stepDescription}');
 
-    if (input.previousResults.isNotEmpty) {
-      buffer.writeln();
-      buffer.writeln('Previous step results and associated issues:');
-      for (int i = 0; i < input.previousResults.length; i++) {
-        final result = input.previousResults[i];
-        buffer.writeln(
-          '  Step ${i + 1}: ${result.toolName} -> Output keys: ${result.output.toMap().keys.join(', ')}',
-        );
-
-        // Include issues associated with this specific result
-        if (result.issues.isNotEmpty) {
-          buffer.writeln('    Associated issues:');
-          for (final issue in result.issues) {
-            buffer.writeln(
-              '      - ${issue.severity.name.toUpperCase()}: ${issue.description}',
-            );
-            if (issue.suggestions.isNotEmpty) {
-              buffer.writeln(
-                '        Suggestions: ${issue.suggestions.join(', ')}',
-              );
-            }
-          }
-        }
-      }
-    }
+    // previousResults logic removed; handle workflow context in inputBuilder and messaging as needed
 
     if (input.additionalContext.isNotEmpty) {
       buffer.writeln();

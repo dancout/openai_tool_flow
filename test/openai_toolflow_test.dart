@@ -10,7 +10,6 @@ class TestToolInput extends ToolInput {
   const TestToolInput({
     this.data = const {},
     super.round = 0,
-    super.previousResults = const [],
     super.model = 'gpt-4',
     super.temperature,
     super.maxTokens,
@@ -19,12 +18,6 @@ class TestToolInput extends ToolInput {
   factory TestToolInput.fromMap(Map<String, dynamic> map) {
     final customData = Map<String, dynamic>.from(map);
     final round = customData.remove('_round') as int? ?? 0;
-    final previousResultsJson =
-        customData.remove('_previous_results') as List? ?? [];
-    final previousResults = previousResultsJson
-        .cast<Map<String, dynamic>>()
-        .map((json) => ToolResult.fromJson(json))
-        .toList();
     final model = customData.remove('_model') as String? ?? 'gpt-4';
     final temperature = customData.remove('_temperature') as double?;
     final maxTokens = customData.remove('_max_tokens') as int?;
@@ -32,7 +25,6 @@ class TestToolInput extends ToolInput {
     return TestToolInput(
       data: customData,
       round: round,
-      previousResults: previousResults,
       model: model,
       temperature: temperature,
       maxTokens: maxTokens,
@@ -499,9 +491,18 @@ void main() {
           ToolCallStep(
             toolName: 'refine_colors',
             model: 'gpt-4',
-            inputBuilder: (previousResults) => {},
+            inputBuilder: (previousResults) {
+              // Explicitly extract previous step's output
+              final paletteResult = previousResults.isNotEmpty
+                  ? previousResults.first
+                  : null;
+              final paletteColors =
+                  paletteResult?.output.toMap()['colors'] ?? [];
+              return {'extract_palette_colors': paletteColors};
+            },
+            buildInputsFrom: [0],
             stepConfig: StepConfig(
-              includeOutputsFrom: [0], // Include outputs from step 0
+              includeOutputsFrom: [0],
               outputSchema: {
                 'type': 'object',
                 'properties': {
@@ -604,25 +605,9 @@ void main() {
   });
 
   group('ToolInput', () {
-    test('should create input with structured data and ToolResult objects', () {
-      final issue = Issue(
-        id: 'test-issue',
-        severity: IssueSeverity.low,
-        description: 'Test description',
-        context: {},
-        suggestions: [],
-      );
-
-      final previousResult = ToolResult(
-        toolName: 'previous_tool',
-        input: TestToolInput(data: {'input': 'data'}),
-        output: TestToolOutput({'output': 'data'}),
-        issues: [issue],
-      );
-
+    test('should create input with structured data and customData', () {
       final input = ToolInput(
         round: 1,
-        previousResults: [previousResult],
         customData: {'test': 'value'},
         model: 'gpt-4',
         temperature: 0.8,
@@ -630,34 +615,15 @@ void main() {
       );
 
       expect(input.round, equals(1));
-      expect(input.previousResults.length, equals(1));
-      expect(input.previousResults.first.toolName, equals('previous_tool'));
-      expect(input.previousResults.first.issues.first.id, equals('test-issue'));
       expect(input.customData['test'], equals('value'));
       expect(input.model, equals('gpt-4'));
       expect(input.temperature, equals(0.8));
       expect(input.maxTokens, equals(1000));
     });
 
-    test('should serialize to Map with structured previousResults', () {
-      final issue = Issue(
-        id: 'test-issue',
-        severity: IssueSeverity.medium,
-        description: 'Test issue',
-        context: {'key': 'value'},
-        suggestions: ['suggestion'],
-      );
-
-      final previousResult = ToolResult(
-        toolName: 'test_tool',
-        input: TestToolInput(data: {'input': 'data'}),
-        output: TestToolOutput({'result': 'output'}),
-        issues: [issue],
-      );
-
+    test('should serialize to Map with customData', () {
       final input = ToolInput(
         round: 2,
-        previousResults: [previousResult],
         customData: {'param': 'data'},
         model: 'gpt-3.5-turbo',
       );
@@ -667,34 +633,11 @@ void main() {
       expect(map['_round'], equals(2));
       expect(map['_model'], equals('gpt-3.5-turbo'));
       expect(map['param'], equals('data'));
-      expect(map['_previous_results'], isA<List>());
-
-      final resultJson = map['_previous_results'][0] as Map<String, dynamic>;
-      expect(resultJson['toolName'], equals('test_tool'));
-      expect(resultJson['issues'], isA<List>());
-      expect(resultJson['issues'][0]['id'], equals('test-issue'));
-      expect(resultJson['issues'][0]['severity'], equals('medium'));
     });
 
-    test('should restore from Map with structured previousResults', () {
-      final originalIssue = Issue(
-        id: 'original-issue',
-        severity: IssueSeverity.high,
-        description: 'Original description',
-        context: {'original': true},
-        suggestions: ['fix it'],
-      );
-
-      final originalResult = ToolResult(
-        toolName: 'original_tool',
-        input: TestToolInput(data: {'test': 'input'}),
-        output: TestToolOutput({'test': 'output'}),
-        issues: [originalIssue],
-      );
-
+    test('should restore from Map with customData', () {
       final originalInput = ToolInput(
         round: 3,
-        previousResults: [originalResult],
         customData: {'custom': 'value'},
         model: 'gpt-4',
         temperature: 0.5,
@@ -706,16 +649,6 @@ void main() {
       expect(restoredInput.round, equals(3));
       expect(restoredInput.model, equals('gpt-4'));
       expect(restoredInput.customData['custom'], equals('value'));
-      expect(restoredInput.previousResults.length, equals(1));
-
-      final restoredResult = restoredInput.previousResults.first;
-      expect(restoredResult.toolName, equals('original_tool'));
-      expect(restoredResult.issues.length, equals(1));
-
-      final restoredIssue = restoredResult.issues.first;
-      expect(restoredIssue.id, equals('original-issue'));
-      expect(restoredIssue.severity, equals(IssueSeverity.high));
-      expect(restoredIssue.description, equals('Original description'));
     });
 
     test('ToolInput should work without StepInput alias', () {

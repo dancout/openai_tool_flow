@@ -1,5 +1,3 @@
-import 'tool_result.dart';
-
 /// Base class for strongly-typed tool inputs.
 ///
 /// Provides type safety and validation for tool call parameters
@@ -8,9 +6,6 @@ import 'tool_result.dart';
 class ToolInput {
   /// Current retry round (0 for first attempt)
   final int round;
-
-  /// Results from previous steps that may be relevant
-  final List<ToolResult<ToolOutput>> previousResults;
 
   /// Custom input data specific to this tool
   final Map<String, dynamic> customData;
@@ -27,7 +22,6 @@ class ToolInput {
   /// Creates a ToolInput with structured fields and custom data
   const ToolInput({
     this.round = 0,
-    this.previousResults = const [],
     this.customData = const {},
     this.model = 'gpt-4',
     this.temperature,
@@ -38,9 +32,6 @@ class ToolInput {
   Map<String, dynamic> toMap() {
     return {
       '_round': round,
-      '_previous_results': previousResults
-          .map((result) => result.toJson())
-          .toList(),
       '_model': model,
       if (temperature != null) '_temperature': temperature,
       if (maxTokens != null) '_max_tokens': maxTokens,
@@ -54,19 +45,12 @@ class ToolInput {
 
     // Remove known fields from custom data
     final round = customData.remove('_round') as int? ?? 0;
-    final previousResultsJson =
-        customData.remove('_previous_results') as List? ?? [];
-    final previousResults = previousResultsJson
-        .cast<Map<String, dynamic>>()
-        .map((json) => ToolResult<ToolOutput>.fromJson(json))
-        .toList();
     final model = customData.remove('_model') as String? ?? 'gpt-4';
     final temperature = customData.remove('_temperature') as double?;
     final maxTokens = customData.remove('_max_tokens') as int?;
 
     return ToolInput(
       round: round,
-      previousResults: previousResults,
       customData: customData,
       model: model,
       temperature: temperature,

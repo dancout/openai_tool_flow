@@ -1,7 +1,5 @@
 import 'audit_function.dart';
 import 'issue.dart';
-import 'tool_result.dart';
-import 'typed_interfaces.dart';
 
 /// Configuration for a specific step in a tool flow.
 ///
@@ -70,7 +68,8 @@ class StepConfig {
   ///   return cleaned;
   /// }
   /// ```
-  final Map<String, dynamic> Function(Map<String, dynamic> input)? inputSanitizer;
+  final Map<String, dynamic> Function(Map<String, dynamic> input)?
+  inputSanitizer;
 
   /// Function to sanitize/transform the output AFTER executing the step.
   /// Takes the raw output map and returns cleaned output.
@@ -147,7 +146,9 @@ class StepConfig {
   bool get hasAudits => audits.isNotEmpty;
 
   /// Returns true if this step should include outputs from previous steps
-  bool get hasOutputInclusion => includeOutputsFrom.isNotEmpty;
+  bool
+  // TODO: Does this belong on the ToolCallStep directly?
+  get hasOutputInclusion => includeOutputsFrom.isNotEmpty;
 
   /// Returns true if this step has input sanitization configured
   bool get hasInputSanitizer => inputSanitizer != null;
@@ -196,45 +197,6 @@ class StepConfig {
     return failureReasons.isNotEmpty
         ? failureReasons.join('; ')
         : 'Step criteria not met';
-  }
-
-  /// Includes outputs from previous steps based on the includeOutputsFrom configuration.
-  ///
-  /// This method provides a clean way to access previous step results:
-  /// - int values are treated as step indexes (0-based)
-  /// - String values are treated as tool names
-  /// - For duplicate tool names, only the most recent result is included
-  /// - All matching outputs are merged into the input with tool name prefixes
-  Map<String, dynamic> buildIncludedOutputs(
-    List<ToolResult<ToolOutput>> previousResults,
-    Map<String, ToolResult<ToolOutput>> resultsByToolName,
-  ) {
-    final includedOutputs = <String, dynamic>{};
-
-    for (final reference in includeOutputsFrom) {
-      ToolResult<ToolOutput>? sourceResult;
-
-      // Find the source result by index or tool name
-      if (reference is int) {
-        if (reference >= 0 && reference < previousResults.length) {
-          sourceResult = previousResults[reference];
-        }
-      } else if (reference is String) {
-        sourceResult = resultsByToolName[reference];
-      }
-
-      if (sourceResult == null) continue;
-
-      // Include all output with tool name prefix to avoid conflicts
-      for (final entry in sourceResult.output.toMap().entries) {
-        // TODO: Why do we need to prepend the toolName and the key again?
-        // I don't think that really adds anything to this custom data.
-        // TODO: I don't think we should add the output entries key by key, but instead we should just throw the entire typedOutput.toJson() onto there, and have the sanitizeInput take care of wittling down to what we do and don't need.
-        includedOutputs['${sourceResult.toolName}_${entry.key}'] = entry.value;
-      }
-    }
-
-    return includedOutputs;
   }
 
   /// Applies input sanitization if configured.

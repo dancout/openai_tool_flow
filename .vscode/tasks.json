@@ -1,0 +1,25 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Run Dart Tests",
+			"type": "shell",
+			"command": "dart test"
+		},
+		{
+			"label": "Run Dart Tests",
+			"type": "shell",
+			"command": "dart test"
+		},
+		{
+			"label": "Run Dart Tests",
+			"type": "shell",
+			"command": "dart test"
+		},
+		{
+			"label": "Run Dart Tests",
+			"type": "shell",
+			"command": "dart test"
+		}
+	]
+}
