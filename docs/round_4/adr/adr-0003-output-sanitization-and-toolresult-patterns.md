@@ -7,7 +7,8 @@ tags: ["architecture", "decision", "data-processing", "api-design"]
 supersedes: ""
 superseded_by: ""
 adr_references: []
-used_as_resource_in: []
+used_as_resource_in:
+  - docs/round_misc/adr/adr-misc-001-retain-inputsanitizer.md
 ---
 
 # ADR-0003: Improve Output Sanitization and ToolResult Modification Patterns

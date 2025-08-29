@@ -7,7 +7,8 @@ tags: ["architecture", "input-sanitization", "state-management", "inputBuilder"]
 supersedes: ""
 superseded_by: ""
 adr_references: []
-used_as_resource_in: []
+used_as_resource_in:
+  - docs/round_misc/adr/adr-misc-001-retain-inputsanitizer.md
 ---
 
 # ADR-0003: Retain Input Sanitizer with Enhanced Role
