@@ -167,36 +167,29 @@ class ExampleStepConfigs {
 /// Example output sanitizers for cleaning data between steps
 class ExampleSanitizers {
   /// Sanitizes color palette output for refinement input
-  static Map<String, dynamic> paletteToRefinementInputSanitizer({
-    required Map<String, dynamic> input,
-    required List<ToolResult> previousResults,
-  }) {
+  static Map<String, dynamic> paletteToRefinementInputSanitizer(
+    Map<String, dynamic> input,
+  ) {
     final sanitized = <String, dynamic>{};
 
-    // Find the palette extraction result
-    final paletteResult =
-        previousResults.where((r) => r.toolName == 'extract_palette').isNotEmpty
-        ? previousResults.where((r) => r.toolName == 'extract_palette').first
-        : null;
-
-    if (paletteResult != null) {
-      final colors = paletteResult.output.toMap()['colors'] as List?;
+    // Ensure colors are in the right format if present
+    if (input.containsKey('colors')) {
+      final colors = input['colors'] as List?;
       if (colors != null) {
-        // Ensure colors are in the right format
         final cleanColors = colors
             .cast<String>()
             .where((color) => RegExp(r'^#[0-9A-Fa-f]{6}$').hasMatch(color))
-            .take(8) // Limit to 8 colors max
+            .take(8)
             .toList();
-
         sanitized['colors'] = cleanColors;
+      }
+    }
 
-        // Add confidence as context
-        final confidence =
-            paletteResult.output.toMap()['confidence'] as double?;
-        if (confidence != null) {
-          sanitized['source_confidence'] = confidence;
-        }
+    // Add confidence as context if present
+    if (input.containsKey('confidence')) {
+      final confidence = input['confidence'] as double?;
+      if (confidence != null) {
+        sanitized['source_confidence'] = confidence;
       }
     }
 
@@ -223,48 +216,18 @@ class ExampleSanitizers {
     return sanitized;
   }
 
-  /// Sanitizes refinement output for theme generation
-  static Map<String, dynamic> refinementToThemeInputSanitizer({
-    required Map<String, dynamic> input,
-    required List<ToolResult> previousResults,
-  }) {
+  /// Sanitizes refinement input for theme generation
+  static Map<String, dynamic> refinementToThemeInputSanitizer(
+    Map<String, dynamic> input,
+  ) {
     final sanitized = Map<String, dynamic>.from(input);
 
-    // Get refined colors
-    final refinementResult =
-        previousResults.where((r) => r.toolName == 'refine_colors').isNotEmpty
-        ? previousResults.where((r) => r.toolName == 'refine_colors').first
-        : null;
-
-    if (refinementResult != null) {
-      final refinedColors =
-          refinementResult.output.toMap()['refined_colors'] as List?;
+    // If base_colors is present, take up to 4 and set primary_color
+    if (sanitized.containsKey('base_colors')) {
+      final refinedColors = sanitized['base_colors'] as List?;
       if (refinedColors != null && refinedColors.isNotEmpty) {
         sanitized['base_colors'] = refinedColors.take(4).toList();
-
-        // Set primary color
-        if (refinedColors.isNotEmpty) {
-          sanitized['primary_color'] = refinedColors.first;
-        }
-      }
-    }
-
-    return sanitized;
-  }
-
-  /// Generic sanitizer that removes internal fields and formats data
-  static Map<String, dynamic> genericInputSanitizer({
-    required Map<String, dynamic> input,
-    required List<ToolResult> previousResults,
-  }) {
-    final sanitized = Map<String, dynamic>.from(input);
-
-    for (final result in previousResults) {
-      // Add non-internal output fields with tool name prefix
-      for (final entry in result.output.toMap().entries) {
-        if (!entry.key.startsWith('_')) {
-          sanitized['${result.toolName}_${entry.key}'] = entry.value;
-        }
+        sanitized['primary_color'] = refinedColors.first;
       }
     }
 
@@ -371,7 +334,7 @@ Map<String, ToolCallStep> createColorThemeWorkflow() {
       toolName: 'refine_colors',
       model: 'gpt-4',
       inputBuilder: (previousResults) {
-        // Extract colors from previous palette step
+        // Extract colors and confidence from previous palette step
         final paletteResult =
             previousResults
                 .where((r) => r.toolName == 'extract_palette')
@@ -382,12 +345,21 @@ Map<String, ToolCallStep> createColorThemeWorkflow() {
             : null;
 
         final extractedColors = paletteResult?.output.toMap()['colors'] ?? [];
+        final confidence =
+            paletteResult?.output.toMap()['confidence'] as double?;
 
-        return ColorRefinementInput(
+        final input = ColorRefinementInput(
           colors: extractedColors.cast<String>(),
           enhanceContrast: true,
           targetAccessibility: 'AA',
         ).toMap();
+
+        // Add confidence to input for sanitizer
+        if (confidence != null) {
+          input['confidence'] = confidence;
+        }
+
+        return input;
       },
       stepConfig: StepConfig(
         audits: [colorFormatAudit],
@@ -423,9 +395,30 @@ Map<String, ToolCallStep> createColorThemeWorkflow() {
     'generate_theme': ToolCallStep(
       toolName: 'generate_theme',
       model: 'gpt-4',
-      inputBuilder: (previousResults) => {
-        'theme_type': 'material_design',
-        'include_variants': true,
+      inputBuilder: (previousResults) {
+        // Extract refined colors from previous refinement step
+        final refinementResult =
+            previousResults
+                .where((r) => r.toolName == 'refine_colors')
+                .isNotEmpty
+            ? previousResults.where((r) => r.toolName == 'refine_colors').first
+            : null;
+
+        List<dynamic> baseColors = [];
+        if (refinementResult != null) {
+          final refinedColors =
+              refinementResult.output.toMap()['refined_colors'] as List?;
+          if (refinedColors != null && refinedColors.isNotEmpty) {
+            baseColors = refinedColors.take(4).toList();
+          }
+        }
+
+        return {
+          'theme_type': 'material_design',
+          'include_variants': true,
+          if (baseColors.isNotEmpty) 'base_colors': baseColors,
+          if (baseColors.isNotEmpty) 'primary_color': baseColors.first,
+        };
       },
       stepConfig: StepConfig(
         audits: [],

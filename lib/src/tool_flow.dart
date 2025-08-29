@@ -317,11 +317,7 @@ class ToolFlow {
     if (step.stepConfig.hasInputSanitizer) {
       // TODO: We don't actually use the sanitizedInput in our example.
       // So, I'm not certain it works as expected.
-      final sanitizedInput = step.stepConfig.sanitizeInput(
-        rawInput: stepInput.toMap(),
-        // TODO: Why does sanitizeInput take in the entire list of results?
-        previousResults: _results,
-      );
+      final sanitizedInput = step.stepConfig.sanitizeInput(stepInput.toMap());
       stepInput = ToolInput.fromMap(sanitizedInput);
     }
 
