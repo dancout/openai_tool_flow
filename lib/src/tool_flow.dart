@@ -248,12 +248,12 @@ class ToolFlow {
 
     // Run step-specific audits only (global audits are deprecated)
     for (final audit in stepConfig.audits) {
-      // Execute audit with the underlying ToolResult<ToolOutput>
-      // The audit is responsible for type checking the output
+      // Execute audit with proper type-safe casting
       late List<Issue> auditIssues;
       
       try {
-        auditIssues = audit.run(auditedResult.underlyingResult);
+        // Use a type-safe approach to execute the audit
+        auditIssues = _executeAuditWithTypeSafety(audit, auditedResult, stepIndex);
       } catch (e) {
         // If audit execution fails, create an audit execution error
         auditIssues = [
@@ -270,6 +270,7 @@ class ToolFlow {
             suggestions: [
               'Check audit function implementation',
               'Verify tool output structure matches expectations',
+              'Ensure tool output type matches audit expectations',
             ],
             round: int.tryParse(
                   result.input.toMap()['_round']?.toString() ?? '0',
@@ -306,6 +307,16 @@ class ToolFlow {
     }
 
     return auditedResult;
+  }
+
+  /// Executes an audit with proper type safety using the audit's built-in type checking
+  List<Issue> _executeAuditWithTypeSafety(
+    AuditFunction<ToolOutput> audit,
+    TypedToolResult result,
+    int stepIndex,
+  ) {
+    // Use the audit's built-in type checking method which handles the type conversion safely
+    return audit.runWithTypeChecking(result.underlyingResult);
   }
 
   /// Builds input for a step based on inputBuilder and step configuration
