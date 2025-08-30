@@ -1,20 +1,20 @@
 ---
 title: "ADR-0001: Refactor ToolFlow Orchestration for Per-Step Generic Typing"
-status: "Proposed"
+status: "Accepted"
 date: "2025-08-29"
 authors: "Daniel Couturier"
 tags: ["architecture", "toolflow", "generics", "audit", "type-safety"]
 supersedes: ""
 superseded_by: ""
 adr_references: []
-used_as_resource_in: []
+used_as_resource_in: ["ADR-0002"]
 ---
 
 # ADR-0001: Refactor ToolFlow Orchestration for Per-Step Generic Typing
 
 ## Status
 
-**Proposed**
+**Accepted**
 
 ## Context
 

@@ -248,30 +248,28 @@ class ToolFlow {
 
     // Run step-specific audits only (global audits are deprecated)
     for (final audit in stepConfig.audits) {
-      // This is the key innovation: type-safe audit execution
-      // We cast the result to the specific type expected by the audit
+      // Execute audit with the underlying ToolResult<ToolOutput>
+      // The audit is responsible for type checking the output
       late List<Issue> auditIssues;
       
       try {
-        // Use dynamic typing with runtime type checking for audit execution
-        // This preserves type safety while allowing heterogeneous audit collections
-        auditIssues = audit.run(auditedResult.underlyingResult as dynamic);
+        auditIssues = audit.run(auditedResult.underlyingResult);
       } catch (e) {
-        // If type casting fails, create an audit execution error
+        // If audit execution fails, create an audit execution error
         auditIssues = [
           Issue(
-            id: 'audit_type_error_${audit.name}_$stepIndex',
+            id: 'audit_execution_error_${audit.name}_$stepIndex',
             severity: IssueSeverity.critical,
-            description: 'Audit ${audit.name} failed due to type mismatch: $e',
+            description: 'Audit ${audit.name} execution failed: $e',
             context: {
               'step_index': stepIndex,
               'audit_name': audit.name,
-              'expected_type': audit.runtimeType.toString(),
+              'error': e.toString(),
               'actual_output_type': auditedResult.outputType.toString(),
             },
             suggestions: [
-              'Ensure audit function generic type matches tool output type',
-              'Register correct output type for tool in ToolOutputRegistry',
+              'Check audit function implementation',
+              'Verify tool output structure matches expectations',
             ],
             round: int.tryParse(
                   result.input.toMap()['_round']?.toString() ?? '0',
