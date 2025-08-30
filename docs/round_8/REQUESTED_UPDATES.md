@@ -5,6 +5,7 @@ I need your help with the following content.
 ### Instructions
 - Please fulfill each of the requested updates for each section below.
 - There are some ambiguous directions that you can interpret freely.
+- Read the README.md file to better understand the intentions of this package, and how users should expect to use it.
 - Reference: See also ADR-0001 (`docs/round_8/adr/adr-0001-toolflow-per-step-generic-typing.md`) for the architectural decision and rationale behind this refactor. Read this ADR before starting implementation.
 - Use the `ADR_TEMPLATE.md` file to generate decisions records you've made about the below requested changes
     - Documenting your decisions is critical for future requested updates so that we understand why certain decisions were made
