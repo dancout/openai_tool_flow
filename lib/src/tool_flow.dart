@@ -311,7 +311,7 @@ class ToolFlow {
 
   /// Executes an audit with proper type safety using the audit's built-in type checking
   List<Issue> _executeAuditWithTypeSafety(
-    AuditFunction<ToolOutput> audit,
+    AuditFunction audit,
     TypedToolResult result,
     int stepIndex,
   ) {
