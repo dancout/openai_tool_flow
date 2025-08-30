@@ -19,3 +19,4 @@ export 'src/tool_call_step.dart';
 export 'src/tool_flow.dart';
 export 'src/tool_result.dart';
 export 'src/typed_interfaces.dart';
+export 'src/typed_tool_result.dart';
