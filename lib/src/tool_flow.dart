@@ -230,6 +230,10 @@ class ToolFlow {
 
     // Create TypedToolResult with type information from registry
     final outputType =
+        // TODO: Consider if this should probably fail more loudly if we cannot find the output type.
+        /// Defaulting to ToolOutput means that the data would be the only real parameter, but maybe in some cases that's OK?
+        /// So why make the user define another extended class that also only defined data?
+        /// I'M NOT SURE!
         ToolOutputRegistry.getOutputType(step.toolName) ?? ToolOutput;
     return TypedToolResult.fromWithType(result, outputType);
   }
