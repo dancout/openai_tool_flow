@@ -96,6 +96,7 @@ class ToolCallStep {
     this.issues = const [],
     this.maxRetries = 3,
     required this.stepConfig,
+    // TODO: Consider moving outputSchema to the ToolCallStep instead of the stepConfig. I'm not sure which is better.
   });
 
   /// Creates a copy of this ToolCallStep with updated parameters
