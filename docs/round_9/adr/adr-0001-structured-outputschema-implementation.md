@@ -1,16 +1,16 @@
 ---
-title: "ADR-0001: Structured OutputSchema Implementation and Code Cleanup"
+title: "ADR-0001: Structured OutputSchema Implementation and Breaking Changes"
 status: "Accepted"
 date: "2025-09-01"
 authors: "Development Team"
-tags: ["architecture", "schema", "cleanup", "type-safety"]
+tags: ["architecture", "schema", "cleanup", "type-safety", "breaking-changes"]
 supersedes: ""
 superseded_by: ""
 adr_references: ["ADR-0002-typedtoolresult-wrapper-implementation.md"]
 used_as_resource_in: []
 ---
 
-# ADR-0001: Structured OutputSchema Implementation and Code Cleanup
+# ADR-0001: Structured OutputSchema Implementation and Breaking Changes
 
 ## Status
 
@@ -29,7 +29,7 @@ The existing approach required users to manually write JSON Schema-like structur
 
 ## Decision
 
-**Implement structured OutputSchema classes and remove unused code while maintaining backward compatibility.**
+**Implement structured OutputSchema classes with breaking changes to enforce type safety and modern patterns.**
 
 ### Key Changes Made
 
@@ -39,63 +39,70 @@ The existing approach required users to manually write JSON Schema-like structur
    - **CLN-003**: Removed unused import statements and fixed linting issues
 
 2. **Structured Schema Implementation**:
-   - **SCH-001**: Created `PropertyEntry` class for defining individual schema properties with type safety
-   - **SCH-002**: Created `OutputSchema` class to replace loose map-based schemas
-   - **SCH-003**: Implemented schema inference from `ToolOutput.toMap()` method
-   - **SCH-004**: Made `outputSchema` optional in `StepConfig` with automatic derivation fallbacks
+   - **SCH-001**: Created `PropertyType` enum to replace string types, preventing typos and ensuring type safety
+   - **SCH-002**: Added required `name` parameter to `PropertyEntry` class for clearer property definitions
+   - **SCH-003**: Changed `OutputSchema.properties` from `Map<String, PropertyEntry>` to `List<PropertyEntry>` for better ergonomics
+   - **SCH-004**: Added convenient factory methods (`PropertyEntry.string()`, `PropertyEntry.array()`, etc.) for common use cases
+   - **SCH-005**: Made `outputSchema` field accept only `OutputSchema` objects, removing `dynamic` type support
 
-3. **Backward Compatibility**:
-   - **BWD-001**: Used `dynamic` type for `outputSchema` field to accept both `OutputSchema` objects and `Map<String, dynamic>`
-   - **BWD-002**: Implemented automatic conversion in `getEffectiveOutputSchema()` method
-   - **BWD-003**: Updated all example code to use new structured approach while maintaining test compatibility
+3. **Breaking Changes**:
+   - **BRK-001**: Removed all map-based schema support - no backward compatibility maintained
+   - **BRK-002**: Removed `OutputSchema.fromToolOutput()` method that provided inconsistent schema derivation
+   - **BRK-003**: Removed fallback schema generation when derivation is not possible
+   - **BRK-004**: Required all `ToolOutput` subclasses to implement `getOutputSchema()` method
 
 4. **Schema Derivation**:
-   - **DER-001**: Implemented `OutputSchema.fromToolOutput()` for automatic schema generation
-   - **DER-002**: Added `getEffectiveOutputSchema()` method that attempts multiple derivation strategies
-   - **DER-003**: Provided sensible fallback schemas when derivation is not possible
+   - **DER-001**: Added `getOutputSchema()` abstract method to `ToolOutput` base class
+   - **DER-002**: Enhanced `ToolOutputRegistry.getOutputSchema()` to derive schemas from registered outputs
+   - **DER-003**: Modified `getEffectiveOutputSchema()` to throw clear errors when no schema can be derived
 
 ## Consequences
 
 ### Positive
 
 - **POS-001**: Eliminated code bloat by removing 6 unused `@visibleForTesting` methods and 1 unused static getter
-- **POS-002**: Improved type safety for schema definitions through structured classes
+- **POS-002**: Improved type safety for schema definitions through structured classes and enums
 - **POS-003**: Reduced verbosity in schema specification with convenient factory methods
-- **POS-004**: Enabled automatic schema derivation reducing manual specification burden
-- **POS-005**: Maintained full backward compatibility for existing tests and code
-- **POS-006**: Enhanced IDE support with autocompletion and type checking for schema properties
-- **POS-007**: Achieved zero linting errors in final implementation
+- **POS-004**: Enabled automatic schema derivation from registered `ToolOutput` types
+- **POS-005**: Enhanced IDE support with autocompletion and type checking for schema properties
+- **POS-006**: Achieved zero linting errors in final implementation
+- **POS-007**: Eliminated potential runtime errors from typos in property type strings
+- **POS-008**: Simplified property definitions with List-based approach and named entries
 
 ### Negative
 
-- **NEG-001**: Added complexity with dual-type support for `outputSchema` field  
-- **NEG-002**: Schema inference is limited for complex `ToolOutput` subclasses without sample instances
-- **NEG-003**: Requires migration path planning for future versions to remove map-based support
+- **NEG-001**: Breaking changes require migration of all existing code using map-based schemas
+- **NEG-002**: All `ToolOutput` subclasses must now implement `getOutputSchema()` method
+- **NEG-003**: No fallback schemas available when derivation fails - explicit definition required
+- **NEG-004**: Requires understanding of new factory method patterns for property creation
 
 ## Alternatives Considered
 
-### Make Breaking Changes to outputSchema Type
+### Maintain Backward Compatibility
 
-- **ALT-001**: **Description**: Change `outputSchema` to only accept `OutputSchema` objects
-- **ALT-002**: **Rejection Reason**: Would break all existing tests and examples, requiring extensive migration work
+- **ALT-001**: **Description**: Continue supporting both Map-based and OutputSchema approaches
+- **ALT-002**: **Rejection Reason**: Explicit requirement to not focus on backward compatibility and make necessary changes regardless of migration effort
 
 ### Keep Map-Based Approach
 
-- **ALT-003**: **Description**: Continue using `Map<String, dynamic>` for schemas
-- **ALT-004**: **Rejection Reason**: Misses opportunity for type safety improvements and doesn't address user experience issues
+- **ALT-003**: **Description**: Continue using `Map<String, dynamic>` for schemas with improved validation
+- **ALT-004**: **Rejection Reason**: Misses opportunity for type safety improvements and doesn't address user experience issues with typos and runtime errors
 
-### Remove outputSchema Completely
+### Provide Automatic Fallback Schemas
 
-- **ALT-005**: **Description**: Rely entirely on automatic derivation from `ToolOutput`
-- **ALT-006**: **Rejection Reason**: Users still need ability to specify custom schemas that differ from `ToolOutput` structure
+- **ALT-005**: **Description**: Generate generic schemas when specific ones aren't available
+- **ALT-006**: **Rejection Reason**: Requirement specified that ToolOutput should provide schemas "we can have 100% confidence in" rather than fallbacks
 
 ## Implementation Notes
 
-- **IMP-001**: `PropertyEntry` supports nested properties for object types and array item definitions
-- **IMP-002**: Schema inference uses heuristics based on value types (string, number, boolean, array, object)
-- **IMP-003**: Fallback schemas provide meaningful defaults when derivation fails
-- **IMP-004**: All example code updated to demonstrate new structured approach
-- **IMP-005**: Test suite continues to use map-based schemas to verify backward compatibility
+- **IMP-001**: `PropertyType` enum prevents runtime errors from typos in type strings
+- **IMP-002**: Factory methods (`PropertyEntry.string()`, `PropertyEntry.array()`, etc.) provide convenient and type-safe property creation
+- **IMP-003**: List-based properties with named entries eliminate confusion about property names and improve readability
+- **IMP-004**: All example code updated to demonstrate new structured approach with factory methods
+- **IMP-005**: All test suites updated to use new OutputSchema objects instead of maps
+- **IMP-006**: `ToolOutput.getOutputSchema()` method ensures every output type has a defined, reliable schema
+- **IMP-007**: `ToolOutputRegistry.getOutputSchema()` enables automatic schema derivation for registered tools
+- **IMP-008**: Error handling improved with clear messages when schemas cannot be derived
 
 ## References
 
