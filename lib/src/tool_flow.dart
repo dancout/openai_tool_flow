@@ -371,6 +371,7 @@ class ToolFlow {
       }
 
       if (sourceTypedResult != null) {
+        // TODO: Investigate what is truly meant by backwards compatibility here. Is that necessary? Can it be deleted?
         // Extract the underlying ToolResult for backward compatibility
         inputResults.add(sourceTypedResult.underlyingResult);
       }
