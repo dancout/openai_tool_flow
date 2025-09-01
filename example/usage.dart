@@ -93,29 +93,28 @@ void main() async {
         // TODO: It would be great if we could define these more programatically.
         /// Maybe even for the example we could have them be on the output type as --> output schema?
         /// Like PaletteExtractionOutput.outputSchema?
-        outputSchema: {
-          'type': 'object',
-          'properties': {
-            'colors': {
-              'type': 'array',
-              'items': {'type': 'string'},
-              'description': 'Extracted color hex codes',
-            },
-            'confidence': {
-              'type': 'number',
-              'description': 'Confidence score for extraction',
-            },
-            'image_analyzed': {
-              'type': 'string',
-              'description': 'Path to analyzed image',
-            },
-            'metadata': {
-              'type': 'object',
-              'description': 'Extraction metadata',
-            },
+        outputSchema: OutputSchema(
+          properties: {
+            'colors': PropertyEntry(
+              type: 'array',
+              items: PropertyEntry(type: 'string'),
+              description: 'Extracted color hex codes',
+            ),
+            'confidence': PropertyEntry(
+              type: 'number',
+              description: 'Confidence score for extraction',
+            ),
+            'image_analyzed': PropertyEntry(
+              type: 'string',
+              description: 'Path to analyzed image',
+            ),
+            'metadata': PropertyEntry(
+              type: 'object',
+              description: 'Extraction metadata',
+            ),
           },
-          'required': ['colors', 'confidence', 'image_analyzed'],
-        },
+          required: ['colors', 'confidence', 'image_analyzed'],
+        ),
       ),
     ),
 
@@ -149,22 +148,21 @@ void main() async {
           );
         },
         includeOutputsFrom: ['extract_palette'],
-        outputSchema: {
-          'type': 'object',
-          'properties': {
-            'refined_colors': {
-              'type': 'array',
-              'items': {'type': 'string'},
-              'description': 'Refined color hex codes',
-            },
-            'improvements_made': {
-              'type': 'array',
-              'items': {'type': 'string'},
-              'description': 'List of improvements applied',
-            },
+        outputSchema: OutputSchema(
+          properties: {
+            'refined_colors': PropertyEntry(
+              type: 'array',
+              items: PropertyEntry(type: 'string'),
+              description: 'Refined color hex codes',
+            ),
+            'improvements_made': PropertyEntry(
+              type: 'array',
+              items: PropertyEntry(type: 'string'),
+              description: 'List of improvements applied',
+            ),
           },
-          'required': ['refined_colors'],
-        },
+          required: ['refined_colors'],
+        ),
       ),
     ),
 
@@ -187,20 +185,19 @@ void main() async {
         audits: [],
         maxRetries: 1,
         stopOnFailure: false, // Continue even if this step fails
-        outputSchema: {
-          'type': 'object',
-          'properties': {
-            'theme': {
-              'type': 'object',
-              'description': 'Generated theme object',
-            },
-            'metadata': {
-              'type': 'object',
-              'description': 'Theme generation metadata',
-            },
+        outputSchema: OutputSchema(
+          properties: {
+            'theme': PropertyEntry(
+              type: 'object',
+              description: 'Generated theme object',
+            ),
+            'metadata': PropertyEntry(
+              type: 'object',
+              description: 'Theme generation metadata',
+            ),
           },
-          'required': ['theme'],
-        },
+          required: ['theme'],
+        ),
       ),
     ),
   ];

@@ -76,23 +76,22 @@ class ExampleStepConfigs {
       // That way, the user doesn't have to worry about how to parse it.
       // Or they could even have the option to override the issue parser for that step if they'd like.
       includeOutputsFrom: stepIndexes,
-      outputSchema: {
-        'type': 'object',
-        'properties': {
-          'colors': {
-            'type': 'array',
-            'items': {'type': 'string'},
-            'description': 'Array of hex color codes',
-          },
-          'confidence': {
-            'type': 'number',
-            'minimum': 0.0,
-            'maximum': 1.0,
-            'description': 'Confidence score for the extraction',
-          },
+      outputSchema: OutputSchema(
+        properties: {
+          'colors': PropertyEntry(
+            type: 'array',
+            items: PropertyEntry(type: 'string'),
+            description: 'Array of hex color codes',
+          ),
+          'confidence': PropertyEntry(
+            type: 'number',
+            minimum: 0.0,
+            maximum: 1.0,
+            description: 'Confidence score for the extraction',
+          ),
         },
-        'required': ['colors', 'confidence'],
-      },
+        required: ['colors', 'confidence'],
+      ),
     );
   }
 
@@ -100,23 +99,22 @@ class ExampleStepConfigs {
   static StepConfig forwardingOutputConfig(String toolName) {
     return StepConfig(
       includeOutputsFrom: [toolName],
-      outputSchema: {
-        'type': 'object',
-        'properties': {
-          'colors': {
-            'type': 'array',
-            'items': {'type': 'string'},
-            'description': 'Array of hex color codes',
-          },
-          'confidence': {
-            'type': 'number',
-            'minimum': 0.0,
-            'maximum': 1.0,
-            'description': 'Confidence score for the extraction',
-          },
+      outputSchema: OutputSchema(
+        properties: {
+          'colors': PropertyEntry(
+            type: 'array',
+            items: PropertyEntry(type: 'string'),
+            description: 'Array of hex color codes',
+          ),
+          'confidence': PropertyEntry(
+            type: 'number',
+            minimum: 0.0,
+            maximum: 1.0,
+            description: 'Confidence score for the extraction',
+          ),
         },
-        'required': ['colors', 'confidence'],
-      },
+        required: ['colors', 'confidence'],
+      ),
     );
   }
 
@@ -126,23 +124,22 @@ class ExampleStepConfigs {
   ) {
     return StepConfig(
       outputSanitizer: outputSanitizer,
-      outputSchema: {
-        'type': 'object',
-        'properties': {
-          'colors': {
-            'type': 'array',
-            'items': {'type': 'string'},
-            'description': 'Array of hex color codes',
-          },
-          'confidence': {
-            'type': 'number',
-            'minimum': 0.0,
-            'maximum': 1.0,
-            'description': 'Confidence score for the extraction',
-          },
+      outputSchema: OutputSchema(
+        properties: {
+          'colors': PropertyEntry(
+            type: 'array',
+            items: PropertyEntry(type: 'string'),
+            description: 'Array of hex color codes',
+          ),
+          'confidence': PropertyEntry(
+            type: 'number',
+            minimum: 0.0,
+            maximum: 1.0,
+            description: 'Confidence score for the extraction',
+          ),
         },
-        'required': ['colors', 'confidence'],
-      },
+        required: ['colors', 'confidence'],
+      ),
     );
   }
 
@@ -284,21 +281,20 @@ Map<String, ToolCallStep> createColorThemeWorkflow() {
         audits: [diversityAudit],
         maxRetries: 3,
         outputSanitizer: ExampleSanitizers.paletteOutputSanitizer,
-        outputSchema: {
-          'type': 'object',
-          'properties': {
-            'colors': {
-              'type': 'array',
-              'items': {'type': 'string'},
-              'description': 'Extracted palette colors',
-            },
-            'diversityScore': {
-              'type': 'number',
-              'description': 'Score for color diversity',
-            },
+        outputSchema: OutputSchema(
+          properties: {
+            'colors': PropertyEntry(
+              type: 'array',
+              items: PropertyEntry(type: 'string'),
+              description: 'Extracted palette colors',
+            ),
+            'diversityScore': PropertyEntry(
+              type: 'number',
+              description: 'Score for color diversity',
+            ),
           },
-          'required': ['colors', 'diversityScore'],
-        },
+          required: ['colors', 'diversityScore'],
+        ),
       ),
     ),
 
@@ -346,21 +342,20 @@ Map<String, ToolCallStep> createColorThemeWorkflow() {
                 issue.severity == IssueSeverity.critical,
           );
         },
-        outputSchema: {
-          'type': 'object',
-          'properties': {
-            'colors': {
-              'type': 'array',
-              'items': {'type': 'string'},
-              'description': 'Refined color list',
-            },
-            'contrastEnhanced': {
-              'type': 'boolean',
-              'description': 'Whether contrast was enhanced',
-            },
+        outputSchema: OutputSchema(
+          properties: {
+            'colors': PropertyEntry(
+              type: 'array',
+              items: PropertyEntry(type: 'string'),
+              description: 'Refined color list',
+            ),
+            'contrastEnhanced': PropertyEntry(
+              type: 'boolean',
+              description: 'Whether contrast was enhanced',
+            ),
           },
-          'required': ['colors', 'contrastEnhanced'],
-        },
+          required: ['colors', 'contrastEnhanced'],
+        ),
       ),
     ),
 
@@ -396,16 +391,15 @@ Map<String, ToolCallStep> createColorThemeWorkflow() {
         stopOnFailure: false,
         includeOutputsFrom: ['refine_colors'],
         inputSanitizer: ExampleSanitizers.refinementToThemeInputSanitizer,
-        outputSchema: {
-          'type': 'object',
-          'properties': {
-            'theme': {
-              'type': 'object',
-              'description': 'Generated theme object',
-            },
+        outputSchema: OutputSchema(
+          properties: {
+            'theme': PropertyEntry(
+              type: 'object',
+              description: 'Generated theme object',
+            ),
           },
-          'required': ['theme'],
-        },
+          required: ['theme'],
+        ),
       ),
     ),
   };

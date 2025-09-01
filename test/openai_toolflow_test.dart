@@ -208,7 +208,7 @@ void main() {
         model: 'gpt-4',
         inputBuilder: (previousResults) => {'max_colors': 5},
         stepConfig: StepConfig(
-          outputSchema: {
+          outputSchema: OutputSchema.fromMap({
             'type': 'object',
             'properties': {
               'colors': {
@@ -218,7 +218,7 @@ void main() {
               },
             },
             'required': ['colors'],
-          },
+          }),
         ),
       );
 
