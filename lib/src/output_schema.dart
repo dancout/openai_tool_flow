@@ -139,43 +139,6 @@ class PropertyEntry {
 
     return map;
   }
-
-  // TODO: Consider removing fromMap because it's not used and bloat!
-  /// Creates a PropertyEntry from a map
-  factory PropertyEntry.fromMap(String name, Map<String, dynamic> map) {
-    final typeString = map['type'] as String;
-    final type = PropertyType.values.firstWhere(
-      (t) => t.value == typeString,
-      orElse: () => PropertyType.object,
-    );
-
-    return PropertyEntry(
-      name: name,
-      type: type,
-      description: map['description'] as String?,
-      itemsType: map['itemsType'] != null
-          ? PropertyType.values.firstWhere(
-              (t) => t.value == map['items'],
-              orElse: () => PropertyType.object,
-            )
-          : null,
-      minimum: map['minimum'] as num?,
-      maximum: map['maximum'] as num?,
-      properties: map['properties'] != null
-          ? (map['properties'] as Map<String, dynamic>).entries
-                .map(
-                  (entry) => PropertyEntry.fromMap(
-                    entry.key,
-                    entry.value as Map<String, dynamic>,
-                  ),
-                )
-                .toList()
-          : null,
-      requiredProperties: map['required'] != null
-          ? (map['required'] as List).cast<String>()
-          : null,
-    );
-  }
 }
 
 /// Structured output schema for tool calls
@@ -202,31 +165,5 @@ class OutputSchema {
       'properties': {for (final prop in properties) prop.name: prop.toMap()},
       'required': required,
     };
-  }
-
-  // TODO: Consider removing fromMap because it's not used and bloat!
-  /// Creates an OutputSchema from a map
-  factory OutputSchema.fromMap(Map<String, dynamic> map) {
-    final typeString = map['type'] as String? ?? 'object';
-    final type = PropertyType.values.firstWhere(
-      (t) => t.value == typeString,
-      orElse: () => PropertyType.object,
-    );
-
-    final propertiesMap = map['properties'] as Map<String, dynamic>? ?? {};
-    final properties = propertiesMap.entries
-        .map(
-          (entry) => PropertyEntry.fromMap(
-            entry.key,
-            entry.value as Map<String, dynamic>,
-          ),
-        )
-        .toList();
-
-    return OutputSchema(
-      type: type,
-      properties: properties,
-      required: (map['required'] as List<dynamic>? ?? []).cast<String>(),
-    );
   }
 }
