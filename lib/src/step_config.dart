@@ -129,23 +129,24 @@ class StepConfig {
     if (outputSchema != null) {
       return outputSchema!;
     }
-    
+
     // Try to get schema from ToolOutput registry
     final registrySchema = ToolOutputRegistry.getOutputSchema(toolName);
     if (registrySchema != null) {
       return registrySchema;
     }
-    
+
     // If no schema can be derived, throw an error
     throw StateError(
       'No OutputSchema available for tool "$toolName". '
       'Either provide an explicit outputSchema in StepConfig, '
-      'or register a ToolOutput for this tool that implements getOutputSchema().'
+      'or register a ToolOutput for this tool that implements getOutputSchema().',
     );
   }
 
   /// Returns true if this step has any audits configured
   bool get hasAudits => audits.isNotEmpty;
+
   /// Returns true if this step should include outputs from previous steps
   bool
   // TODO: Does this belong on the ToolCallStep directly?
@@ -217,42 +218,5 @@ class StepConfig {
     }
 
     return outputSanitizer!(rawOutput);
-  }
-
-  /// Creates a StepConfig from JSON
-  factory StepConfig.fromJson(Map<String, dynamic> json) {
-    return StepConfig(
-      // Note: Audit functions cannot be serialized, would need a registry
-      audits: const [],
-      maxRetries: json['maxRetries'] as int?,
-      stopOnFailure: json['stopOnFailure'] as bool? ?? true,
-      auditOnlyFinalAttempt: json['auditOnlyFinalAttempt'] as bool? ?? false,
-      // Note: Functions cannot be serialized
-      includeOutputsFrom:
-          json['includeOutputsFrom'] as List<dynamic>? ?? const [],
-      outputSchema: json['outputSchema'],
-    );
-  }
-
-  /// Converts to JSON (limited due to function serialization constraints)
-  Map<String, dynamic> toJson() {
-    dynamic schemaJson;
-    if (outputSchema is OutputSchema) {
-      schemaJson = (outputSchema as OutputSchema).toMap();
-    } else {
-      schemaJson = outputSchema;
-    }
-    
-    return {
-      'maxRetries': maxRetries,
-      'stopOnFailure': stopOnFailure,
-      'auditOnlyFinalAttempt': auditOnlyFinalAttempt,
-      'hasAudits': hasAudits,
-      'hasOutputInclusion': hasOutputInclusion,
-      'hasInputSanitizer': hasInputSanitizer,
-      'hasOutputSanitizer': hasOutputSanitizer,
-      'includeOutputsFrom': includeOutputsFrom,
-      'outputSchema': schemaJson,
-    };
   }
 }
