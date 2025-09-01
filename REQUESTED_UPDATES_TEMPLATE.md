@@ -2,6 +2,11 @@
 
 I need your help with the following content.
 
+### IMPORTANT
+- This is still a version 0.0.x package, so we should not worry about backwards compatibility
+    - If you need to make a breaking change, make the breaking change
+    - Needing to do lots of refactors is NOT a valid reason not to implement a change
+
 ### Instructions
 - Please fulfill each of the requested updates for each section below.
 - There are some ambiguous directions that you can interpret freely.
