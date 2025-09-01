@@ -326,17 +326,16 @@ void main() {
             model: 'gpt-4',
             inputBuilder: (previousResults) => {'max_colors': 3},
             stepConfig: StepConfig(
-              outputSchema: {
-                'type': 'object',
-                'properties': {
-                  'colors': {
-                    'type': 'array',
-                    'items': {'type': 'string'},
-                    'description': 'Extracted color hex codes',
-                  },
-                },
-                'required': ['colors'],
-              },
+              outputSchema: OutputSchema(
+                properties: [
+                  PropertyEntry.array(
+                    name: 'colors',
+                    items: PropertyEntry.string(name: 'color'),
+                    description: 'Extracted color hex codes',
+                  ),
+                ],
+                required: ['colors'],
+              ),
             ),
           ),
         ],
@@ -379,17 +378,16 @@ void main() {
             inputBuilder: (previousResults) => {},
             stepConfig: StepConfig(
               audits: [audit],
-              outputSchema: {
-                'type': 'object',
-                'properties': {
-                  'colors': {
-                    'type': 'array',
-                    'items': {'type': 'string'},
-                    'description': 'Extracted color hex codes',
-                  },
-                },
-                'required': ['colors'],
-              },
+              outputSchema: OutputSchema(
+                properties: [
+                  PropertyEntry.array(
+                    name: 'colors',
+                    items: PropertyEntry.string(name: 'color'),
+                    description: 'Extracted color hex codes',
+                  ),
+                ],
+                required: ['colors'],
+              ),
             ),
           ),
         ],
@@ -425,17 +423,16 @@ void main() {
             model: 'gpt-4',
             inputBuilder: (previousResults) => {},
             stepConfig: StepConfig(
-              outputSchema: {
-                'type': 'object',
-                'properties': {
-                  'colors': {
-                    'type': 'array',
-                    'items': {'type': 'string'},
-                    'description': 'Extracted color hex codes',
-                  },
-                },
-                'required': ['colors'],
-              },
+              outputSchema: OutputSchema(
+                properties: [
+                  PropertyEntry.array(
+                    name: 'colors',
+                    items: PropertyEntry.string(name: 'color'),
+                    description: 'Extracted color hex codes',
+                  ),
+                ],
+                required: ['colors'],
+              ),
             ),
           ),
           ToolCallStep(
@@ -443,17 +440,16 @@ void main() {
             model: 'gpt-4',
             inputBuilder: (previousResults) => {},
             stepConfig: StepConfig(
-              outputSchema: {
-                'type': 'object',
-                'properties': {
-                  'refined_colors': {
-                    'type': 'array',
-                    'items': {'type': 'string'},
-                    'description': 'Refined color hex codes',
-                  },
-                },
-                'required': ['refined_colors'],
-              },
+              outputSchema: OutputSchema(
+                properties: [
+                  PropertyEntry.array(
+                    name: 'refined_colors',
+                    items: PropertyEntry.string(name: 'color'),
+                    description: 'Refined color hex codes',
+                  ),
+                ],
+                required: ['refined_colors'],
+              ),
             ),
           ),
         ],
@@ -523,17 +519,16 @@ void main() {
             inputBuilder: (previousResults) => {},
             stepConfig: StepConfig(
               audits: [audit],
-              outputSchema: {
-                'type': 'object',
-                'properties': {
-                  'colors': {
-                    'type': 'array',
-                    'items': {'type': 'string'},
-                    'description': 'Extracted color hex codes',
-                  },
-                },
-                'required': ['colors'],
-              },
+              outputSchema: OutputSchema(
+                properties: [
+                  PropertyEntry.array(
+                    name: 'colors',
+                    items: PropertyEntry.string(name: 'color'),
+                    description: 'Extracted color hex codes',
+                  ),
+                ],
+                required: ['colors'],
+              ),
             ),
           ),
           ToolCallStep(
@@ -551,13 +546,14 @@ void main() {
             buildInputsFrom: [0],
             stepConfig: StepConfig(
               includeOutputsFrom: [0],
-              outputSchema: {
-                'type': 'object',
-                'properties': {
-                  'result': {'type': 'string'},
-                },
-                'required': ['result'],
-              },
+              outputSchema: OutputSchema(
+                properties: [
+                  PropertyEntry.string(
+                    name: 'result',
+                  ),
+                ],
+                required: ['result'],
+              ),
             ),
           ),
         ],
@@ -600,17 +596,16 @@ void main() {
             model: 'gpt-4',
             inputBuilder: (previousResults) => {'iteration': 1},
             stepConfig: StepConfig(
-              outputSchema: {
-                'type': 'object',
-                'properties': {
-                  'refined_colors': {
-                    'type': 'array',
-                    'items': {'type': 'string'},
-                    'description': 'Refined color hex codes',
-                  },
-                },
-                'required': ['refined_colors'],
-              },
+              outputSchema: OutputSchema(
+                properties: [
+                  PropertyEntry.array(
+                    name: 'refined_colors',
+                    items: PropertyEntry.string(name: 'color'),
+                    description: 'Refined color hex codes',
+                  ),
+                ],
+                required: ['refined_colors'],
+              ),
             ),
           ),
           ToolCallStep(
@@ -618,17 +613,16 @@ void main() {
             model: 'gpt-4',
             inputBuilder: (previousResults) => {'iteration': 2},
             stepConfig: StepConfig(
-              outputSchema: {
-                'type': 'object',
-                'properties': {
-                  'refined_colors': {
-                    'type': 'array',
-                    'items': {'type': 'string'},
-                    'description': 'Refined color hex codes',
-                  },
-                },
-                'required': ['refined_colors'],
-              },
+              outputSchema: OutputSchema(
+                properties: [
+                  PropertyEntry.array(
+                    name: 'refined_colors',
+                    items: PropertyEntry.string(name: 'color'),
+                    description: 'Refined color hex codes',
+                  ),
+                ],
+                required: ['refined_colors'],
+              ),
             ),
           ),
         ],
@@ -787,13 +781,12 @@ void main() {
             model: 'gpt-4',
             inputBuilder: (previousResults) => {},
             stepConfig: StepConfig(
-              outputSchema: {
-                'type': 'object',
-                'properties': {
-                  'result': {'type': 'string'},
-                },
-                'required': ['result'],
-              },
+              outputSchema: OutputSchema(
+                properties: [
+                  PropertyEntry.string(name: 'result'),
+                ],
+                required: ['result'],
+              ),
             ),
           ),
           ToolCallStep(
@@ -801,13 +794,12 @@ void main() {
             model: 'gpt-4',
             inputBuilder: (previousResults) => {},
             stepConfig: StepConfig(
-              outputSchema: {
-                'type': 'object',
-                'properties': {
-                  'result': {'type': 'string'},
-                },
-                'required': ['result'],
-              },
+              outputSchema: OutputSchema(
+                properties: [
+                  PropertyEntry.string(name: 'result'),
+                ],
+                required: ['result'],
+              ),
             ),
           ),
           ToolCallStep(
@@ -816,13 +808,12 @@ void main() {
             inputBuilder: (previousResults) => {},
             stepConfig: StepConfig(
               includeOutputsFrom: ['step1_tool'], // Only include step1
-              outputSchema: {
-                'type': 'object',
-                'properties': {
-                  'result': {'type': 'string'},
-                },
-                'required': ['result'],
-              },
+              outputSchema: OutputSchema(
+                properties: [
+                  PropertyEntry.string(name: 'result'),
+                ],
+                required: ['result'],
+              ),
             ),
           ),
         ],

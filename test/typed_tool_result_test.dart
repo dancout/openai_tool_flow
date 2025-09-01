@@ -243,17 +243,18 @@ void main() {
             model: 'gpt-4',
             inputBuilder: (previousResults) => {'image': 'test.jpg'},
             stepConfig: StepConfig(
-              outputSchema: {
-                'type': 'object',
-                'properties': {
-                  'colors': {
-                    'type': 'array',
-                    'items': {'type': 'string'},
-                  },
-                  'confidence': {'type': 'number'},
-                },
-                'required': ['colors', 'confidence'],
-              },
+              outputSchema: OutputSchema(
+                properties: [
+                  PropertyEntry.array(
+                    name: 'colors',
+                    items: PropertyEntry.string(name: 'color'),
+                  ),
+                  PropertyEntry.number(
+                    name: 'confidence',
+                  ),
+                ],
+                required: ['colors', 'confidence'],
+              ),
             ),
           ),
           ToolCallStep(
