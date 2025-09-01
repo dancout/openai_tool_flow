@@ -11,7 +11,7 @@ import 'typed_interfaces.dart';
 class TypedToolResult {
   /// The wrapped tool result with its specific type
   final ToolResult<ToolOutput> _result;
-  
+
   /// The runtime type of the output for type-safe operations
   final Type _outputType;
 
@@ -24,7 +24,10 @@ class TypedToolResult {
   }
 
   /// Creates a TypedToolResult from a ToolResult with runtime type information
-  static TypedToolResult fromWithType(ToolResult<ToolOutput> result, Type outputType) {
+  static TypedToolResult fromWithType(
+    ToolResult<ToolOutput> result,
+    Type outputType,
+  ) {
     return TypedToolResult._(result, outputType);
   }
 
@@ -52,9 +55,12 @@ class TypedToolResult {
   Type get outputType => _outputType;
 
   /// Gets the underlying ToolResult for internal use
-  /// 
+  ///
   /// This is used internally by ToolFlow for backward compatibility
-  /// and should not be used by external code.
+  /// and should not be used by external code
+  /// // TODO: Does this need to be generic T?
+  /// // TODO Does there need to be a getter here for the private result, or can we just expose _result directly?
+  /// also, why are we still worrying about backwards compatibility?
   ToolResult<ToolOutput> get underlyingResult => _result;
 
   /// Checks if the wrapped result has the expected output type
@@ -63,7 +69,7 @@ class TypedToolResult {
   }
 
   /// Safely creates a new properly-typed result for the given type
-  /// 
+  ///
   /// Returns null if the output type doesn't match, otherwise returns a new
   /// `ToolResult<T>` with the correct type parameter. This enables type-safe audit execution.
   ToolResult<T>? asTyped<T extends ToolOutput>() {

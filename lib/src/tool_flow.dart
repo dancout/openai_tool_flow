@@ -1,14 +1,5 @@
 import 'package:meta/meta.dart';
-
-import 'issue.dart';
-import 'openai_config.dart';
-import 'openai_service.dart';
-import 'openai_service_impl.dart';
-import 'step_config.dart';
-import 'tool_call_step.dart';
-import 'tool_result.dart';
-import 'typed_interfaces.dart';
-import 'typed_tool_result.dart';
+import 'package:openai_toolflow/openai_toolflow.dart';
 
 /// Manages ordered execution of tool call steps with internal state management.
 ///
@@ -85,6 +76,7 @@ class ToolFlow {
 
           // Run audits if configured for this step
           if (stepConfig.hasAudits) {
+            // TODO: What's all this extra stuff? If we have an audit function, we should run it right?
             final shouldRunAudits =
                 !stepConfig.auditOnlyFinalAttempt ||
                 attemptCount > maxRetries ||
@@ -137,7 +129,10 @@ class ToolFlow {
             ],
           );
           // Wrap error result in TypedToolResult
-          stepResult = TypedToolResult.fromWithType(errorToolResult, ToolOutput);
+          stepResult = TypedToolResult.fromWithType(
+            errorToolResult,
+            ToolOutput,
+          );
           stepPassed = false;
         }
       }
@@ -234,7 +229,8 @@ class ToolFlow {
     );
 
     // Create TypedToolResult with type information from registry
-    final outputType = ToolOutputRegistry.getOutputType(step.toolName) ?? ToolOutput;
+    final outputType =
+        ToolOutputRegistry.getOutputType(step.toolName) ?? ToolOutput;
     return TypedToolResult.fromWithType(result, outputType);
   }
 
@@ -250,10 +246,14 @@ class ToolFlow {
     for (final audit in stepConfig.audits) {
       // Execute audit with proper type-safe casting
       late List<Issue> auditIssues;
-      
+
       try {
         // Use a type-safe approach to execute the audit
-        auditIssues = _executeAuditWithTypeSafety(audit, auditedResult, stepIndex);
+        auditIssues = _executeAuditWithTypeSafety(
+          audit,
+          auditedResult,
+          stepIndex,
+        );
       } catch (e) {
         // If audit execution fails, create an audit execution error
         auditIssues = [
@@ -272,14 +272,15 @@ class ToolFlow {
               'Verify tool output structure matches expectations',
               'Ensure tool output type matches audit expectations',
             ],
-            round: int.tryParse(
+            round:
+                int.tryParse(
                   result.input.toMap()['_round']?.toString() ?? '0',
                 ) ??
                 0,
           ),
         ];
       }
-      
+
       // Add round information to audit issues
       final roundedIssues = auditIssues
           .map(
@@ -410,13 +411,16 @@ class ToolFlow {
   /// Gets the current results by tool name (for testing/debugging)
   @visibleForTesting
   Map<String, ToolResult<ToolOutput>> get currentResultsByToolName =>
-      _resultsByToolName.map((key, value) => MapEntry(key, value.underlyingResult));
+      _resultsByToolName.map(
+        (key, value) => MapEntry(key, value.underlyingResult),
+      );
 
   /// Gets the current all results by tool name (for testing/debugging)
   @visibleForTesting
   Map<String, List<ToolResult<ToolOutput>>> get currentAllResultsByToolName =>
       _allResultsByToolName.map(
-        (key, value) => MapEntry(key, value.map((tr) => tr.underlyingResult).toList()),
+        (key, value) =>
+            MapEntry(key, value.map((tr) => tr.underlyingResult).toList()),
       );
 
   /// Gets the current typed results (for testing/debugging)
@@ -435,7 +439,7 @@ class ToolFlowResult {
   final List<TypedToolResult> _typedResults;
 
   /// Results from all executed steps (backward compatible interface)
-  List<ToolResult<ToolOutput>> get results => 
+  List<ToolResult<ToolOutput>> get results =>
       _typedResults.map((tr) => tr.underlyingResult).toList();
 
   // TODO: Is finalState ever used? It's basically the _state collection that was passed around, and is also now not used I don't think.
@@ -452,8 +456,10 @@ class ToolFlowResult {
   /// ```dart
   /// final latestPaletteResult = result.resultsByToolName['extract_palette'];
   /// ```
-  Map<String, ToolResult<ToolOutput>> get resultsByToolName => 
-      _typedResultsByToolName.map((key, value) => MapEntry(key, value.underlyingResult));
+  Map<String, ToolResult<ToolOutput>> get resultsByToolName =>
+      _typedResultsByToolName.map(
+        (key, value) => MapEntry(key, value.underlyingResult),
+      );
 
   /// All results grouped by tool name (backward compatible interface)
   /// Each tool name maps to a list of results in execution order
@@ -465,14 +471,16 @@ class ToolFlowResult {
   ///   print('Palette from step ${result.input['_round']}: ${result.output}');
   /// }
   /// ```
-  Map<String, List<ToolResult<ToolOutput>>> get allResultsByToolName => 
-      _allTypedResultsByToolName.map((key, value) => 
-          MapEntry(key, value.map((tr) => tr.underlyingResult).toList()));
+  Map<String, List<ToolResult<ToolOutput>>> get allResultsByToolName =>
+      _allTypedResultsByToolName.map(
+        (key, value) =>
+            MapEntry(key, value.map((tr) => tr.underlyingResult).toList()),
+      );
 
   /// Internal typed results keyed by tool name
   final Map<String, TypedToolResult> _typedResultsByToolName;
 
-  /// Internal all typed results grouped by tool name  
+  /// Internal all typed results grouped by tool name
   final Map<String, List<TypedToolResult>> _allTypedResultsByToolName;
 
   /// Creates a ToolFlowResult from typed results

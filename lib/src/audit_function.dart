@@ -25,7 +25,7 @@ abstract class AuditFunction<T extends ToolOutput> {
   List<Issue> runWithTypeChecking(ToolResult<ToolOutput> result) {
     try {
       // Attempt to create a properly typed result
-      if (result.output is T) {
+      if (result.output.runtimeType.toString() == T.toString()) {
         final typedResult = ToolResult<T>(
           toolName: result.toolName,
           input: result.input,
@@ -39,7 +39,8 @@ abstract class AuditFunction<T extends ToolOutput> {
           Issue(
             id: 'audit_type_mismatch_${name}',
             severity: IssueSeverity.critical,
-            description: 'Audit $name expects output type $T, but received ${result.output.runtimeType}',
+            description:
+                'Audit $name expects output type $T, but received ${result.output.runtimeType}',
             context: {
               'audit_name': name,
               'expected_type': T.toString(),
@@ -93,13 +94,17 @@ abstract class AuditFunction<T extends ToolOutput> {
   /// This method can be overridden to provide detailed failure reasons.
   /// Only called when passedCriteria returns false.
   String getFailureReason(List<Issue> issues) {
-    final criticalIssues = issues.where((issue) => issue.severity == IssueSeverity.critical).toList();
-    
+    final criticalIssues = issues
+        .where((issue) => issue.severity == IssueSeverity.critical)
+        .toList();
+
     if (criticalIssues.isNotEmpty) {
-      final descriptions = criticalIssues.map((issue) => issue.description).join(', ');
+      final descriptions = criticalIssues
+          .map((issue) => issue.description)
+          .join(', ');
       return 'Critical issues found: $descriptions';
     }
-    
+
     return 'Custom criteria not met';
   }
 }
