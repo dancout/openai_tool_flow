@@ -1,5 +1,3 @@
-import 'output_schema.dart';
-
 /// Base class for strongly-typed tool inputs.
 ///
 /// Provides type safety and validation for tool call parameters
@@ -117,16 +115,6 @@ class ToolOutput {
     }
     throw UnimplementedError(
       'Subclasses must override toMap() when using ToolOutput.subclass()',
-    );
-  }
-
-  /// Returns the expected OutputSchema for this ToolOutput type.
-  /// Subclasses should override this to provide their specific schema definition.
-  OutputSchema getOutputSchema() {
-    // TODO: Does it make sense to just make this class Abstract and then we don't have to throw unimplemented errors?
-
-    throw UnimplementedError(
-      'Subclasses must override getOutputSchema() to provide their schema definition',
     );
   }
 

@@ -81,14 +81,10 @@ class TestToolOutput extends ToolOutput {
   @override
   Map<String, dynamic> toMap() => Map<String, dynamic>.from(data);
 
-  @override
-  OutputSchema getOutputSchema() {
+  static OutputSchema getOutputSchema() {
     return OutputSchema(
       properties: [
-        PropertyEntry.object(
-          name: 'data',
-          description: 'Test output data',
-        ),
+        PropertyEntry.object(name: 'data', description: 'Test output data'),
       ],
       required: [],
     );
@@ -547,11 +543,7 @@ void main() {
             stepConfig: StepConfig(
               includeOutputsFrom: [0],
               outputSchema: OutputSchema(
-                properties: [
-                  PropertyEntry.string(
-                    name: 'result',
-                  ),
-                ],
+                properties: [PropertyEntry.string(name: 'result')],
                 required: ['result'],
               ),
             ),
@@ -782,9 +774,7 @@ void main() {
             inputBuilder: (previousResults) => {},
             stepConfig: StepConfig(
               outputSchema: OutputSchema(
-                properties: [
-                  PropertyEntry.string(name: 'result'),
-                ],
+                properties: [PropertyEntry.string(name: 'result')],
                 required: ['result'],
               ),
             ),
@@ -795,9 +785,7 @@ void main() {
             inputBuilder: (previousResults) => {},
             stepConfig: StepConfig(
               outputSchema: OutputSchema(
-                properties: [
-                  PropertyEntry.string(name: 'result'),
-                ],
+                properties: [PropertyEntry.string(name: 'result')],
                 required: ['result'],
               ),
             ),
@@ -809,9 +797,7 @@ void main() {
             stepConfig: StepConfig(
               includeOutputsFrom: ['step1_tool'], // Only include step1
               outputSchema: OutputSchema(
-                properties: [
-                  PropertyEntry.string(name: 'result'),
-                ],
+                properties: [PropertyEntry.string(name: 'result')],
                 required: ['result'],
               ),
             ),

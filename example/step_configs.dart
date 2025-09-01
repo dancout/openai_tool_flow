@@ -144,20 +144,7 @@ Map<String, ToolCallStep> createColorThemeWorkflow() {
         audits: [diversityAudit],
         maxRetries: 3,
         outputSanitizer: ExampleSanitizers.paletteOutputSanitizer,
-        outputSchema: OutputSchema(
-          properties: [
-            PropertyEntry.array(
-              name: 'colors',
-              items: PropertyEntry.string(name: 'color'),
-              description: 'Extracted palette colors',
-            ),
-            PropertyEntry.number(
-              name: 'diversityScore',
-              description: 'Score for color diversity',
-            ),
-          ],
-          required: ['colors', 'diversityScore'],
-        ),
+        outputSchema: PaletteExtractionOutput.getOutputSchema(),
       ),
     ),
 
@@ -209,20 +196,7 @@ Map<String, ToolCallStep> createColorThemeWorkflow() {
                 issue.severity == IssueSeverity.critical,
           );
         },
-        outputSchema: OutputSchema(
-          properties: [
-            PropertyEntry.array(
-              name: 'colors',
-              items: PropertyEntry.string(name: 'color'),
-              description: 'Refined color list',
-            ),
-            PropertyEntry.boolean(
-              name: 'contrastEnhanced',
-              description: 'Whether contrast was enhanced',
-            ),
-          ],
-          required: ['colors', 'contrastEnhanced'],
-        ),
+        outputSchema: ColorRefinementOutput.getOutputSchema(),
       ),
     ),
 
@@ -258,15 +232,7 @@ Map<String, ToolCallStep> createColorThemeWorkflow() {
         stopOnFailure: false,
         includeOutputsFrom: ['refine_colors'],
         inputSanitizer: ExampleSanitizers.refinementToThemeInputSanitizer,
-        outputSchema: OutputSchema(
-          properties: [
-            PropertyEntry.object(
-              name: 'theme',
-              description: 'Generated theme object',
-            ),
-          ],
-          required: ['theme'],
-        ),
+        outputSchema: ThemeGenerationOutput.getOutputSchema(),
       ),
     ),
   };

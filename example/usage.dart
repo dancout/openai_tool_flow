@@ -93,28 +93,7 @@ void main() async {
         // TODO: It would be great if we could define these more programatically.
         /// Maybe even for the example we could have them be on the output type as --> output schema?
         /// Like PaletteExtractionOutput.outputSchema?
-        outputSchema: OutputSchema(
-          properties: [
-            PropertyEntry.array(
-              name: 'colors',
-              items: PropertyEntry.string(name: 'color'),
-              description: 'Extracted color hex codes',
-            ),
-            PropertyEntry.number(
-              name: 'confidence',
-              description: 'Confidence score for extraction',
-            ),
-            PropertyEntry.string(
-              name: 'image_analyzed',
-              description: 'Path to analyzed image',
-            ),
-            PropertyEntry.object(
-              name: 'metadata',
-              description: 'Extraction metadata',
-            ),
-          ],
-          required: ['colors', 'confidence', 'image_analyzed'],
-        ),
+        outputSchema: PaletteExtractionOutput.getOutputSchema(),
       ),
     ),
 
@@ -148,21 +127,7 @@ void main() async {
           );
         },
         includeOutputsFrom: ['extract_palette'],
-        outputSchema: OutputSchema(
-          properties: [
-            PropertyEntry.array(
-              name: 'refined_colors',
-              items: PropertyEntry.string(name: 'color'),
-              description: 'Refined color hex codes',
-            ),
-            PropertyEntry.array(
-              name: 'improvements_made',
-              items: PropertyEntry.string(name: 'improvement'),
-              description: 'List of improvements applied',
-            ),
-          ],
-          required: ['refined_colors'],
-        ),
+        outputSchema: ColorRefinementOutput.getOutputSchema(),
       ),
     ),
 
@@ -185,19 +150,7 @@ void main() async {
         audits: [],
         maxRetries: 1,
         stopOnFailure: false, // Continue even if this step fails
-        outputSchema: OutputSchema(
-          properties: [
-            PropertyEntry.object(
-              name: 'theme',
-              description: 'Generated theme object',
-            ),
-            PropertyEntry.object(
-              name: 'metadata',
-              description: 'Theme generation metadata',
-            ),
-          ],
-          required: ['theme'],
-        ),
+        outputSchema: ThemeGenerationOutput.getOutputSchema(),
       ),
     ),
   ];
@@ -388,8 +341,7 @@ class ThemeGenerationOutput extends ToolOutput {
     return {'theme': theme, 'metadata': metadata};
   }
 
-  @override
-  OutputSchema getOutputSchema() {
+  static OutputSchema getOutputSchema() {
     return OutputSchema(
       properties: [
         PropertyEntry.object(

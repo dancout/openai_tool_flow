@@ -149,8 +149,7 @@ class PaletteExtractionOutput extends ToolOutput {
     };
   }
 
-  @override
-  OutputSchema getOutputSchema() {
+  static OutputSchema getOutputSchema() {
     return OutputSchema(
       properties: [
         PropertyEntry.array(
@@ -209,8 +208,7 @@ class ColorRefinementOutput extends ToolOutput {
     };
   }
 
-  @override
-  OutputSchema getOutputSchema() {
+  static OutputSchema getOutputSchema() {
     return OutputSchema(
       properties: [
         PropertyEntry.array(
@@ -253,8 +251,7 @@ class ThemeGenerationOutput extends ToolOutput {
     return {'theme': theme, 'metadata': metadata};
   }
 
-  @override
-  OutputSchema getOutputSchema() {
+  static OutputSchema getOutputSchema() {
     return OutputSchema(
       properties: [
         PropertyEntry.object(
