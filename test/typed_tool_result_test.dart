@@ -243,17 +243,16 @@ void main() {
             model: 'gpt-4',
             inputBuilder: (previousResults) => {'image': 'test.jpg'},
             stepConfig: StepConfig(
-              outputSchema: {
-                'type': 'object',
-                'properties': {
-                  'colors': {
-                    'type': 'array',
-                    'items': {'type': 'string'},
-                  },
-                  'confidence': {'type': 'number'},
-                },
-                'required': ['colors', 'confidence'],
-              },
+              outputSchema: OutputSchema(
+                properties: [
+                  PropertyEntry.array(
+                    name: 'colors',
+                    items: PropertyType.string,
+                  ),
+                  PropertyEntry.number(name: 'confidence'),
+                ],
+                required: ['colors', 'confidence'],
+              ),
             ),
           ),
           ToolCallStep(
@@ -264,14 +263,13 @@ void main() {
             },
             buildInputsFrom: [0],
             stepConfig: StepConfig(
-              outputSchema: {
-                'type': 'object',
-                'properties': {
-                  'theme': {'type': 'object'},
-                  'category': {'type': 'string'},
-                },
-                'required': ['theme', 'category'],
-              },
+              outputSchema: OutputSchema(
+                properties: [
+                  PropertyEntry.object(name: 'theme'),
+                  PropertyEntry.string(name: 'category'),
+                ],
+                required: ['theme', 'category'],
+              ),
             ),
           ),
         ],
@@ -312,17 +310,16 @@ void main() {
             inputBuilder: (previousResults) => {'image': 'test.jpg'},
             stepConfig: StepConfig(
               audits: [PaletteQualityAudit()],
-              outputSchema: {
-                'type': 'object',
-                'properties': {
-                  'colors': {
-                    'type': 'array',
-                    'items': {'type': 'string'},
-                  },
-                  'confidence': {'type': 'number'},
-                },
-                'required': ['colors', 'confidence'],
-              },
+              outputSchema: OutputSchema(
+                properties: [
+                  PropertyEntry.array(
+                    name: 'colors',
+                    items: PropertyType.string,
+                  ),
+                  PropertyEntry.number(name: 'confidence'),
+                ],
+                required: ['colors', 'confidence'],
+              ),
             ),
           ),
           ToolCallStep(
@@ -334,14 +331,13 @@ void main() {
             buildInputsFrom: [0],
             stepConfig: StepConfig(
               audits: [ThemeValidationAudit()],
-              outputSchema: {
-                'type': 'object',
-                'properties': {
-                  'theme': {'type': 'object'},
-                  'category': {'type': 'string'},
-                },
-                'required': ['theme', 'category'],
-              },
+              outputSchema: OutputSchema(
+                properties: [
+                  PropertyEntry.object(name: 'theme'),
+                  PropertyEntry.string(name: 'category'),
+                ],
+                required: ['theme', 'category'],
+              ),
             ),
           ),
         ],
@@ -368,17 +364,16 @@ void main() {
               inputBuilder: (previousResults) => {'image': 'test.jpg'},
               stepConfig: StepConfig(
                 audits: [PaletteQualityAudit()],
-                outputSchema: {
-                  'type': 'object',
-                  'properties': {
-                    'colors': {
-                      'type': 'array',
-                      'items': {'type': 'string'},
-                    },
-                    'confidence': {'type': 'number'},
-                  },
-                  'required': ['colors', 'confidence'],
-                },
+                outputSchema: OutputSchema(
+                  properties: [
+                    PropertyEntry.array(
+                      name: 'colors',
+                      items: PropertyType.string,
+                    ),
+                    PropertyEntry.number(name: 'confidence'),
+                  ],
+                  required: ['colors', 'confidence'],
+                ),
               ),
             ),
             ToolCallStep(
@@ -390,14 +385,13 @@ void main() {
               buildInputsFrom: [0],
               stepConfig: StepConfig(
                 audits: [ThemeValidationAudit()],
-                outputSchema: {
-                  'type': 'object',
-                  'properties': {
-                    'theme': {'type': 'object'},
-                    'category': {'type': 'string'},
-                  },
-                  'required': ['theme', 'category'],
-                },
+                outputSchema: OutputSchema(
+                  properties: [
+                    PropertyEntry.object(name: 'theme'),
+                    PropertyEntry.string(name: 'category'),
+                  ],
+                  required: ['theme', 'category'],
+                ),
               ),
             ),
           ],
@@ -442,17 +436,16 @@ void main() {
             model: 'gpt-4',
             inputBuilder: (previousResults) => {'image': 'test.jpg'},
             stepConfig: StepConfig(
-              outputSchema: {
-                'type': 'object',
-                'properties': {
-                  'colors': {
-                    'type': 'array',
-                    'items': {'type': 'string'},
-                  },
-                  'confidence': {'type': 'number'},
-                },
-                'required': ['colors', 'confidence'],
-              },
+              outputSchema: OutputSchema(
+                properties: [
+                  PropertyEntry.array(
+                    name: 'colors',
+                    items: PropertyType.string,
+                  ),
+                  PropertyEntry.number(name: 'confidence'),
+                ],
+                required: ['colors', 'confidence'],
+              ),
             ),
           ),
         ],
@@ -486,17 +479,16 @@ void main() {
               model: 'gpt-4',
               inputBuilder: (previousResults) => {'image': 'test.jpg'},
               stepConfig: StepConfig(
-                outputSchema: {
-                  'type': 'object',
-                  'properties': {
-                    'colors': {
-                      'type': 'array',
-                      'items': {'type': 'string'},
-                    },
-                    'confidence': {'type': 'number'},
-                  },
-                  'required': ['colors', 'confidence'],
-                },
+                outputSchema: OutputSchema(
+                  properties: [
+                    PropertyEntry.array(
+                      name: 'colors',
+                      items: PropertyType.string,
+                    ),
+                    PropertyEntry.number(name: 'confidence'),
+                  ],
+                  required: ['colors', 'confidence'],
+                ),
               ),
             ),
           ],

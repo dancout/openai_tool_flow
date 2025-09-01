@@ -1,5 +1,6 @@
 import 'audit_function.dart';
 import 'issue.dart';
+import 'output_schema.dart';
 
 /// Configuration for a specific step in a tool flow.
 ///
@@ -105,32 +106,7 @@ class StepConfig {
   ///
   /// **When to use:** Define the exact output structure you expect from the tool call,
   /// ensuring type safety and consistent data formats.
-  ///
-  /// **Example:**
-  /// ```dart
-  /// outputSchema: {
-  ///   'type': 'object',
-  ///   'properties': {
-  ///     'colors': {
-  ///       'type': 'array',
-  ///       'items': {'type': 'string'},
-  ///       'description': 'Array of hex color codes'
-  ///     },
-  ///     'confidence': {
-  ///       'type': 'number',
-  ///       'minimum': 0.0,
-  ///       'maximum': 1.0,
-  ///       'description': 'Confidence score for the extraction'
-  ///     }
-  ///   },
-  ///   'required': ['colors', 'confidence']
-  /// }
-  /// ```
-  final
-  // TODO: The output schema should be more structured so that a user doesn't accidentally forget to define the high level type: object, or the properties collection or the required collection.
-  /// It could even be an object that has those main sections outlined above as the parameters on the object. And then maybe properties could be a List<Map<String, dynamic>> that represents properties, confidence, etc.
-  Map<String, dynamic>
-  outputSchema;
+  final OutputSchema outputSchema;
 
   const StepConfig({
     this.audits = const [],
@@ -219,35 +195,5 @@ class StepConfig {
     }
 
     return outputSanitizer!(rawOutput);
-  }
-
-  /// Creates a StepConfig from JSON
-  factory StepConfig.fromJson(Map<String, dynamic> json) {
-    return StepConfig(
-      // Note: Audit functions cannot be serialized, would need a registry
-      audits: const [],
-      maxRetries: json['maxRetries'] as int?,
-      stopOnFailure: json['stopOnFailure'] as bool? ?? true,
-      auditOnlyFinalAttempt: json['auditOnlyFinalAttempt'] as bool? ?? false,
-      // Note: Functions cannot be serialized
-      includeOutputsFrom:
-          json['includeOutputsFrom'] as List<dynamic>? ?? const [],
-      outputSchema: json['outputSchema'] as Map<String, dynamic>? ?? {},
-    );
-  }
-
-  /// Converts to JSON (limited due to function serialization constraints)
-  Map<String, dynamic> toJson() {
-    return {
-      'maxRetries': maxRetries,
-      'stopOnFailure': stopOnFailure,
-      'auditOnlyFinalAttempt': auditOnlyFinalAttempt,
-      'hasAudits': hasAudits,
-      'hasOutputInclusion': hasOutputInclusion,
-      'hasInputSanitizer': hasInputSanitizer,
-      'hasOutputSanitizer': hasOutputSanitizer,
-      'includeOutputsFrom': includeOutputsFrom,
-      'outputSchema': outputSchema,
-    };
   }
 }

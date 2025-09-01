@@ -19,7 +19,7 @@ abstract class AuditFunction<T extends ToolOutput> {
   /// Executes the audit on a generic ToolResult with runtime type checking
   ///
   /// This method enables type-safe audit execution by attempting to cast
-  /// the generic ToolResult<ToolOutput> to the expected type T.
+  /// the generic `ToolResult&lt;ToolOutput&gt;` to the expected type `T`.
   /// If the cast succeeds, the audit runs normally. If it fails,
   /// an appropriate error is returned.
   List<Issue> runWithTypeChecking(ToolResult<ToolOutput> result) {
@@ -37,7 +37,7 @@ abstract class AuditFunction<T extends ToolOutput> {
         // Type mismatch - create an informative error
         return [
           Issue(
-            id: 'audit_type_mismatch_${name}',
+            id: 'audit_type_mismatch_$name',
             severity: IssueSeverity.critical,
             description:
                 'Audit $name expects output type $T, but received ${result.output.runtimeType}',
@@ -59,7 +59,7 @@ abstract class AuditFunction<T extends ToolOutput> {
       // Handle any other errors during type checking
       return [
         Issue(
-          id: 'audit_execution_error_${name}',
+          id: 'audit_execution_error_$name',
           severity: IssueSeverity.critical,
           description: 'Failed to execute audit $name with type checking: $e',
           context: {

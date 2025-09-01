@@ -1,8 +1,6 @@
 import 'package:openai_toolflow/openai_toolflow.dart';
 import 'package:test/test.dart';
 
-import '../example/audit_functions.dart';
-
 /// Simple test implementation of ToolInput
 class TestToolInput extends ToolInput {
   final Map<String, dynamic> data;
@@ -32,6 +30,44 @@ class TestToolInput extends ToolInput {
   }
 }
 
+/// A simple audit function that can be created with a function
+///
+/// This implementation is provided in the example for flexibility,
+/// allowing projects to use it or create their own audit implementations.
+class SimpleAuditFunction<T extends ToolOutput> extends AuditFunction<T> {
+  @override
+  final String name;
+
+  final List<Issue> Function(ToolResult<T>) _auditFunction;
+  final bool Function(List<Issue>)? _passedCriteriaFunction;
+  final String Function(List<Issue>)? _failureReasonFunction;
+
+  /// Creates a simple audit function with a name and audit function
+  SimpleAuditFunction({
+    required this.name,
+    required List<Issue> Function(ToolResult<T>) auditFunction,
+    bool Function(List<Issue>)? passedCriteriaFunction,
+    String Function(List<Issue>)? failureReasonFunction,
+  }) : _auditFunction = auditFunction,
+       _passedCriteriaFunction = passedCriteriaFunction,
+       _failureReasonFunction = failureReasonFunction;
+
+  @override
+  List<Issue> run(ToolResult<T> result) => _auditFunction(result);
+
+  @override
+  bool passedCriteria(List<Issue> issues) {
+    return _passedCriteriaFunction?.call(issues) ??
+        super.passedCriteria(issues);
+  }
+
+  @override
+  String getFailureReason(List<Issue> issues) {
+    return _failureReasonFunction?.call(issues) ??
+        super.getFailureReason(issues);
+  }
+}
+
 /// Simple test implementation of ToolOutput
 class TestToolOutput extends ToolOutput {
   final Map<String, dynamic> data;
@@ -44,6 +80,15 @@ class TestToolOutput extends ToolOutput {
 
   @override
   Map<String, dynamic> toMap() => Map<String, dynamic>.from(data);
+
+  static OutputSchema getOutputSchema() {
+    return OutputSchema(
+      properties: [
+        PropertyEntry.object(name: 'data', description: 'Test output data'),
+      ],
+      required: [],
+    );
+  }
 
   @override
   bool operator ==(Object other) {
@@ -208,17 +253,16 @@ void main() {
         model: 'gpt-4',
         inputBuilder: (previousResults) => {'max_colors': 5},
         stepConfig: StepConfig(
-          outputSchema: {
-            'type': 'object',
-            'properties': {
-              'colors': {
-                'type': 'array',
-                'items': {'type': 'string'},
-                'description': 'Extracted color hex codes',
-              },
-            },
-            'required': ['colors'],
-          },
+          outputSchema: OutputSchema(
+            properties: [
+              PropertyEntry.array(
+                name: 'colors',
+                items: PropertyType.string,
+                description: 'Extracted color hex codes',
+              ),
+            ],
+            required: ['colors'],
+          ),
         ),
       );
 
@@ -278,17 +322,16 @@ void main() {
             model: 'gpt-4',
             inputBuilder: (previousResults) => {'max_colors': 3},
             stepConfig: StepConfig(
-              outputSchema: {
-                'type': 'object',
-                'properties': {
-                  'colors': {
-                    'type': 'array',
-                    'items': {'type': 'string'},
-                    'description': 'Extracted color hex codes',
-                  },
-                },
-                'required': ['colors'],
-              },
+              outputSchema: OutputSchema(
+                properties: [
+                  PropertyEntry.array(
+                    name: 'colors',
+                    items: PropertyType.string,
+                    description: 'Extracted color hex codes',
+                  ),
+                ],
+                required: ['colors'],
+              ),
             ),
           ),
         ],
@@ -331,17 +374,16 @@ void main() {
             inputBuilder: (previousResults) => {},
             stepConfig: StepConfig(
               audits: [audit],
-              outputSchema: {
-                'type': 'object',
-                'properties': {
-                  'colors': {
-                    'type': 'array',
-                    'items': {'type': 'string'},
-                    'description': 'Extracted color hex codes',
-                  },
-                },
-                'required': ['colors'],
-              },
+              outputSchema: OutputSchema(
+                properties: [
+                  PropertyEntry.array(
+                    name: 'colors',
+                    items: PropertyType.string,
+                    description: 'Extracted color hex codes',
+                  ),
+                ],
+                required: ['colors'],
+              ),
             ),
           ),
         ],
@@ -377,17 +419,16 @@ void main() {
             model: 'gpt-4',
             inputBuilder: (previousResults) => {},
             stepConfig: StepConfig(
-              outputSchema: {
-                'type': 'object',
-                'properties': {
-                  'colors': {
-                    'type': 'array',
-                    'items': {'type': 'string'},
-                    'description': 'Extracted color hex codes',
-                  },
-                },
-                'required': ['colors'],
-              },
+              outputSchema: OutputSchema(
+                properties: [
+                  PropertyEntry.array(
+                    name: 'colors',
+                    items: PropertyType.string,
+                    description: 'Extracted color hex codes',
+                  ),
+                ],
+                required: ['colors'],
+              ),
             ),
           ),
           ToolCallStep(
@@ -395,17 +436,16 @@ void main() {
             model: 'gpt-4',
             inputBuilder: (previousResults) => {},
             stepConfig: StepConfig(
-              outputSchema: {
-                'type': 'object',
-                'properties': {
-                  'refined_colors': {
-                    'type': 'array',
-                    'items': {'type': 'string'},
-                    'description': 'Refined color hex codes',
-                  },
-                },
-                'required': ['refined_colors'],
-              },
+              outputSchema: OutputSchema(
+                properties: [
+                  PropertyEntry.array(
+                    name: 'refined_colors',
+                    items: PropertyType.string,
+                    description: 'Refined color hex codes',
+                  ),
+                ],
+                required: ['refined_colors'],
+              ),
             ),
           ),
         ],
@@ -475,17 +515,16 @@ void main() {
             inputBuilder: (previousResults) => {},
             stepConfig: StepConfig(
               audits: [audit],
-              outputSchema: {
-                'type': 'object',
-                'properties': {
-                  'colors': {
-                    'type': 'array',
-                    'items': {'type': 'string'},
-                    'description': 'Extracted color hex codes',
-                  },
-                },
-                'required': ['colors'],
-              },
+              outputSchema: OutputSchema(
+                properties: [
+                  PropertyEntry.array(
+                    name: 'colors',
+                    items: PropertyType.string,
+                    description: 'Extracted color hex codes',
+                  ),
+                ],
+                required: ['colors'],
+              ),
             ),
           ),
           ToolCallStep(
@@ -503,13 +542,10 @@ void main() {
             buildInputsFrom: [0],
             stepConfig: StepConfig(
               includeOutputsFrom: [0],
-              outputSchema: {
-                'type': 'object',
-                'properties': {
-                  'result': {'type': 'string'},
-                },
-                'required': ['result'],
-              },
+              outputSchema: OutputSchema(
+                properties: [PropertyEntry.string(name: 'result')],
+                required: ['result'],
+              ),
             ),
           ),
         ],
@@ -552,17 +588,16 @@ void main() {
             model: 'gpt-4',
             inputBuilder: (previousResults) => {'iteration': 1},
             stepConfig: StepConfig(
-              outputSchema: {
-                'type': 'object',
-                'properties': {
-                  'refined_colors': {
-                    'type': 'array',
-                    'items': {'type': 'string'},
-                    'description': 'Refined color hex codes',
-                  },
-                },
-                'required': ['refined_colors'],
-              },
+              outputSchema: OutputSchema(
+                properties: [
+                  PropertyEntry.array(
+                    name: 'refined_colors',
+                    items: PropertyType.string,
+                    description: 'Refined color hex codes',
+                  ),
+                ],
+                required: ['refined_colors'],
+              ),
             ),
           ),
           ToolCallStep(
@@ -570,17 +605,16 @@ void main() {
             model: 'gpt-4',
             inputBuilder: (previousResults) => {'iteration': 2},
             stepConfig: StepConfig(
-              outputSchema: {
-                'type': 'object',
-                'properties': {
-                  'refined_colors': {
-                    'type': 'array',
-                    'items': {'type': 'string'},
-                    'description': 'Refined color hex codes',
-                  },
-                },
-                'required': ['refined_colors'],
-              },
+              outputSchema: OutputSchema(
+                properties: [
+                  PropertyEntry.array(
+                    name: 'refined_colors',
+                    items: PropertyType.string,
+                    description: 'Refined color hex codes',
+                  ),
+                ],
+                required: ['refined_colors'],
+              ),
             ),
           ),
         ],
@@ -739,13 +773,10 @@ void main() {
             model: 'gpt-4',
             inputBuilder: (previousResults) => {},
             stepConfig: StepConfig(
-              outputSchema: {
-                'type': 'object',
-                'properties': {
-                  'result': {'type': 'string'},
-                },
-                'required': ['result'],
-              },
+              outputSchema: OutputSchema(
+                properties: [PropertyEntry.string(name: 'result')],
+                required: ['result'],
+              ),
             ),
           ),
           ToolCallStep(
@@ -753,13 +784,10 @@ void main() {
             model: 'gpt-4',
             inputBuilder: (previousResults) => {},
             stepConfig: StepConfig(
-              outputSchema: {
-                'type': 'object',
-                'properties': {
-                  'result': {'type': 'string'},
-                },
-                'required': ['result'],
-              },
+              outputSchema: OutputSchema(
+                properties: [PropertyEntry.string(name: 'result')],
+                required: ['result'],
+              ),
             ),
           ),
           ToolCallStep(
@@ -768,13 +796,10 @@ void main() {
             inputBuilder: (previousResults) => {},
             stepConfig: StepConfig(
               includeOutputsFrom: ['step1_tool'], // Only include step1
-              outputSchema: {
-                'type': 'object',
-                'properties': {
-                  'result': {'type': 'string'},
-                },
-                'required': ['result'],
-              },
+              outputSchema: OutputSchema(
+                properties: [PropertyEntry.string(name: 'result')],
+                required: ['result'],
+              ),
             ),
           ),
         ],

@@ -1,4 +1,3 @@
-import 'package:meta/meta.dart';
 import 'package:openai_toolflow/openai_toolflow.dart';
 
 /// Manages ordered execution of tool call steps with internal state management.
@@ -389,39 +388,7 @@ class ToolFlow {
     return allIssues;
   }
 
-  // TODO: Eventually, investigate if these visible for testings are necessary
-  /// Gets the current state (for testing/debugging)
-  @visibleForTesting
-  Map<String, dynamic> get currentState => Map.unmodifiable(_state);
 
-  /// Gets the current results (for testing/debugging)
-  @visibleForTesting
-  List<ToolResult<ToolOutput>> get currentResults =>
-      _results.map((tr) => tr.underlyingResult).toList();
-
-  /// Gets the current results by tool name (for testing/debugging)
-  @visibleForTesting
-  Map<String, ToolResult<ToolOutput>> get currentResultsByToolName =>
-      _resultsByToolName.map(
-        (key, value) => MapEntry(key, value.underlyingResult),
-      );
-
-  /// Gets the current all results by tool name (for testing/debugging)
-  @visibleForTesting
-  Map<String, List<ToolResult<ToolOutput>>> get currentAllResultsByToolName =>
-      _allResultsByToolName.map(
-        (key, value) =>
-            MapEntry(key, value.map((tr) => tr.underlyingResult).toList()),
-      );
-
-  /// Gets the current typed results (for testing/debugging)
-  @visibleForTesting
-  List<TypedToolResult> get currentTypedResults => List.unmodifiable(_results);
-
-  /// Gets the current typed results by tool name (for testing/debugging)
-  @visibleForTesting
-  Map<String, TypedToolResult> get currentTypedResultsByToolName =>
-      Map.unmodifiable(_resultsByToolName);
 }
 
 /// Result of executing a ToolFlow
@@ -430,7 +397,7 @@ class ToolFlowResult {
   final List<TypedToolResult> _typedResults;
 
   // TODO: Same here. Is this backwards compatible necessary? Should it instead just be all forwards compatible, and make it the proper type?
-  /// So maybe convert this to be List<TypedToolResult>?
+  /// So maybe convert this to be `List&lt;TypedToolResult&gt;`?
   ///
   /// Results from all executed steps (backward compatible interface)
   List<ToolResult<ToolOutput>> get results =>

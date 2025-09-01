@@ -303,23 +303,3 @@ void _exportEnhancedResults(ToolFlowResult result) {
 
   print('✅ Enhanced color theme generation example completed!');
 }
-
-/// Helper function to format JSON output nicely
-String formatJson(Map<String, dynamic> json) {
-  final buffer = StringBuffer();
-  buffer.writeln('{');
-
-  json.forEach((key, value) {
-    buffer.write('  "$key": ');
-    if (value is Map) {
-      buffer.writeln('{ ... },');
-    } else if (value is List) {
-      buffer.writeln('[${value.length} items],');
-    } else {
-      buffer.writeln('"$value",');
-    }
-  });
-
-  buffer.writeln('}');
-  return buffer.toString();
-}

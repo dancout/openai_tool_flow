@@ -93,29 +93,7 @@ void main() async {
         // TODO: It would be great if we could define these more programatically.
         /// Maybe even for the example we could have them be on the output type as --> output schema?
         /// Like PaletteExtractionOutput.outputSchema?
-        outputSchema: {
-          'type': 'object',
-          'properties': {
-            'colors': {
-              'type': 'array',
-              'items': {'type': 'string'},
-              'description': 'Extracted color hex codes',
-            },
-            'confidence': {
-              'type': 'number',
-              'description': 'Confidence score for extraction',
-            },
-            'image_analyzed': {
-              'type': 'string',
-              'description': 'Path to analyzed image',
-            },
-            'metadata': {
-              'type': 'object',
-              'description': 'Extraction metadata',
-            },
-          },
-          'required': ['colors', 'confidence', 'image_analyzed'],
-        },
+        outputSchema: PaletteExtractionOutput.getOutputSchema(),
       ),
     ),
 
@@ -149,22 +127,7 @@ void main() async {
           );
         },
         includeOutputsFrom: ['extract_palette'],
-        outputSchema: {
-          'type': 'object',
-          'properties': {
-            'refined_colors': {
-              'type': 'array',
-              'items': {'type': 'string'},
-              'description': 'Refined color hex codes',
-            },
-            'improvements_made': {
-              'type': 'array',
-              'items': {'type': 'string'},
-              'description': 'List of improvements applied',
-            },
-          },
-          'required': ['refined_colors'],
-        },
+        outputSchema: ColorRefinementOutput.getOutputSchema(),
       ),
     ),
 
@@ -187,20 +150,7 @@ void main() async {
         audits: [],
         maxRetries: 1,
         stopOnFailure: false, // Continue even if this step fails
-        outputSchema: {
-          'type': 'object',
-          'properties': {
-            'theme': {
-              'type': 'object',
-              'description': 'Generated theme object',
-            },
-            'metadata': {
-              'type': 'object',
-              'description': 'Theme generation metadata',
-            },
-          },
-          'required': ['theme'],
-        },
+        outputSchema: ThemeGenerationOutput.getOutputSchema(),
       ),
     ),
   ];
@@ -389,5 +339,21 @@ class ThemeGenerationOutput extends ToolOutput {
   @override
   Map<String, dynamic> toMap() {
     return {'theme': theme, 'metadata': metadata};
+  }
+
+  static OutputSchema getOutputSchema() {
+    return OutputSchema(
+      properties: [
+        PropertyEntry.object(
+          name: 'theme',
+          description: 'Generated theme object with color values',
+        ),
+        PropertyEntry.object(
+          name: 'metadata',
+          description: 'Theme generation metadata',
+        ),
+      ],
+      required: ['theme'],
+    );
   }
 }

@@ -174,6 +174,6 @@ class ToolOutputRegistry {
   static List<String> get registeredTools => _creators.keys.toList();
 
   /// Gets all registered output types
-  static Map<String, Type> get registeredOutputTypes => 
+  static Map<String, Type> get registeredOutputTypes =>
       Map.unmodifiable(_outputTypes);
 }

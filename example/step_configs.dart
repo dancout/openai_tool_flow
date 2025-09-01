@@ -9,166 +9,6 @@ import 'package:openai_toolflow/openai_toolflow.dart';
 import 'audit_functions.dart';
 import 'typed_interfaces.dart';
 
-/// Example step configurations for different scenarios
-class ExampleStepConfigs {
-  /// Basic configuration with simple audit
-  static StepConfig get basicAuditConfig {
-    return StepConfig(
-      audits: [ColorQualityAuditFunction()],
-      outputSchema: {
-        'type': 'object',
-        'properties': {
-          'colors': {
-            'type': 'array',
-            'items': {'type': 'string'},
-            'description': 'Array of hex color codes',
-          },
-          'confidence': {
-            'type': 'number',
-            'minimum': 0.0,
-            'maximum': 1.0,
-            'description': 'Confidence score for the extraction',
-          },
-        },
-        'required': ['colors', 'confidence'],
-      },
-    );
-  }
-
-  /// Configuration with custom retry logic
-  static StepConfig get customRetryConfig {
-    return StepConfig(
-      audits: [ColorQualityAuditFunction()],
-      maxRetries: 5,
-      customPassCriteria: (issues) {
-        // Custom criteria: pass if no medium or higher issues
-        return !issues.any(
-          (issue) =>
-              issue.severity == IssueSeverity.medium ||
-              issue.severity == IssueSeverity.high ||
-              issue.severity == IssueSeverity.critical,
-        );
-      },
-      outputSchema: {
-        'type': 'object',
-        'properties': {
-          'colors': {
-            'type': 'array',
-            'items': {'type': 'string'},
-            'description': 'Array of hex color codes',
-          },
-          'confidence': {
-            'type': 'number',
-            'minimum': 0.0,
-            'maximum': 1.0,
-            'description': 'Confidence score for the extraction',
-          },
-        },
-        'required': ['colors', 'confidence'],
-      },
-    );
-  }
-
-  /// Configuration that forwards issues from previous steps
-  static StepConfig forwardingIssuesConfig(List<int> stepIndexes) {
-    return StepConfig(
-      audits: [ColorQualityAuditFunction()],
-      // TODO: Related to how we can easily pull previous outputs/issues forward automatically for the user so they don't have to parse it.
-      // This could be a tuple or new object with a bool that represents if we should include that step's issues in the final tool call.
-      // That way, the user doesn't have to worry about how to parse it.
-      // Or they could even have the option to override the issue parser for that step if they'd like.
-      includeOutputsFrom: stepIndexes,
-      outputSchema: {
-        'type': 'object',
-        'properties': {
-          'colors': {
-            'type': 'array',
-            'items': {'type': 'string'},
-            'description': 'Array of hex color codes',
-          },
-          'confidence': {
-            'type': 'number',
-            'minimum': 0.0,
-            'maximum': 1.0,
-            'description': 'Confidence score for the extraction',
-          },
-        },
-        'required': ['colors', 'confidence'],
-      },
-    );
-  }
-
-  /// Configuration that forwards specific outputs
-  static StepConfig forwardingOutputConfig(String toolName) {
-    return StepConfig(
-      includeOutputsFrom: [toolName],
-      outputSchema: {
-        'type': 'object',
-        'properties': {
-          'colors': {
-            'type': 'array',
-            'items': {'type': 'string'},
-            'description': 'Array of hex color codes',
-          },
-          'confidence': {
-            'type': 'number',
-            'minimum': 0.0,
-            'maximum': 1.0,
-            'description': 'Confidence score for the extraction',
-          },
-        },
-        'required': ['colors', 'confidence'],
-      },
-    );
-  }
-
-  /// Configuration with output sanitization
-  static StepConfig sanitizingConfig(
-    Map<String, dynamic> Function(Map<String, dynamic>) outputSanitizer,
-  ) {
-    return StepConfig(
-      outputSanitizer: outputSanitizer,
-      outputSchema: {
-        'type': 'object',
-        'properties': {
-          'colors': {
-            'type': 'array',
-            'items': {'type': 'string'},
-            'description': 'Array of hex color codes',
-          },
-          'confidence': {
-            'type': 'number',
-            'minimum': 0.0,
-            'maximum': 1.0,
-            'description': 'Confidence score for the extraction',
-          },
-        },
-        'required': ['colors', 'confidence'],
-      },
-    );
-  }
-
-  /// Configuration that doesn't stop flow on failure
-  // TODO: Ask agent to remove all non-used functions or methods because they're bloat
-  static StepConfig get nonBlockingConfig {
-    return StepConfig(
-      audits: [ColorDiversityAuditFunction()],
-      stopOnFailure: false,
-      outputSchema: {
-        'type': 'object',
-        'properties': {
-          'diversityScore': {'type': 'number'},
-          'colors': {
-            'type': 'array',
-            'items': {'type': 'string'},
-          },
-        },
-        'required': ['diversityScore', 'colors'],
-      },
-    );
-  }
-}
-
 /// Example output sanitizers for cleaning data between steps
 class ExampleSanitizers {
   /// Sanitizes color palette output for refinement input
@@ -304,21 +144,7 @@ Map<String, ToolCallStep> createColorThemeWorkflow() {
         audits: [diversityAudit],
         maxRetries: 3,
         outputSanitizer: ExampleSanitizers.paletteOutputSanitizer,
-        outputSchema: {
-          'type': 'object',
-          'properties': {
-            'colors': {
-              'type': 'array',
-              'items': {'type': 'string'},
-              'description': 'Extracted palette colors',
-            },
-            'diversityScore': {
-              'type': 'number',
-              'description': 'Score for color diversity',
-            },
-          },
-          'required': ['colors', 'diversityScore'],
-        },
+        outputSchema: PaletteExtractionOutput.getOutputSchema(),
       ),
     ),
 
@@ -356,6 +182,10 @@ Map<String, ToolCallStep> createColorThemeWorkflow() {
       stepConfig: StepConfig(
         audits: [colorFormatAudit],
         maxRetries: 5,
+        // TODO: Related to how we can easily pull previous outputs/issues forward automatically for the user so they don't have to parse it.
+        // This could be a tuple or new object with a bool that represents if we should include that step's issues in the final tool call.
+        // That way, the user doesn't have to worry about how to parse it.
+        // Or they could even have the option to override the issue parser for that step if they'd like.
         includeOutputsFrom: ['extract_palette'],
         inputSanitizer: ExampleSanitizers.paletteToRefinementInputSanitizer,
         customPassCriteria: (issues) {
@@ -366,21 +196,7 @@ Map<String, ToolCallStep> createColorThemeWorkflow() {
                 issue.severity == IssueSeverity.critical,
           );
         },
-        outputSchema: {
-          'type': 'object',
-          'properties': {
-            'colors': {
-              'type': 'array',
-              'items': {'type': 'string'},
-              'description': 'Refined color list',
-            },
-            'contrastEnhanced': {
-              'type': 'boolean',
-              'description': 'Whether contrast was enhanced',
-            },
-          },
-          'required': ['colors', 'contrastEnhanced'],
-        },
+        outputSchema: ColorRefinementOutput.getOutputSchema(),
       ),
     ),
 
@@ -416,16 +232,7 @@ Map<String, ToolCallStep> createColorThemeWorkflow() {
         stopOnFailure: false,
         includeOutputsFrom: ['refine_colors'],
         inputSanitizer: ExampleSanitizers.refinementToThemeInputSanitizer,
-        outputSchema: {
-          'type': 'object',
-          'properties': {
-            'theme': {
-              'type': 'object',
-              'description': 'Generated theme object',
-            },
-          },
-          'required': ['theme'],
-        },
+        outputSchema: ThemeGenerationOutput.getOutputSchema(),
       ),
     ),
   };
