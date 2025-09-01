@@ -429,6 +429,9 @@ class ToolFlowResult {
   /// Internal typed results from all executed steps
   final List<TypedToolResult> _typedResults;
 
+  // TODO: Same here. Is this backwards compatible necessary? Should it instead just be all forwards compatible, and make it the proper type?
+  /// So maybe convert this to be List<TypedToolResult>?
+  ///
   /// Results from all executed steps (backward compatible interface)
   List<ToolResult<ToolOutput>> get results =>
       _typedResults.map((tr) => tr.underlyingResult).toList();
