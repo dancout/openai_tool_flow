@@ -1,4 +1,3 @@
-import 'package:meta/meta.dart';
 import 'package:openai_toolflow/openai_toolflow.dart';
 
 /// Manages ordered execution of tool call steps with internal state management.
@@ -398,7 +397,7 @@ class ToolFlowResult {
   final List<TypedToolResult> _typedResults;
 
   // TODO: Same here. Is this backwards compatible necessary? Should it instead just be all forwards compatible, and make it the proper type?
-  /// So maybe convert this to be List<TypedToolResult>?
+  /// So maybe convert this to be `List&lt;TypedToolResult&gt;`?
   ///
   /// Results from all executed steps (backward compatible interface)
   List<ToolResult<ToolOutput>> get results =>

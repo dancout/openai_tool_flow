@@ -104,30 +104,11 @@ class StepConfig {
 
   /// Schema definition for the expected tool output.
   /// This defines the structure that OpenAI tool calls should conform to.
+  /// Can be either an OutputSchema object or a Map (for backward compatibility).
   ///
   /// **When to use:** Define the exact output structure you expect from the tool call,
   /// ensuring type safety and consistent data formats.
-  ///
-  /// **Example:**
-  /// ```dart
-  /// outputSchema: OutputSchema(
-  ///   properties: {
-  ///     'colors': PropertyEntry(
-  ///       type: 'array',
-  ///       items: PropertyEntry(type: 'string'),
-  ///       description: 'Array of hex color codes',
-  ///     ),
-  ///     'confidence': PropertyEntry(
-  ///       type: 'number',
-  ///       minimum: 0.0,
-  ///       maximum: 1.0,
-  ///       description: 'Confidence score for the extraction',
-  ///     ),
-  ///   },
-  ///   required: ['colors', 'confidence'],
-  /// )
-  /// ```
-  final OutputSchema? outputSchema;
+  final dynamic outputSchema;
 
   const StepConfig({
     this.audits = const [],
@@ -147,7 +128,11 @@ class StepConfig {
   OutputSchema getEffectiveOutputSchema(String toolName) {
     // If explicit schema is provided, use it
     if (outputSchema != null) {
-      return outputSchema!;
+      if (outputSchema is OutputSchema) {
+        return outputSchema as OutputSchema;
+      } else if (outputSchema is Map<String, dynamic>) {
+        return OutputSchema.fromMap(outputSchema as Map<String, dynamic>);
+      }
     }
     
     // Try to get schema from ToolOutput registry
@@ -264,14 +249,19 @@ class StepConfig {
       // Note: Functions cannot be serialized
       includeOutputsFrom:
           json['includeOutputsFrom'] as List<dynamic>? ?? const [],
-      outputSchema: json['outputSchema'] != null 
-          ? OutputSchema.fromMap(json['outputSchema'] as Map<String, dynamic>)
-          : null,
+      outputSchema: json['outputSchema'],
     );
   }
 
   /// Converts to JSON (limited due to function serialization constraints)
   Map<String, dynamic> toJson() {
+    dynamic schemaJson;
+    if (outputSchema is OutputSchema) {
+      schemaJson = (outputSchema as OutputSchema).toMap();
+    } else {
+      schemaJson = outputSchema;
+    }
+    
     return {
       'maxRetries': maxRetries,
       'stopOnFailure': stopOnFailure,
@@ -281,7 +271,7 @@ class StepConfig {
       'hasInputSanitizer': hasInputSanitizer,
       'hasOutputSanitizer': hasOutputSanitizer,
       'includeOutputsFrom': includeOutputsFrom,
-      'outputSchema': outputSchema?.toMap(),
+      'outputSchema': schemaJson,
     };
   }
 }
