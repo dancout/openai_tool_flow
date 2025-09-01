@@ -86,6 +86,7 @@ class TypedToolResult {
     return null;
   }
 
+  // TODO: Does it make sense to instead just use copyWith instead of withAdditionalIssues?
   /// Creates a copy with additional issues
   TypedToolResult withAdditionalIssues(List<Issue> newIssues) {
     final updatedResult = _result.withAdditionalIssues(newIssues);
