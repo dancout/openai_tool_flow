@@ -1,3 +1,5 @@
+import 'output_schema.dart';
+
 /// Base class for strongly-typed tool inputs.
 ///
 /// Provides type safety and validation for tool call parameters
@@ -118,6 +120,14 @@ class ToolOutput {
     );
   }
 
+  /// Returns the expected OutputSchema for this ToolOutput type.
+  /// Subclasses should override this to provide their specific schema definition.
+  OutputSchema getOutputSchema() {
+    throw UnimplementedError(
+      'Subclasses must override getOutputSchema() to provide their schema definition',
+    );
+  }
+
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
@@ -176,4 +186,20 @@ class ToolOutputRegistry {
   /// Gets all registered output types
   static Map<String, Type> get registeredOutputTypes => 
       Map.unmodifiable(_outputTypes);
+
+  /// Gets the OutputSchema for a registered tool by creating a sample instance
+  /// and calling its getOutputSchema method
+  static OutputSchema? getOutputSchema(String toolName) {
+    final creator = _creators[toolName];
+    if (creator == null) return null;
+    
+    try {
+      // Create a sample instance with empty data to get the schema
+      final sampleOutput = creator({});
+      return sampleOutput.getOutputSchema();
+    } catch (e) {
+      // If we can't create a sample instance, return null
+      return null;
+    }
+  }
 }

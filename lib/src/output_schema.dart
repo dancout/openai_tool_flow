@@ -1,9 +1,39 @@
 import 'typed_interfaces.dart';
 
+/// Enumeration of valid property types for schema definitions
+enum PropertyType {
+  string,
+  number,
+  boolean,
+  array,
+  object,
+}
+
+/// Extension to convert PropertyType to string for JSON schema
+extension PropertyTypeExtension on PropertyType {
+  String get value {
+    switch (this) {
+      case PropertyType.string:
+        return 'string';
+      case PropertyType.number:
+        return 'number';
+      case PropertyType.boolean:
+        return 'boolean';
+      case PropertyType.array:
+        return 'array';
+      case PropertyType.object:
+        return 'object';
+    }
+  }
+}
+
 /// Represents a single property in an output schema
 class PropertyEntry {
-  /// The type of the property (e.g., 'string', 'number', 'boolean', 'array', 'object')
-  final String type;
+  /// The name of this property
+  final String name;
+  
+  /// The type of the property
+  final PropertyType type;
   
   /// Description of the property
   final String? description;
@@ -18,12 +48,13 @@ class PropertyEntry {
   final num? maximum;
   
   /// For object types, defines nested properties
-  final Map<String, PropertyEntry>? properties;
+  final List<PropertyEntry>? properties;
   
   /// For object types, defines which nested properties are required
   final List<String>? requiredProperties;
 
   const PropertyEntry({
+    required this.name,
     required this.type,
     this.description,
     this.items,
@@ -33,10 +64,80 @@ class PropertyEntry {
     this.requiredProperties,
   });
 
+  /// Factory method for string properties
+  factory PropertyEntry.string({
+    required String name,
+    String? description,
+  }) {
+    return PropertyEntry(
+      name: name,
+      type: PropertyType.string,
+      description: description,
+    );
+  }
+
+  /// Factory method for number properties
+  factory PropertyEntry.number({
+    required String name,
+    String? description,
+    num? minimum,
+    num? maximum,
+  }) {
+    return PropertyEntry(
+      name: name,
+      type: PropertyType.number,
+      description: description,
+      minimum: minimum,
+      maximum: maximum,
+    );
+  }
+
+  /// Factory method for boolean properties
+  factory PropertyEntry.boolean({
+    required String name,
+    String? description,
+  }) {
+    return PropertyEntry(
+      name: name,
+      type: PropertyType.boolean,
+      description: description,
+    );
+  }
+
+  /// Factory method for array properties
+  factory PropertyEntry.array({
+    required String name,
+    required PropertyEntry items,
+    String? description,
+  }) {
+    return PropertyEntry(
+      name: name,
+      type: PropertyType.array,
+      description: description,
+      items: items,
+    );
+  }
+
+  /// Factory method for object properties
+  factory PropertyEntry.object({
+    required String name,
+    String? description,
+    List<PropertyEntry>? properties,
+    List<String>? requiredProperties,
+  }) {
+    return PropertyEntry(
+      name: name,
+      type: PropertyType.object,
+      description: description,
+      properties: properties,
+      requiredProperties: requiredProperties,
+    );
+  }
+
   /// Converts this property entry to a JSON schema-compatible map
   Map<String, dynamic> toMap() {
     final map = <String, dynamic>{
-      'type': type,
+      'type': type.value,
     };
     
     if (description != null) map['description'] = description;
@@ -44,7 +145,10 @@ class PropertyEntry {
     if (maximum != null) map['maximum'] = maximum;
     if (items != null) map['items'] = items!.toMap();
     if (properties != null) {
-      map['properties'] = properties!.map((key, value) => MapEntry(key, value.toMap()));
+      map['properties'] = {
+        for (final prop in properties!)
+          prop.name: prop.toMap()
+      };
     }
     if (requiredProperties != null && requiredProperties!.isNotEmpty) {
       map['required'] = requiredProperties;
@@ -54,17 +158,26 @@ class PropertyEntry {
   }
 
   /// Creates a PropertyEntry from a map
-  factory PropertyEntry.fromMap(Map<String, dynamic> map) {
+  factory PropertyEntry.fromMap(String name, Map<String, dynamic> map) {
+    final typeString = map['type'] as String;
+    final type = PropertyType.values.firstWhere(
+      (t) => t.value == typeString,
+      orElse: () => PropertyType.object,
+    );
+    
     return PropertyEntry(
-      type: map['type'] as String,
+      name: name,
+      type: type,
       description: map['description'] as String?,
-      items: map['items'] != null ? PropertyEntry.fromMap(map['items'] as Map<String, dynamic>) : null,
+      items: map['items'] != null 
+        ? PropertyEntry.fromMap('items', map['items'] as Map<String, dynamic>) 
+        : null,
       minimum: map['minimum'] as num?,
       maximum: map['maximum'] as num?,
       properties: map['properties'] != null 
-        ? (map['properties'] as Map<String, dynamic>).map(
-            (key, value) => MapEntry(key, PropertyEntry.fromMap(value as Map<String, dynamic>))
-          )
+        ? (map['properties'] as Map<String, dynamic>).entries.map(
+            (entry) => PropertyEntry.fromMap(entry.key, entry.value as Map<String, dynamic>)
+          ).toList()
         : null,
       requiredProperties: map['required'] != null 
         ? (map['required'] as List).cast<String>()
@@ -76,16 +189,16 @@ class PropertyEntry {
 /// Structured output schema for tool calls
 class OutputSchema {
   /// The type of the root object (typically 'object')
-  final String type;
+  final PropertyType type;
   
-  /// Map of property names to their definitions
-  final Map<String, PropertyEntry> properties;
+  /// List of property definitions
+  final List<PropertyEntry> properties;
   
   /// List of required property names
   final List<String> required;
 
   const OutputSchema({
-    this.type = 'object',
+    this.type = PropertyType.object,
     required this.properties,
     this.required = const [],
   });
@@ -93,130 +206,33 @@ class OutputSchema {
   /// Converts this schema to a JSON schema-compatible map
   Map<String, dynamic> toMap() {
     return {
-      'type': type,
-      'properties': properties.map((key, value) => MapEntry(key, value.toMap())),
+      'type': type.value,
+      'properties': {
+        for (final prop in properties)
+          prop.name: prop.toMap()
+      },
       'required': required,
     };
   }
 
   /// Creates an OutputSchema from a map
   factory OutputSchema.fromMap(Map<String, dynamic> map) {
+    final typeString = map['type'] as String? ?? 'object';
+    final type = PropertyType.values.firstWhere(
+      (t) => t.value == typeString,
+      orElse: () => PropertyType.object,
+    );
+    
+    final propertiesMap = map['properties'] as Map<String, dynamic>? ?? {};
+    final properties = propertiesMap.entries.map(
+      (entry) => PropertyEntry.fromMap(entry.key, entry.value as Map<String, dynamic>)
+    ).toList();
+    
     return OutputSchema(
-      type: map['type'] as String? ?? 'object',
-      properties: (map['properties'] as Map<String, dynamic>? ?? {})
-          .map((key, value) => MapEntry(key, PropertyEntry.fromMap(value as Map<String, dynamic>))),
+      type: type,
+      properties: properties,
       required: (map['required'] as List<dynamic>? ?? []).cast<String>(),
     );
   }
 
-  /// Creates an OutputSchema from a ToolOutput instance
-  /// This analyzes the toMap() output to infer schema
-  static OutputSchema fromToolOutput(ToolOutput toolOutput) {
-    final map = toolOutput.toMap();
-    return _inferSchemaFromMap(map);
-  }
-
-  /// Creates an OutputSchema from a ToolOutput type
-  /// This creates a generic ToolOutput instance and analyzes it
-  static OutputSchema? fromToolOutputType<T extends ToolOutput>() {
-    try {
-      // For generic ToolOutput, create an empty map instance
-      if (T == ToolOutput) {
-        return OutputSchema(
-          properties: {
-            'data': PropertyEntry(
-              type: 'object',
-              description: 'Generic output data',
-            ),
-          },
-          required: [],
-        );
-      }
-      
-      // For specific subclasses, we can't easily instantiate them without parameters
-      // This would need to be handled by registration or manual schema definition
-      return null;
-    } catch (e) {
-      return null;
-    }
-  }
-
-  /// Infers schema structure from a map
-  static OutputSchema _inferSchemaFromMap(Map<String, dynamic> map) {
-    final properties = <String, PropertyEntry>{};
-    final required = <String>[];
-
-    for (final entry in map.entries) {
-      final key = entry.key;
-      final value = entry.value;
-      
-      properties[key] = _inferPropertyFromValue(value);
-      
-      // Consider non-null values as required (this is a heuristic)
-      if (value != null) {
-        required.add(key);
-      }
-    }
-
-    return OutputSchema(
-      properties: properties,
-      required: required,
-    );
-  }
-
-  /// Infers property type from a value
-  static PropertyEntry _inferPropertyFromValue(dynamic value) {
-    if (value == null) {
-      return const PropertyEntry(type: 'object'); // Default for null
-    }
-    
-    if (value is String) {
-      return const PropertyEntry(type: 'string');
-    }
-    
-    if (value is num) {
-      return const PropertyEntry(type: 'number');
-    }
-    
-    if (value is bool) {
-      return const PropertyEntry(type: 'boolean');
-    }
-    
-    if (value is List) {
-      if (value.isEmpty) {
-        return const PropertyEntry(
-          type: 'array',
-          items: PropertyEntry(type: 'object'),
-        );
-      }
-      
-      // Infer from first element
-      final firstItem = value.first;
-      return PropertyEntry(
-        type: 'array',
-        items: _inferPropertyFromValue(firstItem),
-      );
-    }
-    
-    if (value is Map<String, dynamic>) {
-      final nestedProperties = <String, PropertyEntry>{};
-      final nestedRequired = <String>[];
-      
-      for (final entry in value.entries) {
-        nestedProperties[entry.key] = _inferPropertyFromValue(entry.value);
-        if (entry.value != null) {
-          nestedRequired.add(entry.key);
-        }
-      }
-      
-      return PropertyEntry(
-        type: 'object',
-        properties: nestedProperties,
-        requiredProperties: nestedRequired,
-      );
-    }
-    
-    // Default for unknown types
-    return const PropertyEntry(type: 'object');
-  }
 }

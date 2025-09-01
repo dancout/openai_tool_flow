@@ -148,6 +148,34 @@ class PaletteExtractionOutput extends ToolOutput {
       'metadata': metadata,
     };
   }
+
+  @override
+  OutputSchema getOutputSchema() {
+    return OutputSchema(
+      properties: [
+        PropertyEntry.array(
+          name: 'colors',
+          items: PropertyEntry.string(name: 'color'),
+          description: 'Array of extracted color codes',
+        ),
+        PropertyEntry.number(
+          name: 'confidence',
+          minimum: 0.0,
+          maximum: 1.0,
+          description: 'Confidence score for the extraction',
+        ),
+        PropertyEntry.string(
+          name: 'image_analyzed',
+          description: 'Path of the analyzed image',
+        ),
+        PropertyEntry.object(
+          name: 'metadata',
+          description: 'Additional metadata about the extraction',
+        ),
+      ],
+      required: ['colors', 'confidence', 'image_analyzed'],
+    );
+  }
 }
 
 /// Example concrete implementation for color refinement output
@@ -180,6 +208,29 @@ class ColorRefinementOutput extends ToolOutput {
       'accessibility_scores': accessibilityScores,
     };
   }
+
+  @override
+  OutputSchema getOutputSchema() {
+    return OutputSchema(
+      properties: [
+        PropertyEntry.array(
+          name: 'refined_colors',
+          items: PropertyEntry.string(name: 'color'),
+          description: 'List of refined color codes',
+        ),
+        PropertyEntry.array(
+          name: 'improvements_made',
+          items: PropertyEntry.string(name: 'improvement'),
+          description: 'List of improvements that were applied',
+        ),
+        PropertyEntry.object(
+          name: 'accessibility_scores',
+          description: 'Accessibility scores for the refined colors',
+        ),
+      ],
+      required: ['refined_colors', 'improvements_made'],
+    );
+  }
 }
 
 /// Example concrete implementation for theme generation output
@@ -200,6 +251,23 @@ class ThemeGenerationOutput extends ToolOutput {
   @override
   Map<String, dynamic> toMap() {
     return {'theme': theme, 'metadata': metadata};
+  }
+
+  @override
+  OutputSchema getOutputSchema() {
+    return OutputSchema(
+      properties: [
+        PropertyEntry.object(
+          name: 'theme',
+          description: 'Generated theme configuration',
+        ),
+        PropertyEntry.object(
+          name: 'metadata',
+          description: 'Additional metadata about the theme generation',
+        ),
+      ],
+      required: ['theme'],
+    );
   }
 }
 

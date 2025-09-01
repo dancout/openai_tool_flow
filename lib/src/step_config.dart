@@ -104,11 +104,10 @@ class StepConfig {
 
   /// Schema definition for the expected tool output.
   /// This defines the structure that OpenAI tool calls should conform to.
-  /// Can be either an OutputSchema object or a Map (for backward compatibility).
   ///
   /// **When to use:** Define the exact output structure you expect from the tool call,
   /// ensuring type safety and consistent data formats.
-  final dynamic outputSchema;
+  final OutputSchema? outputSchema;
 
   const StepConfig({
     this.audits = const [],
@@ -128,38 +127,20 @@ class StepConfig {
   OutputSchema getEffectiveOutputSchema(String toolName) {
     // If explicit schema is provided, use it
     if (outputSchema != null) {
-      if (outputSchema is OutputSchema) {
-        return outputSchema as OutputSchema;
-      } else if (outputSchema is Map<String, dynamic>) {
-        return OutputSchema.fromMap(outputSchema as Map<String, dynamic>);
-      }
+      return outputSchema!;
     }
     
     // Try to get schema from ToolOutput registry
-    if (ToolOutputRegistry.hasTypedOutput(toolName)) {
-      // For registered tools, we could attempt to create a sample instance
-      // and derive schema from it, but this is complex without knowing constructor parameters
-      // For now, return a generic schema - this could be enhanced later
-      return const OutputSchema(
-        properties: {
-          'result': PropertyEntry(
-            type: 'object',
-            description: 'Tool output result',
-          ),
-        },
-        required: ['result'],
-      );
+    final registrySchema = ToolOutputRegistry.getOutputSchema(toolName);
+    if (registrySchema != null) {
+      return registrySchema;
     }
     
-    // Default fallback schema
-    return const OutputSchema(
-      properties: {
-        'data': PropertyEntry(
-          type: 'object',
-          description: 'Generic tool output data',
-        ),
-      },
-      required: [],
+    // If no schema can be derived, throw an error
+    throw StateError(
+      'No OutputSchema available for tool "$toolName". '
+      'Either provide an explicit outputSchema in StepConfig, '
+      'or register a ToolOutput for this tool that implements getOutputSchema().'
     );
   }
 

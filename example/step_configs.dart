@@ -16,19 +16,19 @@ class ExampleStepConfigs {
     return StepConfig(
       audits: [ColorQualityAuditFunction()],
       outputSchema: OutputSchema(
-        properties: {
-          'colors': PropertyEntry(
-            type: 'array',
-            items: PropertyEntry(type: 'string'),
+        properties: [
+          PropertyEntry.array(
+            name: 'colors',
+            items: PropertyEntry.string(name: 'color'),
             description: 'Array of hex color codes',
           ),
-          'confidence': PropertyEntry(
-            type: 'number',
+          PropertyEntry.number(
+            name: 'confidence',
             minimum: 0.0,
             maximum: 1.0,
             description: 'Confidence score for the extraction',
           ),
-        },
+        ],
         required: ['colors', 'confidence'],
       ),
     );
@@ -49,19 +49,19 @@ class ExampleStepConfigs {
         );
       },
       outputSchema: OutputSchema(
-        properties: {
-          'colors': PropertyEntry(
-            type: 'array',
-            items: PropertyEntry(type: 'string'),
+        properties: [
+          PropertyEntry.array(
+            name: 'colors',
+            items: PropertyEntry.string(name: 'color'),
             description: 'Array of hex color codes',
           ),
-          'confidence': PropertyEntry(
-            type: 'number',
+          PropertyEntry.number(
+            name: 'confidence',
             minimum: 0.0,
             maximum: 1.0,
             description: 'Confidence score for the extraction',
           ),
-        },
+        ],
         required: ['colors', 'confidence'],
       ),
     );
@@ -77,19 +77,19 @@ class ExampleStepConfigs {
       // Or they could even have the option to override the issue parser for that step if they'd like.
       includeOutputsFrom: stepIndexes,
       outputSchema: OutputSchema(
-        properties: {
-          'colors': PropertyEntry(
-            type: 'array',
-            items: PropertyEntry(type: 'string'),
+        properties: [
+          PropertyEntry.array(
+            name: 'colors',
+            items: PropertyEntry.string(name: 'color'),
             description: 'Array of hex color codes',
           ),
-          'confidence': PropertyEntry(
-            type: 'number',
+          PropertyEntry.number(
+            name: 'confidence',
             minimum: 0.0,
             maximum: 1.0,
             description: 'Confidence score for the extraction',
           ),
-        },
+        ],
         required: ['colors', 'confidence'],
       ),
     );
@@ -100,19 +100,19 @@ class ExampleStepConfigs {
     return StepConfig(
       includeOutputsFrom: [toolName],
       outputSchema: OutputSchema(
-        properties: {
-          'colors': PropertyEntry(
-            type: 'array',
-            items: PropertyEntry(type: 'string'),
+        properties: [
+          PropertyEntry.array(
+            name: 'colors',
+            items: PropertyEntry.string(name: 'color'),
             description: 'Array of hex color codes',
           ),
-          'confidence': PropertyEntry(
-            type: 'number',
+          PropertyEntry.number(
+            name: 'confidence',
             minimum: 0.0,
             maximum: 1.0,
             description: 'Confidence score for the extraction',
           ),
-        },
+        ],
         required: ['colors', 'confidence'],
       ),
     );
@@ -125,19 +125,19 @@ class ExampleStepConfigs {
     return StepConfig(
       outputSanitizer: outputSanitizer,
       outputSchema: OutputSchema(
-        properties: {
-          'colors': PropertyEntry(
-            type: 'array',
-            items: PropertyEntry(type: 'string'),
+        properties: [
+          PropertyEntry.array(
+            name: 'colors',
+            items: PropertyEntry.string(name: 'color'),
             description: 'Array of hex color codes',
           ),
-          'confidence': PropertyEntry(
-            type: 'number',
+          PropertyEntry.number(
+            name: 'confidence',
             minimum: 0.0,
             maximum: 1.0,
             description: 'Confidence score for the extraction',
           ),
-        },
+        ],
         required: ['colors', 'confidence'],
       ),
     );
@@ -282,17 +282,17 @@ Map<String, ToolCallStep> createColorThemeWorkflow() {
         maxRetries: 3,
         outputSanitizer: ExampleSanitizers.paletteOutputSanitizer,
         outputSchema: OutputSchema(
-          properties: {
-            'colors': PropertyEntry(
-              type: 'array',
-              items: PropertyEntry(type: 'string'),
+          properties: [
+            PropertyEntry.array(
+              name: 'colors',
+              items: PropertyEntry.string(name: 'color'),
               description: 'Extracted palette colors',
             ),
-            'diversityScore': PropertyEntry(
-              type: 'number',
+            PropertyEntry.number(
+              name: 'diversityScore',
               description: 'Score for color diversity',
             ),
-          },
+          ],
           required: ['colors', 'diversityScore'],
         ),
       ),
@@ -343,17 +343,17 @@ Map<String, ToolCallStep> createColorThemeWorkflow() {
           );
         },
         outputSchema: OutputSchema(
-          properties: {
-            'colors': PropertyEntry(
-              type: 'array',
-              items: PropertyEntry(type: 'string'),
+          properties: [
+            PropertyEntry.array(
+              name: 'colors',
+              items: PropertyEntry.string(name: 'color'),
               description: 'Refined color list',
             ),
-            'contrastEnhanced': PropertyEntry(
-              type: 'boolean',
+            PropertyEntry.boolean(
+              name: 'contrastEnhanced',
               description: 'Whether contrast was enhanced',
             ),
-          },
+          ],
           required: ['colors', 'contrastEnhanced'],
         ),
       ),
@@ -392,12 +392,12 @@ Map<String, ToolCallStep> createColorThemeWorkflow() {
         includeOutputsFrom: ['refine_colors'],
         inputSanitizer: ExampleSanitizers.refinementToThemeInputSanitizer,
         outputSchema: OutputSchema(
-          properties: {
-            'theme': PropertyEntry(
-              type: 'object',
+          properties: [
+            PropertyEntry.object(
+              name: 'theme',
               description: 'Generated theme object',
             ),
-          },
+          ],
           required: ['theme'],
         ),
       ),

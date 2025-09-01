@@ -82,6 +82,19 @@ class TestToolOutput extends ToolOutput {
   Map<String, dynamic> toMap() => Map<String, dynamic>.from(data);
 
   @override
+  OutputSchema getOutputSchema() {
+    return OutputSchema(
+      properties: [
+        PropertyEntry.object(
+          name: 'data',
+          description: 'Test output data',
+        ),
+      ],
+      required: [],
+    );
+  }
+
+  @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
     return other is TestToolOutput && other.data.toString() == data.toString();
@@ -244,17 +257,16 @@ void main() {
         model: 'gpt-4',
         inputBuilder: (previousResults) => {'max_colors': 5},
         stepConfig: StepConfig(
-          outputSchema: OutputSchema.fromMap({
-            'type': 'object',
-            'properties': {
-              'colors': {
-                'type': 'array',
-                'items': {'type': 'string'},
-                'description': 'Extracted color hex codes',
-              },
-            },
-            'required': ['colors'],
-          }),
+          outputSchema: OutputSchema(
+            properties: [
+              PropertyEntry.array(
+                name: 'colors',
+                items: PropertyEntry.string(name: 'color'),
+                description: 'Extracted color hex codes',
+              ),
+            ],
+            required: ['colors'],
+          ),
         ),
       );
 
