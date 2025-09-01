@@ -20,10 +20,7 @@ class PaletteExtractionOutput extends ToolOutput {
 
   @override
   Map<String, dynamic> toMap() {
-    return {
-      'colors': colors,
-      'confidence': confidence,
-    };
+    return {'colors': colors, 'confidence': confidence};
   }
 }
 
@@ -32,10 +29,8 @@ class ThemeGenerationOutput extends ToolOutput {
   final Map<String, String> theme;
   final String category;
 
-  const ThemeGenerationOutput({
-    required this.theme,
-    required this.category,
-  }) : super.subclass();
+  const ThemeGenerationOutput({required this.theme, required this.category})
+    : super.subclass();
 
   factory ThemeGenerationOutput.fromMap(Map<String, dynamic> map) {
     return ThemeGenerationOutput(
@@ -46,36 +41,37 @@ class ThemeGenerationOutput extends ToolOutput {
 
   @override
   Map<String, dynamic> toMap() {
-    return {
-      'theme': theme,
-      'category': category,
-    };
+    return {'theme': theme, 'category': category};
   }
 }
 
 /// Type-safe audit function for PaletteExtractionOutput
-class PaletteQualityAudit extends AuditFunction<ToolOutput> {
+class PaletteQualityAudit extends AuditFunction<PaletteExtractionOutput> {
   @override
   String get name => 'palette_quality_audit';
 
   @override
   List<Issue> run(ToolResult<ToolOutput> result) {
     final issues = <Issue>[];
-    
+
     // Type-safe access to the output
     if (result.output is! PaletteExtractionOutput) {
       return [
         Issue(
           id: 'unexpected_output_type',
           severity: IssueSeverity.critical,
-          description: 'Expected PaletteExtractionOutput but got ${result.output.runtimeType}',
-          context: {'expected_type': 'PaletteExtractionOutput', 'actual_type': result.output.runtimeType.toString()},
+          description:
+              'Expected PaletteExtractionOutput but got ${result.output.runtimeType}',
+          context: {
+            'expected_type': 'PaletteExtractionOutput',
+            'actual_type': result.output.runtimeType.toString(),
+          },
           suggestions: ['Check tool registration and output creation'],
           round: 0,
         ),
       ];
     }
-    
+
     final paletteOutput = result.output as PaletteExtractionOutput;
     final colors = paletteOutput.colors;
 
@@ -83,27 +79,31 @@ class PaletteQualityAudit extends AuditFunction<ToolOutput> {
     for (int i = 0; i < colors.length; i++) {
       final color = colors[i];
       if (!RegExp(r'^#[0-9A-Fa-f]{6}$').hasMatch(color)) {
-        issues.add(Issue(
-          id: 'invalid_color_$i',
-          severity: IssueSeverity.high,
-          description: 'Color $color is not in valid hex format',
-          context: {'color_index': i, 'color': color},
-          suggestions: ['Use valid hex format like #FF0000'],
-          round: 0,
-        ));
+        issues.add(
+          Issue(
+            id: 'invalid_color_$i',
+            severity: IssueSeverity.high,
+            description: 'Color $color is not in valid hex format',
+            context: {'color_index': i, 'color': color},
+            suggestions: ['Use valid hex format like #FF0000'],
+            round: 0,
+          ),
+        );
       }
     }
 
     // Check confidence
     if (paletteOutput.confidence < 0.5) {
-      issues.add(Issue(
-        id: 'low_confidence',
-        severity: IssueSeverity.medium,
-        description: 'Low confidence score: ${paletteOutput.confidence}',
-        context: {'confidence': paletteOutput.confidence},
-        suggestions: ['Review input quality or extraction parameters'],
-        round: 0,
-      ));
+      issues.add(
+        Issue(
+          id: 'low_confidence',
+          severity: IssueSeverity.medium,
+          description: 'Low confidence score: ${paletteOutput.confidence}',
+          context: {'confidence': paletteOutput.confidence},
+          suggestions: ['Review input quality or extraction parameters'],
+          round: 0,
+        ),
+      );
     }
 
     return issues;
@@ -111,28 +111,32 @@ class PaletteQualityAudit extends AuditFunction<ToolOutput> {
 }
 
 /// Type-safe audit function for ThemeGenerationOutput
-class ThemeValidationAudit extends AuditFunction<ToolOutput> {
+class ThemeValidationAudit extends AuditFunction<ThemeGenerationOutput> {
   @override
   String get name => 'theme_validation_audit';
 
   @override
   List<Issue> run(ToolResult<ToolOutput> result) {
     final issues = <Issue>[];
-    
+
     // Type-safe access to the output
     if (result.output is! ThemeGenerationOutput) {
       return [
         Issue(
           id: 'unexpected_output_type',
           severity: IssueSeverity.critical,
-          description: 'Expected ThemeGenerationOutput but got ${result.output.runtimeType}',
-          context: {'expected_type': 'ThemeGenerationOutput', 'actual_type': result.output.runtimeType.toString()},
+          description:
+              'Expected ThemeGenerationOutput but got ${result.output.runtimeType}',
+          context: {
+            'expected_type': 'ThemeGenerationOutput',
+            'actual_type': result.output.runtimeType.toString(),
+          },
           suggestions: ['Check tool registration and output creation'],
           round: 0,
         ),
       ];
     }
-    
+
     final themeOutput = result.output as ThemeGenerationOutput;
     final theme = themeOutput.theme;
 
@@ -140,14 +144,19 @@ class ThemeValidationAudit extends AuditFunction<ToolOutput> {
     final requiredProperties = ['primary', 'secondary', 'background'];
     for (final property in requiredProperties) {
       if (!theme.containsKey(property)) {
-        issues.add(Issue(
-          id: 'missing_property_$property',
-          severity: IssueSeverity.critical,
-          description: 'Missing required theme property: $property',
-          context: {'missing_property': property, 'available_properties': theme.keys.toList()},
-          suggestions: ['Add $property property to theme'],
-          round: 0,
-        ));
+        issues.add(
+          Issue(
+            id: 'missing_property_$property',
+            severity: IssueSeverity.critical,
+            description: 'Missing required theme property: $property',
+            context: {
+              'missing_property': property,
+              'available_properties': theme.keys.toList(),
+            },
+            suggestions: ['Add $property property to theme'],
+            round: 0,
+          ),
+        );
       }
     }
 
@@ -271,7 +280,7 @@ void main() {
       final result = await flow.run();
 
       expect(result.results.length, equals(2));
-      
+
       // Check that each result has the correct type information
       final paletteResult = result.getTypedResultByToolName('extract_palette');
       final themeResult = result.getTypedResultByToolName('generate_theme');
@@ -282,7 +291,8 @@ void main() {
       expect(themeResult!.outputType, equals(ThemeGenerationOutput));
 
       // Verify type-safe casting works
-      final typedPaletteResult = paletteResult.asTyped<PaletteExtractionOutput>();
+      final typedPaletteResult = paletteResult
+          .asTyped<PaletteExtractionOutput>();
       final typedThemeResult = themeResult.asTyped<ThemeGenerationOutput>();
 
       expect(typedPaletteResult, isNotNull);
@@ -340,75 +350,87 @@ void main() {
       final result = await flow.run();
 
       expect(result.results.length, equals(2));
-      
+
       // Both steps should pass their audits (valid data)
       expect(result.allIssues, isEmpty);
     });
 
-    test('should handle audit failures with type-safe error reporting', () async {
-      final flow = ToolFlow(
-        config: OpenAIConfig(apiKey: 'test-key'),
-        openAiService: mockService,
-        steps: [
-          ToolCallStep(
-            toolName: 'extract_palette_invalid',
-            model: 'gpt-4',
-            inputBuilder: (previousResults) => {'image': 'test.jpg'},
-            stepConfig: StepConfig(
-              audits: [PaletteQualityAudit()],
-              outputSchema: {
-                'type': 'object',
-                'properties': {
-                  'colors': {
-                    'type': 'array',
-                    'items': {'type': 'string'},
+    test(
+      'should handle audit failures with type-safe error reporting',
+      () async {
+        final flow = ToolFlow(
+          config: OpenAIConfig(apiKey: 'test-key'),
+          openAiService: mockService,
+          steps: [
+            ToolCallStep(
+              toolName: 'extract_palette_invalid',
+              model: 'gpt-4',
+              inputBuilder: (previousResults) => {'image': 'test.jpg'},
+              stepConfig: StepConfig(
+                audits: [PaletteQualityAudit()],
+                outputSchema: {
+                  'type': 'object',
+                  'properties': {
+                    'colors': {
+                      'type': 'array',
+                      'items': {'type': 'string'},
+                    },
+                    'confidence': {'type': 'number'},
                   },
-                  'confidence': {'type': 'number'},
+                  'required': ['colors', 'confidence'],
                 },
-                'required': ['colors', 'confidence'],
-              },
+              ),
             ),
-          ),
-          ToolCallStep(
-            toolName: 'generate_theme_invalid',
-            model: 'gpt-4',
-            inputBuilder: (previousResults) => {
-              'palette': previousResults.first.output.toMap(),
-            },
-            buildInputsFrom: [0],
-            stepConfig: StepConfig(
-              audits: [ThemeValidationAudit()],
-              outputSchema: {
-                'type': 'object',
-                'properties': {
-                  'theme': {'type': 'object'},
-                  'category': {'type': 'string'},
+            ToolCallStep(
+              toolName: 'generate_theme_invalid',
+              model: 'gpt-4',
+              inputBuilder: (previousResults) => {
+                'palette': previousResults.first.output.toMap(),
+              },
+              buildInputsFrom: [0],
+              stepConfig: StepConfig(
+                audits: [ThemeValidationAudit()],
+                outputSchema: {
+                  'type': 'object',
+                  'properties': {
+                    'theme': {'type': 'object'},
+                    'category': {'type': 'string'},
+                  },
+                  'required': ['theme', 'category'],
                 },
-                'required': ['theme', 'category'],
-              },
+              ),
             ),
-          ),
-        ],
-      );
+          ],
+        );
 
-      final result = await flow.run();
+        final result = await flow.run();
 
-      expect(result.results.length, equals(2));
-      expect(result.allIssues.length, greaterThan(0));
+        expect(result.results.length, equals(2));
+        expect(result.allIssues.length, greaterThan(0));
 
-      // Check that audit issues were properly detected
-      final paletteIssues = result.results[0].issues;
-      final themeIssues = result.results[1].issues;
+        // Check that audit issues were properly detected
+        final paletteIssues = result.results[0].issues;
+        final themeIssues = result.results[1].issues;
 
-      // Palette should have issues (invalid color format and low confidence)
-      expect(paletteIssues.length, greaterThan(0));
-      expect(paletteIssues.any((issue) => issue.id.contains('invalid_color')), isTrue);
-      expect(paletteIssues.any((issue) => issue.id.contains('low_confidence')), isTrue);
+        // Palette should have issues (invalid color format and low confidence)
+        expect(paletteIssues.length, greaterThan(0));
+        expect(
+          paletteIssues.any((issue) => issue.id.contains('invalid_color')),
+          isTrue,
+        );
+        expect(
+          paletteIssues.any((issue) => issue.id.contains('low_confidence')),
+          isTrue,
+        );
 
-      // Theme should have issues (missing properties)
-      expect(themeIssues.length, greaterThan(0));
-      expect(themeIssues.any((issue) => issue.id.contains('missing_property')), isTrue);
-    });
+        // Theme should have issues (missing properties)
+        expect(themeIssues.length, greaterThan(0));
+        expect(
+          themeIssues.any((issue) => issue.id.contains('missing_property')),
+          isTrue,
+        );
+      },
+    );
 
     test('should prevent type mismatches with safe casting', () async {
       final flow = ToolFlow(
@@ -452,43 +474,49 @@ void main() {
       expect(paletteResult.hasOutputType<ThemeGenerationOutput>(), isFalse);
     });
 
-    test('should maintain backward compatibility with existing interfaces', () async {
-      final flow = ToolFlow(
-        config: OpenAIConfig(apiKey: 'test-key'),
-        openAiService: mockService,
-        steps: [
-          ToolCallStep(
-            toolName: 'extract_palette',
-            model: 'gpt-4',
-            inputBuilder: (previousResults) => {'image': 'test.jpg'},
-            stepConfig: StepConfig(
-              outputSchema: {
-                'type': 'object',
-                'properties': {
-                  'colors': {
-                    'type': 'array',
-                    'items': {'type': 'string'},
+    test(
+      'should maintain backward compatibility with existing interfaces',
+      () async {
+        final flow = ToolFlow(
+          config: OpenAIConfig(apiKey: 'test-key'),
+          openAiService: mockService,
+          steps: [
+            ToolCallStep(
+              toolName: 'extract_palette',
+              model: 'gpt-4',
+              inputBuilder: (previousResults) => {'image': 'test.jpg'},
+              stepConfig: StepConfig(
+                outputSchema: {
+                  'type': 'object',
+                  'properties': {
+                    'colors': {
+                      'type': 'array',
+                      'items': {'type': 'string'},
+                    },
+                    'confidence': {'type': 'number'},
                   },
-                  'confidence': {'type': 'number'},
+                  'required': ['colors', 'confidence'],
                 },
-                'required': ['colors', 'confidence'],
-              },
+              ),
             ),
-          ),
-        ],
-      );
+          ],
+        );
 
-      final result = await flow.run();
+        final result = await flow.run();
 
-      // Old interface should still work
-      expect(result.results.length, equals(1));
-      expect(result.resultsByToolName['extract_palette'], isNotNull);
-      expect(result.getResultByToolName('extract_palette'), isNotNull);
+        // Old interface should still work
+        expect(result.results.length, equals(1));
+        expect(result.resultsByToolName['extract_palette'], isNotNull);
+        expect(result.getResultByToolName('extract_palette'), isNotNull);
 
-      // Result should be accessible as ToolResult<ToolOutput>
-      final oldStyleResult = result.getResultByToolName('extract_palette')!;
-      expect(oldStyleResult.toolName, equals('extract_palette'));
-      expect(oldStyleResult.output.toMap(), containsPair('colors', ['#FF0000', '#00FF00', '#0000FF']));
-    });
+        // Result should be accessible as ToolResult<ToolOutput>
+        final oldStyleResult = result.getResultByToolName('extract_palette')!;
+        expect(oldStyleResult.toolName, equals('extract_palette'));
+        expect(
+          oldStyleResult.output.toMap(),
+          containsPair('colors', ['#FF0000', '#00FF00', '#0000FF']),
+        );
+      },
+    );
   });
 }
