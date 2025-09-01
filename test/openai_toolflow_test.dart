@@ -307,7 +307,7 @@ void main() {
     test('should collect issues from audits', () async {
       final config = OpenAIConfig(apiKey: 'test-key', defaultModel: 'gpt-4');
 
-      final audit = SimpleAuditFunction<ToolOutput>(
+      final audit = SimpleAuditFunction<TestToolOutput>(
         name: 'test_audit',
         auditFunction: (result) => [
           Issue(
@@ -440,7 +440,7 @@ void main() {
       final config = OpenAIConfig(apiKey: 'test-key', defaultModel: 'gpt-4');
 
       // Create an audit that generates issues
-      final audit = SimpleAuditFunction<ToolOutput>(
+      final audit = SimpleAuditFunction<TestToolOutput>(
         name: 'color_audit',
         auditFunction: (result) => [
           Issue(

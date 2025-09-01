@@ -149,6 +149,7 @@ class ExampleStepConfigs {
   }
 
   /// Configuration that doesn't stop flow on failure
+  // TODO: Ask agent to remove all non-used functions or methods because they're bloat
   static StepConfig get nonBlockingConfig {
     return StepConfig(
       audits: [ColorDiversityAuditFunction()],
@@ -271,32 +272,6 @@ class ExampleIssueFilters {
   static bool Function(Issue) idPatternFilter(RegExp pattern) {
     return (Issue issue) => pattern.hasMatch(issue.id);
   }
-}
-
-/// Demonstrates different step configuration patterns
-void demonstrateStepConfigUsage() {
-  print('🔧 Step Configuration Examples');
-  print('==============================\n');
-
-  // Different ways to configure steps
-  final configs = {
-    'Basic Audit': ExampleStepConfigs.basicAuditConfig,
-    'Custom Retry': ExampleStepConfigs.customRetryConfig,
-    'Forwarding Issues': ExampleStepConfigs.forwardingIssuesConfig([0, 1]),
-    'Non-blocking': ExampleStepConfigs.nonBlockingConfig,
-  };
-
-  configs.forEach((name, config) {
-    print('$name Configuration:');
-    print('  Audits: ${config.audits.length}');
-    print('  Max Retries: ${config.maxRetries ?? 'default'}');
-    print('  Has Output Inclusion: ${config.hasOutputInclusion}');
-    print('  Stop on Failure: ${config.stopOnFailure}');
-    print('  Has Custom Criteria: ${config.customPassCriteria != null}');
-    print('');
-  });
-
-  print('✅ Step configuration examples completed\n');
 }
 
 /// Helper function to create a complete workflow configuration
@@ -432,7 +407,6 @@ Map<String, ToolCallStep> createColorThemeWorkflow() {
 
         return {
           'theme_type': 'material_design',
-          'include_variants': true,
           if (baseColors.isNotEmpty) 'base_colors': baseColors,
           if (baseColors.isNotEmpty) 'primary_color': baseColors.first,
         };
@@ -449,13 +423,8 @@ Map<String, ToolCallStep> createColorThemeWorkflow() {
               'type': 'object',
               'description': 'Generated theme object',
             },
-            'variants': {
-              'type': 'array',
-              'items': {'type': 'object'},
-              'description': 'Theme variants',
-            },
           },
-          'required': ['theme', 'variants'],
+          'required': ['theme'],
         },
       ),
     ),

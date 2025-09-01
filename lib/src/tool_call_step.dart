@@ -6,6 +6,9 @@ import 'tool_result.dart';
 ///
 /// Contains the tool name, OpenAI model to use, dynamic input builder function,
 /// and configuration for issues and retries.
+// TODO: Read ALT-003 and ALT-004 from adr-0002-typedtoolresult-wrapper-implementation.md
+/// It goes over how we totally could have made everything type safe. It still thinks
+/// we need to prevent breaking changes...
 class ToolCallStep {
   /// Name of the tool to call
   final String toolName;
@@ -93,6 +96,7 @@ class ToolCallStep {
     this.issues = const [],
     this.maxRetries = 3,
     required this.stepConfig,
+    // TODO: Consider moving outputSchema to the ToolCallStep instead of the stepConfig. I'm not sure which is better.
   });
 
   /// Creates a copy of this ToolCallStep with updated parameters

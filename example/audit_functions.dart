@@ -1,14 +1,15 @@
 import 'package:openai_toolflow/openai_toolflow.dart';
+
 import 'typed_interfaces.dart';
 
 /// A simple audit function that can be created with a function
-/// 
+///
 /// This implementation is provided in the example for flexibility,
 /// allowing projects to use it or create their own audit implementations.
 class SimpleAuditFunction<T extends ToolOutput> extends AuditFunction<T> {
   @override
   final String name;
-  
+
   final List<Issue> Function(ToolResult<T>) _auditFunction;
   final bool Function(List<Issue>)? _passedCriteriaFunction;
   final String Function(List<Issue>)? _failureReasonFunction;
@@ -28,12 +29,14 @@ class SimpleAuditFunction<T extends ToolOutput> extends AuditFunction<T> {
 
   @override
   bool passedCriteria(List<Issue> issues) {
-    return _passedCriteriaFunction?.call(issues) ?? super.passedCriteria(issues);
+    return _passedCriteriaFunction?.call(issues) ??
+        super.passedCriteria(issues);
   }
 
   @override
   String getFailureReason(List<Issue> issues) {
-    return _failureReasonFunction?.call(issues) ?? super.getFailureReason(issues);
+    return _failureReasonFunction?.call(issues) ??
+        super.getFailureReason(issues);
   }
 }
 
@@ -41,7 +44,7 @@ class SimpleAuditFunction<T extends ToolOutput> extends AuditFunction<T> {
 class ColorQualityIssue extends Issue {
   /// The color that caused the issue
   final String problematicColor;
-  
+
   /// Quality score (0.0 to 1.0)
   final double qualityScore;
 
@@ -65,7 +68,7 @@ class ColorQualityIssue extends Issue {
       context: Map<String, dynamic>.from(json['context'] as Map),
       suggestions: List<String>.from(json['suggestions'] as List),
       round: json['round'] as int? ?? 0,
-      relatedData: json['relatedData'] != null 
+      relatedData: json['relatedData'] != null
           ? Map<String, dynamic>.from(json['relatedData'] as Map)
           : null,
       problematicColor: json['problematicColor'] as String,
@@ -83,67 +86,76 @@ class ColorQualityIssue extends Issue {
 }
 
 /// Example of a comprehensive color audit function
-class ColorQualityAuditFunction extends AuditFunction<PaletteExtractionOutput> {
+class ColorQualityAuditFunction extends AuditFunction<ColorRefinementOutput> {
   @override
   String get name => 'color_quality_audit';
 
   @override
-  List<Issue> run(ToolResult<PaletteExtractionOutput> result) {
+  List<Issue> run(ToolResult<ColorRefinementOutput> result) {
     final issues = <Issue>[];
-    
+
     // Now we can safely access the strongly-typed output
-    final colors = result.output.colors;
+    final colors = result.output.refinedColors;
     for (int i = 0; i < colors.length; i++) {
       final color = colors[i];
       if (!RegExp(r'^#[0-9A-Fa-f]{6}$').hasMatch(color)) {
-        issues.add(ColorQualityIssue(
-          id: 'invalid_color_format_$i',
-          severity: IssueSeverity.medium,
-          description: 'Color $color is not in valid hex format',
-          context: {
-            'color_index': i,
-            'color_value': color,
-            'expected_format': '#RRGGBB',
-          },
-          suggestions: ['Convert to valid hex format'],
-          problematicColor: color,
-          qualityScore: 0.0,
-        ));
+        issues.add(
+          ColorQualityIssue(
+            id: 'invalid_color_format_$i',
+            severity: IssueSeverity.medium,
+            description: 'Color $color is not in valid hex format',
+            context: {
+              'color_index': i,
+              'color_value': color,
+              'expected_format': '#RRGGBB',
+            },
+            suggestions: ['Convert to valid hex format'],
+            problematicColor: color,
+            qualityScore: 0.0,
+          ),
+        );
       }
     }
-    
+
     return issues;
   }
 
   @override
   bool passedCriteria(List<Issue> issues) {
     // Custom criteria: pass if no medium or higher severity issues
-    return !issues.any((issue) => 
-      issue.severity == IssueSeverity.medium ||
-      issue.severity == IssueSeverity.high ||
-      issue.severity == IssueSeverity.critical
+    return !issues.any(
+      (issue) =>
+          issue.severity == IssueSeverity.medium ||
+          issue.severity == IssueSeverity.high ||
+          issue.severity == IssueSeverity.critical,
     );
   }
 
   @override
   String getFailureReason(List<Issue> issues) {
-    final problemIssues = issues.where((issue) => 
-      issue.severity == IssueSeverity.medium ||
-      issue.severity == IssueSeverity.high ||
-      issue.severity == IssueSeverity.critical
-    ).toList();
-    
+    final problemIssues = issues
+        .where(
+          (issue) =>
+              issue.severity == IssueSeverity.medium ||
+              issue.severity == IssueSeverity.high ||
+              issue.severity == IssueSeverity.critical,
+        )
+        .toList();
+
     if (problemIssues.isNotEmpty) {
-      final descriptions = problemIssues.map((issue) => issue.description).join(', ');
+      final descriptions = problemIssues
+          .map((issue) => issue.description)
+          .join(', ');
       return 'Color quality issues found: $descriptions';
     }
-    
+
     return super.getFailureReason(issues);
   }
 }
 
 /// Example of a diversity audit function with weighted threshold
-class ColorDiversityAuditFunction extends AuditFunction<PaletteExtractionOutput> {
+class ColorDiversityAuditFunction
+    extends AuditFunction<PaletteExtractionOutput> {
   final int minimumColors;
   final double weightedThreshold;
 
@@ -158,25 +170,27 @@ class ColorDiversityAuditFunction extends AuditFunction<PaletteExtractionOutput>
   @override
   List<Issue> run(ToolResult<PaletteExtractionOutput> result) {
     final issues = <Issue>[];
-    
+
     // Check if we have enough colors using strongly-typed access
     final colors = result.output.colors;
     if (colors.length < minimumColors) {
-      issues.add(Issue(
-        id: 'insufficient_colors',
-        severity: IssueSeverity.high,
-        description: 'Not enough colors extracted for a diverse palette',
-        context: {
-          'colors_found': colors.length,
-          'minimum_required': minimumColors,
-        },
-        suggestions: [
-          'Adjust extraction parameters',
-          'Try a different image with more color variety',
-        ],
-      ));
+      issues.add(
+        Issue(
+          id: 'insufficient_colors',
+          severity: IssueSeverity.high,
+          description: 'Not enough colors extracted for a diverse palette',
+          context: {
+            'colors_found': colors.length,
+            'minimum_required': minimumColors,
+          },
+          suggestions: [
+            'Adjust extraction parameters',
+            'Try a different image with more color variety',
+          ],
+        ),
+      );
     }
-    
+
     return issues;
   }
 
@@ -184,7 +198,7 @@ class ColorDiversityAuditFunction extends AuditFunction<PaletteExtractionOutput>
   bool passedCriteria(List<Issue> issues) {
     // Custom weighted scoring: assign weights to severity levels
     double totalWeight = 0.0;
-    
+
     for (final issue in issues) {
       switch (issue.severity) {
         case IssueSeverity.low:
@@ -201,14 +215,14 @@ class ColorDiversityAuditFunction extends AuditFunction<PaletteExtractionOutput>
           break;
       }
     }
-    
+
     return totalWeight <= weightedThreshold;
   }
 
   @override
   String getFailureReason(List<Issue> issues) {
     double totalWeight = 0.0;
-    
+
     for (final issue in issues) {
       switch (issue.severity) {
         case IssueSeverity.low:
@@ -225,7 +239,7 @@ class ColorDiversityAuditFunction extends AuditFunction<PaletteExtractionOutput>
           break;
       }
     }
-    
+
     return 'Weighted issue score ($totalWeight) exceeds threshold ($weightedThreshold). Issues: ${issues.map((i) => '${i.severity.name}: ${i.description}').join(', ')}';
   }
 }

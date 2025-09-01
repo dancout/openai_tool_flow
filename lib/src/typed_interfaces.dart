@@ -134,12 +134,16 @@ class ToolOutputRegistry {
   static final Map<String, ToolOutput Function(Map<String, dynamic>)>
   _creators = {};
 
-  /// Registers a creator function for a specific tool
+  /// Maps tool names to their expected output types for type-safe operations
+  static final Map<String, Type> _outputTypes = {};
+
+  /// Registers a creator function for a specific tool with type information
   static void register<T extends ToolOutput>(
     String toolName,
     T Function(Map<String, dynamic>) creator,
   ) {
     _creators[toolName] = creator;
+    _outputTypes[toolName] = T;
   }
 
   /// Creates a typed output for the given tool name and data
@@ -156,6 +160,20 @@ class ToolOutputRegistry {
     return _creators.containsKey(toolName);
   }
 
+  /// Gets the expected output type for a tool
+  static Type? getOutputType(String toolName) {
+    return _outputTypes[toolName];
+  }
+
+  /// Checks if a tool's output type matches the expected type
+  static bool hasOutputType<T extends ToolOutput>(String toolName) {
+    return _outputTypes[toolName] == T;
+  }
+
   /// Gets all registered tool names
   static List<String> get registeredTools => _creators.keys.toList();
+
+  /// Gets all registered output types
+  static Map<String, Type> get registeredOutputTypes => 
+      Map.unmodifiable(_outputTypes);
 }

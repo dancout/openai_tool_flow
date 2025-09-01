@@ -41,6 +41,7 @@ class PaletteExtractionInput extends ToolInput {
       'maxColors': maxColors,
       'minSaturation': minSaturation,
       'userPreferences': userPreferences,
+      'metadata': {'generated_at': DateTime.now().toIso8601String()},
     };
   }
 

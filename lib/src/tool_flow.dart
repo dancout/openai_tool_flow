@@ -1,13 +1,5 @@
 import 'package:meta/meta.dart';
-
-import 'issue.dart';
-import 'openai_config.dart';
-import 'openai_service.dart';
-import 'openai_service_impl.dart';
-import 'step_config.dart';
-import 'tool_call_step.dart';
-import 'tool_result.dart';
-import 'typed_interfaces.dart';
+import 'package:openai_toolflow/openai_toolflow.dart';
 
 /// Manages ordered execution of tool call steps with internal state management.
 ///
@@ -32,16 +24,16 @@ class ToolFlow {
   /// Internal state accumulated across steps
   final Map<String, dynamic> _state = {};
 
-  /// Results from completed steps (ordered list)
-  final List<ToolResult<ToolOutput>> _results = [];
+  /// Results from completed steps (ordered list) using type-safe wrappers
+  final List<TypedToolResult> _results = [];
 
   /// Results keyed by tool name for easy retrieval
   /// For duplicate tool names, this contains the MOST RECENT result
-  final Map<String, ToolResult<ToolOutput>> _resultsByToolName = {};
+  final Map<String, TypedToolResult> _resultsByToolName = {};
 
   /// All results grouped by tool name (handles duplicates)
   /// Each tool name maps to a list of results in execution order
-  final Map<String, List<ToolResult<ToolOutput>>> _allResultsByToolName = {};
+  final Map<String, List<TypedToolResult>> _allResultsByToolName = {};
 
   /// Creates a ToolFlow with configuration and steps
   ToolFlow({
@@ -65,7 +57,7 @@ class ToolFlow {
       final step = steps[i];
       final stepConfig = step.stepConfig;
 
-      ToolResult<ToolOutput>? stepResult;
+      TypedToolResult? stepResult;
       bool stepPassed = false;
       int attemptCount = 0;
       final maxRetries = stepConfig.getEffectiveMaxRetries(step.maxRetries);
@@ -84,6 +76,7 @@ class ToolFlow {
 
           // Run audits if configured for this step
           if (stepConfig.hasAudits) {
+            // TODO: What's all this extra stuff? If we have an audit function, we should run it right?
             final shouldRunAudits =
                 !stepConfig.auditOnlyFinalAttempt ||
                 attemptCount > maxRetries ||
@@ -115,7 +108,7 @@ class ToolFlow {
             stepIndex: i,
             round: attemptCount,
           );
-          stepResult = ToolResult<ToolOutput>(
+          final errorToolResult = ToolResult<ToolOutput>(
             toolName: step.toolName,
             input: errorStepInput,
             output: ToolOutput({'error': e.toString()}),
@@ -134,6 +127,11 @@ class ToolFlow {
                 round: attemptCount - 1,
               ),
             ],
+          );
+          // Wrap error result in TypedToolResult
+          stepResult = TypedToolResult.fromWithType(
+            errorToolResult,
+            ToolOutput,
           );
           stepPassed = false;
         }
@@ -165,20 +163,20 @@ class ToolFlow {
       }
     }
 
-    return ToolFlowResult(
-      results: List.unmodifiable(_results),
+    return ToolFlowResult._fromTyped(
+      typedResults: List.unmodifiable(_results),
       finalState: Map.unmodifiable(_state),
       allIssues: _getAllIssues(),
-      resultsByToolName: Map.unmodifiable(_resultsByToolName),
-      allResultsByToolName: _allResultsByToolName.map(
+      typedResultsByToolName: Map.unmodifiable(_resultsByToolName),
+      allTypedResultsByToolName: _allResultsByToolName.map(
         (key, value) =>
-            MapEntry(key, List<ToolResult<ToolOutput>>.unmodifiable(value)),
+            MapEntry(key, List<TypedToolResult>.unmodifiable(value)),
       ),
     );
   }
 
   /// Executes a single step
-  Future<ToolResult<ToolOutput>> _executeStep({
+  Future<TypedToolResult> _executeStep({
     required ToolCallStep step,
     required int stepIndex,
     required int round,
@@ -230,12 +228,19 @@ class ToolFlow {
       issues: [],
     );
 
-    return result;
+    // Create TypedToolResult with type information from registry
+    final outputType =
+        // TODO: Consider if this should probably fail more loudly if we cannot find the output type.
+        /// Defaulting to ToolOutput means that the data would be the only real parameter, but maybe in some cases that's OK?
+        /// So why make the user define another extended class that also only defined data?
+        /// I'M NOT SURE!
+        ToolOutputRegistry.getOutputType(step.toolName) ?? ToolOutput;
+    return TypedToolResult.fromWithType(result, outputType);
   }
 
   /// Runs audits for a step and returns the result with any issues found
-  Future<ToolResult<ToolOutput>> _runAuditsForStep({
-    required ToolResult<ToolOutput> result,
+  Future<TypedToolResult> _runAuditsForStep({
+    required TypedToolResult result,
     required StepConfig stepConfig,
     required int stepIndex,
   }) async {
@@ -243,7 +248,39 @@ class ToolFlow {
 
     // Run step-specific audits only (global audits are deprecated)
     for (final audit in stepConfig.audits) {
-      final auditIssues = audit.run(auditedResult);
+      // Execute audit with proper type-safe casting
+      late List<Issue> auditIssues;
+
+      try {
+        // Use a type-safe approach to execute the audit
+        auditIssues = audit.runWithTypeChecking(result.underlyingResult);
+      } catch (e) {
+        // If audit execution fails, create an audit execution error
+        auditIssues = [
+          Issue(
+            id: 'audit_execution_error_${audit.name}_$stepIndex',
+            severity: IssueSeverity.critical,
+            description: 'Audit ${audit.name} execution failed: $e',
+            context: {
+              'step_index': stepIndex,
+              'audit_name': audit.name,
+              'error': e.toString(),
+              'actual_output_type': auditedResult.outputType.toString(),
+            },
+            suggestions: [
+              'Check audit function implementation',
+              'Verify tool output structure matches expectations',
+              'Ensure tool output type matches audit expectations',
+            ],
+            round:
+                int.tryParse(
+                  result.input.toMap()['_round']?.toString() ?? '0',
+                ) ??
+                0,
+          ),
+        ];
+      }
+
       // Add round information to audit issues
       final roundedIssues = auditIssues
           .map(
@@ -322,19 +359,21 @@ class ToolFlow {
     final inputResults = <ToolResult<ToolOutput>>[];
 
     for (final reference in step.buildInputsFrom) {
-      ToolResult<ToolOutput>? sourceResult;
+      TypedToolResult? sourceTypedResult;
 
       // Find the source result by index or tool name
       if (reference is int) {
         if (reference >= 0 && reference < _results.length) {
-          sourceResult = _results[reference];
+          sourceTypedResult = _results[reference];
         }
       } else if (reference is String) {
-        sourceResult = _resultsByToolName[reference];
+        sourceTypedResult = _resultsByToolName[reference];
       }
 
-      if (sourceResult != null) {
-        inputResults.add(sourceResult);
+      if (sourceTypedResult != null) {
+        // TODO: Investigate what is truly meant by backwards compatibility here. Is that necessary? Can it be deleted?
+        // Extract the underlying ToolResult for backward compatibility
+        inputResults.add(sourceTypedResult.underlyingResult);
       }
     }
 
@@ -358,27 +397,44 @@ class ToolFlow {
   /// Gets the current results (for testing/debugging)
   @visibleForTesting
   List<ToolResult<ToolOutput>> get currentResults =>
-      List.unmodifiable(_results);
+      _results.map((tr) => tr.underlyingResult).toList();
 
   /// Gets the current results by tool name (for testing/debugging)
   @visibleForTesting
   Map<String, ToolResult<ToolOutput>> get currentResultsByToolName =>
-      Map.unmodifiable(_resultsByToolName);
+      _resultsByToolName.map(
+        (key, value) => MapEntry(key, value.underlyingResult),
+      );
 
   /// Gets the current all results by tool name (for testing/debugging)
   @visibleForTesting
   Map<String, List<ToolResult<ToolOutput>>> get currentAllResultsByToolName =>
-      Map.unmodifiable(
-        _allResultsByToolName.map(
-          (key, value) => MapEntry(key, List.unmodifiable(value)),
-        ),
+      _allResultsByToolName.map(
+        (key, value) =>
+            MapEntry(key, value.map((tr) => tr.underlyingResult).toList()),
       );
+
+  /// Gets the current typed results (for testing/debugging)
+  @visibleForTesting
+  List<TypedToolResult> get currentTypedResults => List.unmodifiable(_results);
+
+  /// Gets the current typed results by tool name (for testing/debugging)
+  @visibleForTesting
+  Map<String, TypedToolResult> get currentTypedResultsByToolName =>
+      Map.unmodifiable(_resultsByToolName);
 }
 
 /// Result of executing a ToolFlow
 class ToolFlowResult {
-  /// Results from all executed steps
-  final List<ToolResult<ToolOutput>> results;
+  /// Internal typed results from all executed steps
+  final List<TypedToolResult> _typedResults;
+
+  // TODO: Same here. Is this backwards compatible necessary? Should it instead just be all forwards compatible, and make it the proper type?
+  /// So maybe convert this to be List<TypedToolResult>?
+  ///
+  /// Results from all executed steps (backward compatible interface)
+  List<ToolResult<ToolOutput>> get results =>
+      _typedResults.map((tr) => tr.underlyingResult).toList();
 
   // TODO: Is finalState ever used? It's basically the _state collection that was passed around, and is also now not used I don't think.
   /// Final state after all steps completed
@@ -387,16 +443,19 @@ class ToolFlowResult {
   /// All issues collected from all steps
   final List<Issue> allIssues;
 
-  /// Results keyed by tool name for easy retrieval
+  /// Results keyed by tool name for easy retrieval (backward compatible interface)
   /// For duplicate tool names, this contains the MOST RECENT result
   ///
   /// **Example:**
   /// ```dart
   /// final latestPaletteResult = result.resultsByToolName['extract_palette'];
   /// ```
-  final Map<String, ToolResult<ToolOutput>> resultsByToolName;
+  Map<String, ToolResult<ToolOutput>> get resultsByToolName =>
+      _typedResultsByToolName.map(
+        (key, value) => MapEntry(key, value.underlyingResult),
+      );
 
-  /// All results grouped by tool name (handles duplicates)
+  /// All results grouped by tool name (backward compatible interface)
   /// Each tool name maps to a list of results in execution order
   ///
   /// **Use this when you need all instances of a tool:**
@@ -406,16 +465,39 @@ class ToolFlowResult {
   ///   print('Palette from step ${result.input['_round']}: ${result.output}');
   /// }
   /// ```
-  final Map<String, List<ToolResult<ToolOutput>>> allResultsByToolName;
+  Map<String, List<ToolResult<ToolOutput>>> get allResultsByToolName =>
+      _allTypedResultsByToolName.map(
+        (key, value) =>
+            MapEntry(key, value.map((tr) => tr.underlyingResult).toList()),
+      );
 
-  /// Creates a ToolFlowResult
-  const ToolFlowResult({
-    required this.results,
+  /// Internal typed results keyed by tool name
+  final Map<String, TypedToolResult> _typedResultsByToolName;
+
+  /// Internal all typed results grouped by tool name
+  final Map<String, List<TypedToolResult>> _allTypedResultsByToolName;
+
+  /// Creates a ToolFlowResult from typed results
+  ToolFlowResult._fromTyped({
+    required List<TypedToolResult> typedResults,
     required this.finalState,
     required this.allIssues,
-    required this.resultsByToolName,
-    required this.allResultsByToolName,
-  });
+    required Map<String, TypedToolResult> typedResultsByToolName,
+    required Map<String, List<TypedToolResult>> allTypedResultsByToolName,
+  }) : _typedResults = typedResults,
+       _typedResultsByToolName = typedResultsByToolName,
+       _allTypedResultsByToolName = allTypedResultsByToolName;
+
+  /// Creates a ToolFlowResult (backward compatible constructor)
+  const ToolFlowResult({
+    required List<ToolResult<ToolOutput>> results,
+    required this.finalState,
+    required this.allIssues,
+    required Map<String, ToolResult<ToolOutput>> resultsByToolName,
+    required Map<String, List<ToolResult<ToolOutput>>> allResultsByToolName,
+  }) : _typedResults = const [],
+       _typedResultsByToolName = const {},
+       _allTypedResultsByToolName = const {};
 
   /// Returns true if any step produced issues
   bool get hasIssues => allIssues.isNotEmpty;
@@ -443,6 +525,15 @@ class ToolFlowResult {
   /// ```
   ToolResult<ToolOutput>? getResultByToolName(String toolName) {
     return resultsByToolName[toolName];
+  }
+
+  /// Gets the typed result for a specific tool by name
+  /// Returns the most recent result if there are duplicates
+  ///
+  /// This method enables type-safe access to results for audit functions
+  /// and other code that needs the specific output type.
+  TypedToolResult? getTypedResultByToolName(String toolName) {
+    return _typedResultsByToolName[toolName];
   }
 
   /// Gets all results for a specific tool name (handles duplicates)

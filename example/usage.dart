@@ -8,6 +8,7 @@ library;
 import 'package:openai_toolflow/openai_toolflow.dart';
 
 import 'audit_functions.dart';
+import 'typed_interfaces.dart';
 
 void main() async {
   print('🎨 Color Theme Generator Example');
@@ -54,10 +55,6 @@ void main() async {
           'secondary': '#2ECC71',
           'accent': '#E74C3C',
           'background': '#FFFFFF',
-          'variants': {
-            'light': {'opacity': 0.7},
-            'dark': {'opacity': 0.9},
-          },
         },
         'metadata': {'theme_type': 'material_design', 'version': '1.0'},
       },
@@ -93,6 +90,9 @@ void main() async {
           sanitized.remove('metadata');
           return sanitized;
         },
+        // TODO: It would be great if we could define these more programatically.
+        /// Maybe even for the example we could have them be on the output type as --> output schema?
+        /// Like PaletteExtractionOutput.outputSchema?
         outputSchema: {
           'type': 'object',
           'properties': {
@@ -181,11 +181,7 @@ void main() async {
         final refinedColors =
             refinementResult.output.toMap()['refined_colors'] as List<String>;
 
-        return {
-          'theme_type': 'material_design',
-          'include_variants': true,
-          'base_colors': refinedColors,
-        };
+        return {'theme_type': 'material_design', 'base_colors': refinedColors};
       },
       stepConfig: StepConfig(
         audits: [],
@@ -375,94 +371,6 @@ String formatJson(Map<String, dynamic> json) {
   return buffer.toString();
 }
 
-/// Example concrete implementation for palette extraction input
-class PaletteExtractionInput extends ToolInput {
-  final String imagePath;
-  final int maxColors;
-  final double minSaturation;
-  final Map<String, dynamic> userPreferences;
-
-  const PaletteExtractionInput({
-    required this.imagePath,
-    this.maxColors = 8,
-    this.minSaturation = 0.3,
-    this.userPreferences = const {},
-  });
-
-  factory PaletteExtractionInput.fromMap(Map<String, dynamic> map) {
-    return PaletteExtractionInput(
-      imagePath: map['imagePath'] as String,
-      maxColors: map['maxColors'] as int? ?? 8,
-      minSaturation: map['minSaturation'] as double? ?? 0.3,
-      userPreferences: Map<String, dynamic>.from(
-        map['userPreferences'] as Map? ?? {},
-      ),
-    );
-  }
-
-  @override
-  Map<String, dynamic> toMap() {
-    return {
-      'imagePath': imagePath,
-      'maxColors': maxColors,
-      'minSaturation': minSaturation,
-      'userPreferences': userPreferences,
-      'metadata': {'generated_at': DateTime.now().toIso8601String()},
-    };
-  }
-
-  @override
-  List<String> validate() {
-    final issues = <String>[];
-
-    if (imagePath.isEmpty) {
-      issues.add('imagePath cannot be empty');
-    }
-
-    if (maxColors <= 0) {
-      issues.add('maxColors must be positive');
-    }
-
-    if (minSaturation < 0.0 || minSaturation > 1.0) {
-      issues.add('minSaturation must be between 0.0 and 1.0');
-    }
-
-    return issues;
-  }
-}
-
-/// Example concrete implementation for color refinement output
-class ColorRefinementOutput extends ToolOutput {
-  final List<String> refinedColors;
-  final List<String> improvementsMade;
-  final Map<String, double> accessibilityScores;
-
-  const ColorRefinementOutput({
-    required this.refinedColors,
-    required this.improvementsMade,
-    this.accessibilityScores = const {},
-  }) : super.subclass();
-
-  factory ColorRefinementOutput.fromMap(Map<String, dynamic> map) {
-    return ColorRefinementOutput(
-      refinedColors: List<String>.from(map['refined_colors'] as List),
-      improvementsMade: List<String>.from(map['improvements_made'] as List),
-      accessibilityScores: Map<String, double>.from(
-        map['accessibility_scores'] as Map? ?? {},
-      ),
-    );
-  }
-
-  @override
-  Map<String, dynamic> toMap() {
-    return {
-      'refined_colors': refinedColors,
-      'improvements_made': improvementsMade,
-      'accessibility_scores': accessibilityScores,
-    };
-  }
-}
-
 /// Example concrete implementation for theme generation output
 class ThemeGenerationOutput extends ToolOutput {
   final Map<String, String> theme;
@@ -482,176 +390,4 @@ class ThemeGenerationOutput extends ToolOutput {
   Map<String, dynamic> toMap() {
     return {'theme': theme, 'metadata': metadata};
   }
-}
-
-/// Example concrete implementation for color refinement input
-class ColorRefinementInput extends ToolInput {
-  final List<String> colors;
-  final bool enhanceContrast;
-  final String targetAccessibility;
-
-  const ColorRefinementInput({
-    required this.colors,
-    this.enhanceContrast = true,
-    this.targetAccessibility = 'AA',
-  });
-
-  factory ColorRefinementInput.fromMap(Map<String, dynamic> map) {
-    return ColorRefinementInput(
-      colors: List<String>.from(map['colors'] as List),
-      enhanceContrast: map['enhance_contrast'] as bool? ?? true,
-      targetAccessibility: map['target_accessibility'] as String? ?? 'AA',
-    );
-  }
-
-  @override
-  Map<String, dynamic> toMap() {
-    return {
-      'colors': colors,
-      'enhance_contrast': enhanceContrast,
-      'target_accessibility': targetAccessibility,
-    };
-  }
-
-  @override
-  List<String> validate() {
-    final issues = <String>[];
-
-    if (colors.isEmpty) {
-      issues.add('colors list cannot be empty');
-    }
-
-    for (final color in colors) {
-      if (!RegExp(r'^#[0-9A-Fa-f]{6}$').hasMatch(color)) {
-        issues.add('Invalid color format: $color (expected #RRGGBB)');
-      }
-    }
-
-    if (!['A', 'AA', 'AAA'].contains(targetAccessibility)) {
-      issues.add('targetAccessibility must be A, AA, or AAA');
-    }
-
-    return issues;
-  }
-}
-
-/// Example concrete implementation for palette extraction output
-class PaletteExtractionOutput extends ToolOutput {
-  final List<String> colors;
-  final double confidence;
-  final String imageAnalyzed;
-  final Map<String, dynamic> metadata;
-
-  const PaletteExtractionOutput({
-    required this.colors,
-    required this.confidence,
-    required this.imageAnalyzed,
-    this.metadata = const {},
-  }) : super.subclass();
-
-  factory PaletteExtractionOutput.fromMap(Map<String, dynamic> map) {
-    return PaletteExtractionOutput(
-      colors: List<String>.from(map['colors'] as List),
-      confidence: map['confidence'] as double,
-      imageAnalyzed: map['image_analyzed'] as String,
-      metadata: Map<String, dynamic>.from(map['metadata'] as Map? ?? {}),
-    );
-  }
-
-  @override
-  Map<String, dynamic> toMap() {
-    return {
-      'colors': colors,
-      'confidence': confidence,
-      'image_analyzed': imageAnalyzed,
-      'metadata': metadata,
-    };
-  }
-}
-
-/// Example usage of StepConfig factory methods
-void demonstrateStepConfigUsage() {
-  // Different ways to configure steps
-
-  // Step with specific audits only
-  final step1Config = StepConfig(
-    audits: [ColorQualityAuditFunction(), ColorDiversityAuditFunction()],
-    outputSchema: {
-      'type': 'object',
-      'properties': {
-        'colors': {
-          'type': 'array',
-          'items': {'type': 'string'},
-          'description': 'Extracted color hex codes',
-        },
-        'diversityScore': {
-          'type': 'number',
-          'description': 'Score for color diversity',
-        },
-      },
-      'required': ['colors', 'diversityScore'],
-    },
-  );
-  print('Step 1: ${step1Config.audits.length} audits configured');
-
-  // Step with custom retry configuration
-  final step2Config = StepConfig(
-    maxRetries: 5,
-    audits: [ColorQualityAuditFunction()],
-    outputSchema: {
-      'type': 'object',
-      'properties': {
-        'colors': {
-          'type': 'array',
-          'items': {'type': 'string'},
-          'description': 'Extracted color hex codes',
-        },
-        'confidence': {
-          'type': 'number',
-          'description': 'Confidence score for extraction',
-        },
-      },
-      'required': ['colors', 'confidence'],
-    },
-  );
-  print('Step 2: Max retries = ${step2Config.maxRetries}');
-
-  // Step with custom pass/fail criteria
-  final step3Config = StepConfig(
-    customPassCriteria: (issues) {
-      final highIssues = issues
-          .where(
-            (i) =>
-                i.severity == IssueSeverity.high ||
-                i.severity == IssueSeverity.critical,
-          )
-          .length;
-      return highIssues < 3;
-    },
-    customFailureReason: (issues) =>
-        'Too many high-severity issues: ${issues.length}',
-    outputSchema: {
-      'type': 'object',
-      'properties': {
-        'result': {'type': 'string'},
-        'issues': {
-          'type': 'array',
-          'items': {'type': 'string'},
-          'description': 'List of issue descriptions',
-        },
-      },
-      'required': ['result'],
-    },
-  );
-  print(
-    'Step 3: Has custom criteria = ${step3Config.customPassCriteria != null}',
-  );
-
-  // Step with no audits
-  final step4Config = StepConfig(
-    outputSchema: {'type': 'object', 'properties': {}},
-  );
-  print('Step 4: Has audits = ${step4Config.hasAudits}');
-
-  print('Step config examples demonstrated successfully');
 }
