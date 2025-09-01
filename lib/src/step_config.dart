@@ -1,5 +1,7 @@
 import 'audit_function.dart';
 import 'issue.dart';
+import 'output_schema.dart';
+import 'typed_interfaces.dart';
 
 /// Configuration for a specific step in a tool flow.
 ///
@@ -108,29 +110,24 @@ class StepConfig {
   ///
   /// **Example:**
   /// ```dart
-  /// outputSchema: {
-  ///   'type': 'object',
-  ///   'properties': {
-  ///     'colors': {
-  ///       'type': 'array',
-  ///       'items': {'type': 'string'},
-  ///       'description': 'Array of hex color codes'
-  ///     },
-  ///     'confidence': {
-  ///       'type': 'number',
-  ///       'minimum': 0.0,
-  ///       'maximum': 1.0,
-  ///       'description': 'Confidence score for the extraction'
-  ///     }
+  /// outputSchema: OutputSchema(
+  ///   properties: {
+  ///     'colors': PropertyEntry(
+  ///       type: 'array',
+  ///       items: PropertyEntry(type: 'string'),
+  ///       description: 'Array of hex color codes',
+  ///     ),
+  ///     'confidence': PropertyEntry(
+  ///       type: 'number',
+  ///       minimum: 0.0,
+  ///       maximum: 1.0,
+  ///       description: 'Confidence score for the extraction',
+  ///     ),
   ///   },
-  ///   'required': ['colors', 'confidence']
-  /// }
+  ///   required: ['colors', 'confidence'],
+  /// )
   /// ```
-  final
-  // TODO: The output schema should be more structured so that a user doesn't accidentally forget to define the high level type: object, or the properties collection or the required collection.
-  /// It could even be an object that has those main sections outlined above as the parameters on the object. And then maybe properties could be a List<Map<String, dynamic>> that represents properties, confidence, etc.
-  Map<String, dynamic>
-  outputSchema;
+  final OutputSchema? outputSchema;
 
   const StepConfig({
     this.audits = const [],
@@ -142,12 +139,47 @@ class StepConfig {
     this.includeOutputsFrom = const [],
     this.inputSanitizer,
     this.outputSanitizer,
-    required this.outputSchema,
+    this.outputSchema,
   });
+
+  /// Gets the effective output schema for this step
+  /// If outputSchema is provided, uses it. Otherwise, tries to derive from ToolOutput registry
+  OutputSchema getEffectiveOutputSchema(String toolName) {
+    // If explicit schema is provided, use it
+    if (outputSchema != null) {
+      return outputSchema!;
+    }
+    
+    // Try to get schema from ToolOutput registry
+    if (ToolOutputRegistry.hasTypedOutput(toolName)) {
+      // For registered tools, we could attempt to create a sample instance
+      // and derive schema from it, but this is complex without knowing constructor parameters
+      // For now, return a generic schema - this could be enhanced later
+      return const OutputSchema(
+        properties: {
+          'result': PropertyEntry(
+            type: 'object',
+            description: 'Tool output result',
+          ),
+        },
+        required: ['result'],
+      );
+    }
+    
+    // Default fallback schema
+    return const OutputSchema(
+      properties: {
+        'data': PropertyEntry(
+          type: 'object',
+          description: 'Generic tool output data',
+        ),
+      },
+      required: [],
+    );
+  }
 
   /// Returns true if this step has any audits configured
   bool get hasAudits => audits.isNotEmpty;
-
   /// Returns true if this step should include outputs from previous steps
   bool
   // TODO: Does this belong on the ToolCallStep directly?
@@ -232,7 +264,9 @@ class StepConfig {
       // Note: Functions cannot be serialized
       includeOutputsFrom:
           json['includeOutputsFrom'] as List<dynamic>? ?? const [],
-      outputSchema: json['outputSchema'] as Map<String, dynamic>? ?? {},
+      outputSchema: json['outputSchema'] != null 
+          ? OutputSchema.fromMap(json['outputSchema'] as Map<String, dynamic>)
+          : null,
     );
   }
 
@@ -247,7 +281,7 @@ class StepConfig {
       'hasInputSanitizer': hasInputSanitizer,
       'hasOutputSanitizer': hasOutputSanitizer,
       'includeOutputsFrom': includeOutputsFrom,
-      'outputSchema': outputSchema,
+      'outputSchema': outputSchema?.toMap(),
     };
   }
 }

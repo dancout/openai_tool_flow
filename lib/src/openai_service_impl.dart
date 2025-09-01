@@ -107,7 +107,7 @@ class DefaultOpenAiToolService implements OpenAiToolService {
       'function': {
         'name': step.toolName,
         'description': 'Execute ${step.toolName} tool with provided parameters',
-        'parameters': step.stepConfig.outputSchema,
+        'parameters': step.stepConfig.getEffectiveOutputSchema(step.toolName).toMap(),
       },
       "strict": true,
     };

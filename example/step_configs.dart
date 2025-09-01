@@ -15,23 +15,22 @@ class ExampleStepConfigs {
   static StepConfig get basicAuditConfig {
     return StepConfig(
       audits: [ColorQualityAuditFunction()],
-      outputSchema: {
-        'type': 'object',
-        'properties': {
-          'colors': {
-            'type': 'array',
-            'items': {'type': 'string'},
-            'description': 'Array of hex color codes',
-          },
-          'confidence': {
-            'type': 'number',
-            'minimum': 0.0,
-            'maximum': 1.0,
-            'description': 'Confidence score for the extraction',
-          },
+      outputSchema: OutputSchema(
+        properties: {
+          'colors': PropertyEntry(
+            type: 'array',
+            items: PropertyEntry(type: 'string'),
+            description: 'Array of hex color codes',
+          ),
+          'confidence': PropertyEntry(
+            type: 'number',
+            minimum: 0.0,
+            maximum: 1.0,
+            description: 'Confidence score for the extraction',
+          ),
         },
-        'required': ['colors', 'confidence'],
-      },
+        required: ['colors', 'confidence'],
+      ),
     );
   }
 
@@ -49,23 +48,22 @@ class ExampleStepConfigs {
               issue.severity == IssueSeverity.critical,
         );
       },
-      outputSchema: {
-        'type': 'object',
-        'properties': {
-          'colors': {
-            'type': 'array',
-            'items': {'type': 'string'},
-            'description': 'Array of hex color codes',
-          },
-          'confidence': {
-            'type': 'number',
-            'minimum': 0.0,
-            'maximum': 1.0,
-            'description': 'Confidence score for the extraction',
-          },
+      outputSchema: OutputSchema(
+        properties: {
+          'colors': PropertyEntry(
+            type: 'array',
+            items: PropertyEntry(type: 'string'),
+            description: 'Array of hex color codes',
+          ),
+          'confidence': PropertyEntry(
+            type: 'number',
+            minimum: 0.0,
+            maximum: 1.0,
+            description: 'Confidence score for the extraction',
+          ),
         },
-        'required': ['colors', 'confidence'],
-      },
+        required: ['colors', 'confidence'],
+      ),
     );
   }
 
@@ -148,25 +146,7 @@ class ExampleStepConfigs {
     );
   }
 
-  /// Configuration that doesn't stop flow on failure
-  // TODO: Ask agent to remove all non-used functions or methods because they're bloat
-  static StepConfig get nonBlockingConfig {
-    return StepConfig(
-      audits: [ColorDiversityAuditFunction()],
-      stopOnFailure: false,
-      outputSchema: {
-        'type': 'object',
-        'properties': {
-          'diversityScore': {'type': 'number'},
-          'colors': {
-            'type': 'array',
-            'items': {'type': 'string'},
-          },
-        },
-        'required': ['diversityScore', 'colors'],
-      },
-    );
-  }
+
 }
 
 /// Example output sanitizers for cleaning data between steps

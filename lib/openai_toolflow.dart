@@ -14,6 +14,7 @@ export 'src/issue.dart';
 export 'src/openai_config.dart';
 export 'src/openai_service.dart';
 export 'src/openai_service_impl.dart';
+export 'src/output_schema.dart';
 export 'src/step_config.dart';
 export 'src/tool_call_step.dart';
 export 'src/tool_flow.dart';
