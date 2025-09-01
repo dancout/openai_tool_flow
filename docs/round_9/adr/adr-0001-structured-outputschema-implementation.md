@@ -47,14 +47,16 @@ The existing approach required users to manually write JSON Schema-like structur
 
 3. **Breaking Changes**:
    - **BRK-001**: Removed all map-based schema support - no backward compatibility maintained
-   - **BRK-002**: Removed `OutputSchema.fromToolOutput()` method that provided inconsistent schema derivation
-   - **BRK-003**: Removed fallback schema generation when derivation is not possible
-   - **BRK-004**: Required all `ToolOutput` subclasses to implement `getOutputSchema()` method
+   - **BRK-002**: Made `outputSchema` field required in `StepConfig` constructor, removing optional/`dynamic` support
+   - **BRK-003**: Removed problematic `ToolOutputRegistry.getOutputSchema()` method that attempted schema derivation through empty instance creation
+   - **BRK-004**: Removed `getEffectiveOutputSchema()` method that provided unreliable fallback schema resolution
+   - **BRK-005**: Required explicit `outputSchema` definition for all steps - no automatic derivation or fallback schemas
 
-4. **Schema Derivation**:
-   - **DER-001**: Added `getOutputSchema()` abstract method to `ToolOutput` base class
-   - **DER-002**: Enhanced `ToolOutputRegistry.getOutputSchema()` to derive schemas from registered outputs
-   - **DER-003**: Modified `getEffectiveOutputSchema()` to throw clear errors when no schema can be derived
+4. **Simplified Schema Approach**:
+   - **SIM-001**: `StepConfig.outputSchema` is now required and strictly typed as `OutputSchema` 
+   - **SIM-002**: Removed all schema derivation logic to eliminate unreliable instance creation patterns
+   - **SIM-003**: Each step must explicitly define its expected output structure
+   - **SIM-004**: `ToolOutput.getOutputSchema()` method maintained for documentation/reference purposes only
 
 ## Consequences
 
@@ -63,17 +65,18 @@ The existing approach required users to manually write JSON Schema-like structur
 - **POS-001**: Eliminated code bloat by removing 6 unused `@visibleForTesting` methods and 1 unused static getter
 - **POS-002**: Improved type safety for schema definitions through structured classes and enums
 - **POS-003**: Reduced verbosity in schema specification with convenient factory methods
-- **POS-004**: Enabled automatic schema derivation from registered `ToolOutput` types
-- **POS-005**: Enhanced IDE support with autocompletion and type checking for schema properties
-- **POS-006**: Achieved zero linting errors in final implementation
-- **POS-007**: Eliminated potential runtime errors from typos in property type strings
-- **POS-008**: Simplified property definitions with List-based approach and named entries
+- **POS-004**: Eliminated unreliable schema derivation patterns that could fail at runtime
+- **POS-005**: Ensured 100% confidence in schema definitions through explicit specification
+- **POS-006**: Enhanced IDE support with autocompletion and type checking for schema properties
+- **POS-007**: Achieved zero linting errors in final implementation
+- **POS-008**: Eliminated potential runtime errors from typos in property type strings
+- **POS-009**: Simplified property definitions with List-based approach and named entries
 
 ### Negative
 
 - **NEG-001**: Breaking changes require migration of all existing code using map-based schemas
-- **NEG-002**: All `ToolOutput` subclasses must now implement `getOutputSchema()` method
-- **NEG-003**: No fallback schemas available when derivation fails - explicit definition required
+- **NEG-002**: All `StepConfig` instances must now provide explicit `outputSchema` parameter
+- **NEG-003**: No automatic schema derivation or fallback schemas available - explicit definition required
 - **NEG-004**: Requires understanding of new factory method patterns for property creation
 
 ## Alternatives Considered
@@ -88,10 +91,10 @@ The existing approach required users to manually write JSON Schema-like structur
 - **ALT-003**: **Description**: Continue using `Map<String, dynamic>` for schemas with improved validation
 - **ALT-004**: **Rejection Reason**: Misses opportunity for type safety improvements and doesn't address user experience issues with typos and runtime errors
 
-### Provide Automatic Fallback Schemas
+### Support Automatic Schema Derivation
 
-- **ALT-005**: **Description**: Generate generic schemas when specific ones aren't available
-- **ALT-006**: **Rejection Reason**: Requirement specified that ToolOutput should provide schemas "we can have 100% confidence in" rather than fallbacks
+- **ALT-005**: **Description**: Continue providing automatic schema derivation from ToolOutput instances
+- **ALT-006**: **Rejection Reason**: The approach of creating empty instances (`creator({})`) was fundamentally flawed as most ToolOutput classes require valid parameters. This led to unreliable runtime failures and was identified as unworkable by code review.
 
 ## Implementation Notes
 
@@ -100,9 +103,9 @@ The existing approach required users to manually write JSON Schema-like structur
 - **IMP-003**: List-based properties with named entries eliminate confusion about property names and improve readability
 - **IMP-004**: All example code updated to demonstrate new structured approach with factory methods
 - **IMP-005**: All test suites updated to use new OutputSchema objects instead of maps
-- **IMP-006**: `ToolOutput.getOutputSchema()` method ensures every output type has a defined, reliable schema
-- **IMP-007**: `ToolOutputRegistry.getOutputSchema()` enables automatic schema derivation for registered tools
-- **IMP-008**: Error handling improved with clear messages when schemas cannot be derived
+- **IMP-006**: `StepConfig.outputSchema` is now required and strictly typed, eliminating optional/dynamic schema handling
+- **IMP-007**: Removed problematic `ToolOutputRegistry.getOutputSchema()` and `getEffectiveOutputSchema()` methods
+- **IMP-008**: Each step configuration must explicitly specify its expected output schema for full transparency
 
 ## References
 

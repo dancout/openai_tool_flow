@@ -1,7 +1,6 @@
 import 'audit_function.dart';
 import 'issue.dart';
 import 'output_schema.dart';
-import 'typed_interfaces.dart';
 
 /// Configuration for a specific step in a tool flow.
 ///
