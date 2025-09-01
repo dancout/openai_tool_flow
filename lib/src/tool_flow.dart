@@ -253,11 +253,7 @@ class ToolFlow {
 
       try {
         // Use a type-safe approach to execute the audit
-        auditIssues = _executeAuditWithTypeSafety(
-          audit,
-          auditedResult,
-          stepIndex,
-        );
+        auditIssues = audit.runWithTypeChecking(result.underlyingResult);
       } catch (e) {
         // If audit execution fails, create an audit execution error
         auditIssues = [
@@ -312,16 +308,6 @@ class ToolFlow {
     }
 
     return auditedResult;
-  }
-
-  /// Executes an audit with proper type safety using the audit's built-in type checking
-  List<Issue> _executeAuditWithTypeSafety(
-    AuditFunction audit,
-    TypedToolResult result,
-    int stepIndex,
-  ) {
-    // Use the audit's built-in type checking method which handles the type conversion safely
-    return audit.runWithTypeChecking(result.underlyingResult);
   }
 
   /// Builds input for a step based on inputBuilder and step configuration
