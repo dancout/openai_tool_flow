@@ -94,25 +94,25 @@ void main() async {
         /// Maybe even for the example we could have them be on the output type as --> output schema?
         /// Like PaletteExtractionOutput.outputSchema?
         outputSchema: OutputSchema(
-          properties: {
-            'colors': PropertyEntry(
-              type: 'array',
-              itemsType: PropertyEntry(type: 'string'),
+          properties: [
+            PropertyEntry.array(
+              name: 'colors',
+              items: PropertyEntry.string(name: 'color'),
               description: 'Extracted color hex codes',
             ),
-            'confidence': PropertyEntry(
-              type: 'number',
+            PropertyEntry.number(
+              name: 'confidence',
               description: 'Confidence score for extraction',
             ),
-            'image_analyzed': PropertyEntry(
-              type: 'string',
+            PropertyEntry.string(
+              name: 'image_analyzed',
               description: 'Path to analyzed image',
             ),
-            'metadata': PropertyEntry(
-              type: 'object',
+            PropertyEntry.object(
+              name: 'metadata',
               description: 'Extraction metadata',
             ),
-          },
+          ],
           required: ['colors', 'confidence', 'image_analyzed'],
         ),
       ),
@@ -149,18 +149,18 @@ void main() async {
         },
         includeOutputsFrom: ['extract_palette'],
         outputSchema: OutputSchema(
-          properties: {
-            'refined_colors': PropertyEntry(
-              type: 'array',
-              itemsType: PropertyEntry(type: 'string'),
+          properties: [
+            PropertyEntry.array(
+              name: 'refined_colors',
+              items: PropertyEntry.string(name: 'color'),
               description: 'Refined color hex codes',
             ),
-            'improvements_made': PropertyEntry(
-              type: 'array',
-              itemsType: PropertyEntry(type: 'string'),
+            PropertyEntry.array(
+              name: 'improvements_made',
+              items: PropertyEntry.string(name: 'improvement'),
               description: 'List of improvements applied',
             ),
-          },
+          ],
           required: ['refined_colors'],
         ),
       ),
@@ -186,16 +186,16 @@ void main() async {
         maxRetries: 1,
         stopOnFailure: false, // Continue even if this step fails
         outputSchema: OutputSchema(
-          properties: {
-            'theme': PropertyEntry(
-              type: 'object',
+          properties: [
+            PropertyEntry.object(
+              name: 'theme',
               description: 'Generated theme object',
             ),
-            'metadata': PropertyEntry(
-              type: 'object',
+            PropertyEntry.object(
+              name: 'metadata',
               description: 'Theme generation metadata',
             ),
-          },
+          ],
           required: ['theme'],
         ),
       ),
@@ -386,5 +386,22 @@ class ThemeGenerationOutput extends ToolOutput {
   @override
   Map<String, dynamic> toMap() {
     return {'theme': theme, 'metadata': metadata};
+  }
+
+  @override
+  OutputSchema getOutputSchema() {
+    return OutputSchema(
+      properties: [
+        PropertyEntry.object(
+          name: 'theme',
+          description: 'Generated theme object with color values',
+        ),
+        PropertyEntry.object(
+          name: 'metadata',
+          description: 'Theme generation metadata',
+        ),
+      ],
+      required: ['theme'],
+    );
   }
 }

@@ -107,7 +107,7 @@ class StepConfig {
   ///
   /// **When to use:** Define the exact output structure you expect from the tool call,
   /// ensuring type safety and consistent data formats.
-  final OutputSchema? outputSchema;
+  final OutputSchema outputSchema;
 
   const StepConfig({
     this.audits = const [],
@@ -119,30 +119,8 @@ class StepConfig {
     this.includeOutputsFrom = const [],
     this.inputSanitizer,
     this.outputSanitizer,
-    this.outputSchema,
+    required this.outputSchema,
   });
-
-  /// Gets the effective output schema for this step
-  /// If outputSchema is provided, uses it. Otherwise, tries to derive from ToolOutput registry
-  OutputSchema getEffectiveOutputSchema(String toolName) {
-    // If explicit schema is provided, use it
-    if (outputSchema != null) {
-      return outputSchema!;
-    }
-
-    // Try to get schema from ToolOutput registry
-    final registrySchema = ToolOutputRegistry.getOutputSchema(toolName);
-    if (registrySchema != null) {
-      return registrySchema;
-    }
-
-    // If no schema can be derived, throw an error
-    throw StateError(
-      'No OutputSchema available for tool "$toolName". '
-      'Either provide an explicit outputSchema in StepConfig, '
-      'or register a ToolOutput for this tool that implements getOutputSchema().',
-    );
-  }
 
   /// Returns true if this step has any audits configured
   bool get hasAudits => audits.isNotEmpty;

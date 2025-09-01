@@ -188,20 +188,4 @@ class ToolOutputRegistry {
   /// Gets all registered output types
   static Map<String, Type> get registeredOutputTypes =>
       Map.unmodifiable(_outputTypes);
-
-  /// Gets the OutputSchema for a registered tool by creating a sample instance
-  /// and calling its getOutputSchema method
-  static OutputSchema? getOutputSchema(String toolName) {
-    final creator = _creators[toolName];
-    if (creator == null) return null;
-
-    try {
-      // Create a sample instance with empty data to get the schema
-      final sampleOutput = creator({});
-      return sampleOutput.getOutputSchema();
-    } catch (e) {
-      // If we can't create a sample instance, return null
-      return null;
-    }
-  }
 }
