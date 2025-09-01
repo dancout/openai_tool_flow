@@ -1,13 +1,5 @@
-import 'typed_interfaces.dart';
-
 /// Enumeration of valid property types for schema definitions
-enum PropertyType {
-  string,
-  number,
-  boolean,
-  array,
-  object,
-}
+enum PropertyType { string, number, boolean, array, object }
 
 /// Extension to convert PropertyType to string for JSON schema
 extension PropertyTypeExtension on PropertyType {
@@ -31,25 +23,25 @@ extension PropertyTypeExtension on PropertyType {
 class PropertyEntry {
   /// The name of this property
   final String name;
-  
+
   /// The type of the property
   final PropertyType type;
-  
+
   /// Description of the property
   final String? description;
-  
+
   /// For array types, defines the items structure
-  final PropertyEntry? items;
-  
+  final PropertyType? itemsType;
+
   /// Minimum value for number types
   final num? minimum;
-  
-  /// Maximum value for number types  
+
+  /// Maximum value for number types
   final num? maximum;
-  
+
   /// For object types, defines nested properties
   final List<PropertyEntry>? properties;
-  
+
   /// For object types, defines which nested properties are required
   final List<String>? requiredProperties;
 
@@ -57,7 +49,7 @@ class PropertyEntry {
     required this.name,
     required this.type,
     this.description,
-    this.items,
+    this.itemsType,
     this.minimum,
     this.maximum,
     this.properties,
@@ -65,10 +57,7 @@ class PropertyEntry {
   });
 
   /// Factory method for string properties
-  factory PropertyEntry.string({
-    required String name,
-    String? description,
-  }) {
+  factory PropertyEntry.string({required String name, String? description}) {
     return PropertyEntry(
       name: name,
       type: PropertyType.string,
@@ -93,10 +82,7 @@ class PropertyEntry {
   }
 
   /// Factory method for boolean properties
-  factory PropertyEntry.boolean({
-    required String name,
-    String? description,
-  }) {
+  factory PropertyEntry.boolean({required String name, String? description}) {
     return PropertyEntry(
       name: name,
       type: PropertyType.boolean,
@@ -107,14 +93,14 @@ class PropertyEntry {
   /// Factory method for array properties
   factory PropertyEntry.array({
     required String name,
-    required PropertyEntry items,
+    required PropertyType itemsType,
     String? description,
   }) {
     return PropertyEntry(
       name: name,
       type: PropertyType.array,
       description: description,
-      items: items,
+      itemsType: itemsType,
     );
   }
 
@@ -136,27 +122,25 @@ class PropertyEntry {
 
   /// Converts this property entry to a JSON schema-compatible map
   Map<String, dynamic> toMap() {
-    final map = <String, dynamic>{
-      'type': type.value,
-    };
-    
+    final map = <String, dynamic>{'type': type.value};
+
     if (description != null) map['description'] = description;
     if (minimum != null) map['minimum'] = minimum;
     if (maximum != null) map['maximum'] = maximum;
-    if (items != null) map['items'] = items!.toMap();
+    if (itemsType != null) map['items'] = itemsType!.value;
     if (properties != null) {
       map['properties'] = {
-        for (final prop in properties!)
-          prop.name: prop.toMap()
+        for (final prop in properties!) prop.name: prop.toMap(),
       };
     }
     if (requiredProperties != null && requiredProperties!.isNotEmpty) {
       map['required'] = requiredProperties;
     }
-    
+
     return map;
   }
 
+  // TODO: Consider removing fromMap because it's not used and bloat!
   /// Creates a PropertyEntry from a map
   factory PropertyEntry.fromMap(String name, Map<String, dynamic> map) {
     final typeString = map['type'] as String;
@@ -164,24 +148,32 @@ class PropertyEntry {
       (t) => t.value == typeString,
       orElse: () => PropertyType.object,
     );
-    
+
     return PropertyEntry(
       name: name,
       type: type,
       description: map['description'] as String?,
-      items: map['items'] != null 
-        ? PropertyEntry.fromMap('items', map['items'] as Map<String, dynamic>) 
-        : null,
+      itemsType: map['itemsType'] != null
+          ? PropertyType.values.firstWhere(
+              (t) => t.value == map['items'],
+              orElse: () => PropertyType.object,
+            )
+          : null,
       minimum: map['minimum'] as num?,
       maximum: map['maximum'] as num?,
-      properties: map['properties'] != null 
-        ? (map['properties'] as Map<String, dynamic>).entries.map(
-            (entry) => PropertyEntry.fromMap(entry.key, entry.value as Map<String, dynamic>)
-          ).toList()
-        : null,
-      requiredProperties: map['required'] != null 
-        ? (map['required'] as List).cast<String>()
-        : null,
+      properties: map['properties'] != null
+          ? (map['properties'] as Map<String, dynamic>).entries
+                .map(
+                  (entry) => PropertyEntry.fromMap(
+                    entry.key,
+                    entry.value as Map<String, dynamic>,
+                  ),
+                )
+                .toList()
+          : null,
+      requiredProperties: map['required'] != null
+          ? (map['required'] as List).cast<String>()
+          : null,
     );
   }
 }
@@ -190,10 +182,10 @@ class PropertyEntry {
 class OutputSchema {
   /// The type of the root object (typically 'object')
   final PropertyType type;
-  
+
   /// List of property definitions
   final List<PropertyEntry> properties;
-  
+
   /// List of required property names
   final List<String> required;
 
@@ -207,14 +199,12 @@ class OutputSchema {
   Map<String, dynamic> toMap() {
     return {
       'type': type.value,
-      'properties': {
-        for (final prop in properties)
-          prop.name: prop.toMap()
-      },
+      'properties': {for (final prop in properties) prop.name: prop.toMap()},
       'required': required,
     };
   }
 
+  // TODO: Consider removing fromMap because it's not used and bloat!
   /// Creates an OutputSchema from a map
   factory OutputSchema.fromMap(Map<String, dynamic> map) {
     final typeString = map['type'] as String? ?? 'object';
@@ -222,17 +212,21 @@ class OutputSchema {
       (t) => t.value == typeString,
       orElse: () => PropertyType.object,
     );
-    
+
     final propertiesMap = map['properties'] as Map<String, dynamic>? ?? {};
-    final properties = propertiesMap.entries.map(
-      (entry) => PropertyEntry.fromMap(entry.key, entry.value as Map<String, dynamic>)
-    ).toList();
-    
+    final properties = propertiesMap.entries
+        .map(
+          (entry) => PropertyEntry.fromMap(
+            entry.key,
+            entry.value as Map<String, dynamic>,
+          ),
+        )
+        .toList();
+
     return OutputSchema(
       type: type,
       properties: properties,
       required: (map['required'] as List<dynamic>? ?? []).cast<String>(),
     );
   }
-
 }

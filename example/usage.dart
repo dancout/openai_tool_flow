@@ -97,7 +97,7 @@ void main() async {
           properties: {
             'colors': PropertyEntry(
               type: 'array',
-              items: PropertyEntry(type: 'string'),
+              itemsType: PropertyEntry(type: 'string'),
               description: 'Extracted color hex codes',
             ),
             'confidence': PropertyEntry(
@@ -152,12 +152,12 @@ void main() async {
           properties: {
             'refined_colors': PropertyEntry(
               type: 'array',
-              items: PropertyEntry(type: 'string'),
+              itemsType: PropertyEntry(type: 'string'),
               description: 'Refined color hex codes',
             ),
             'improvements_made': PropertyEntry(
               type: 'array',
-              items: PropertyEntry(type: 'string'),
+              itemsType: PropertyEntry(type: 'string'),
               description: 'List of improvements applied',
             ),
           },
