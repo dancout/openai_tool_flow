@@ -123,6 +123,8 @@ class ToolOutput {
   /// Returns the expected OutputSchema for this ToolOutput type.
   /// Subclasses should override this to provide their specific schema definition.
   OutputSchema getOutputSchema() {
+    // TODO: Does it make sense to just make this class Abstract and then we don't have to throw unimplemented errors?
+
     throw UnimplementedError(
       'Subclasses must override getOutputSchema() to provide their schema definition',
     );
@@ -184,7 +186,7 @@ class ToolOutputRegistry {
   static List<String> get registeredTools => _creators.keys.toList();
 
   /// Gets all registered output types
-  static Map<String, Type> get registeredOutputTypes => 
+  static Map<String, Type> get registeredOutputTypes =>
       Map.unmodifiable(_outputTypes);
 
   /// Gets the OutputSchema for a registered tool by creating a sample instance
@@ -192,7 +194,7 @@ class ToolOutputRegistry {
   static OutputSchema? getOutputSchema(String toolName) {
     final creator = _creators[toolName];
     if (creator == null) return null;
-    
+
     try {
       // Create a sample instance with empty data to get the schema
       final sampleOutput = creator({});
