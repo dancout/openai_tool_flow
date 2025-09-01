@@ -1,8 +1,6 @@
 import 'package:openai_toolflow/openai_toolflow.dart';
 import 'package:test/test.dart';
 
-import '../example/audit_functions.dart';
-
 /// Simple test implementation of ToolInput
 class TestToolInput extends ToolInput {
   final Map<String, dynamic> data;
@@ -29,6 +27,44 @@ class TestToolInput extends ToolInput {
       temperature: temperature,
       maxTokens: maxTokens,
     );
+  }
+}
+
+/// A simple audit function that can be created with a function
+///
+/// This implementation is provided in the example for flexibility,
+/// allowing projects to use it or create their own audit implementations.
+class SimpleAuditFunction<T extends ToolOutput> extends AuditFunction<T> {
+  @override
+  final String name;
+
+  final List<Issue> Function(ToolResult<T>) _auditFunction;
+  final bool Function(List<Issue>)? _passedCriteriaFunction;
+  final String Function(List<Issue>)? _failureReasonFunction;
+
+  /// Creates a simple audit function with a name and audit function
+  SimpleAuditFunction({
+    required this.name,
+    required List<Issue> Function(ToolResult<T>) auditFunction,
+    bool Function(List<Issue>)? passedCriteriaFunction,
+    String Function(List<Issue>)? failureReasonFunction,
+  }) : _auditFunction = auditFunction,
+       _passedCriteriaFunction = passedCriteriaFunction,
+       _failureReasonFunction = failureReasonFunction;
+
+  @override
+  List<Issue> run(ToolResult<T> result) => _auditFunction(result);
+
+  @override
+  bool passedCriteria(List<Issue> issues) {
+    return _passedCriteriaFunction?.call(issues) ??
+        super.passedCriteria(issues);
+  }
+
+  @override
+  String getFailureReason(List<Issue> issues) {
+    return _failureReasonFunction?.call(issues) ??
+        super.getFailureReason(issues);
   }
 }
 
