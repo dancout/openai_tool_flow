@@ -31,7 +31,7 @@ class PropertyEntry {
   final String? description;
 
   /// For array types, defines the items structure
-  final PropertyEntry? items;
+  final PropertyType? items;
 
   /// Minimum value for number types
   final num? minimum;
@@ -93,7 +93,7 @@ class PropertyEntry {
   /// Factory method for array properties
   factory PropertyEntry.array({
     required String name,
-    required PropertyEntry items,
+    required PropertyType items,
     String? description,
   }) {
     return PropertyEntry(
@@ -127,7 +127,7 @@ class PropertyEntry {
     if (description != null) map['description'] = description;
     if (minimum != null) map['minimum'] = minimum;
     if (maximum != null) map['maximum'] = maximum;
-    if (items != null) map['items'] = items!.toMap();
+    if (items != null) map['items'] = {'type': items!.value};
     if (properties != null) {
       map['properties'] = {
         for (final prop in properties!) prop.name: prop.toMap(),

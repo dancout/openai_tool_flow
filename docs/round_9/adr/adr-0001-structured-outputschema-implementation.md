@@ -5,9 +5,9 @@ date: "2025-09-01"
 authors: "Development Team"
 tags: ["architecture", "schema", "cleanup", "type-safety", "breaking-changes"]
 supersedes: ""
-superseded_by: ""
+superseded_by: "ADR-0004: PropertyEntry.items should be PropertyType, not PropertyEntry"
 adr_references: ["ADR-0002-typedtoolresult-wrapper-implementation.md"]
-used_as_resource_in: []
+used_as_resource_in: ["ADR-0004: PropertyEntry.items should be PropertyType, not PropertyEntry"]
 ---
 
 # ADR-0001: Structured OutputSchema Implementation and Breaking Changes

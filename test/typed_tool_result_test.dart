@@ -247,11 +247,9 @@ void main() {
                 properties: [
                   PropertyEntry.array(
                     name: 'colors',
-                    items: PropertyEntry.string(name: 'color'),
+                    items: PropertyType.string,
                   ),
-                  PropertyEntry.number(
-                    name: 'confidence',
-                  ),
+                  PropertyEntry.number(name: 'confidence'),
                 ],
                 required: ['colors', 'confidence'],
               ),
@@ -314,7 +312,10 @@ void main() {
               audits: [PaletteQualityAudit()],
               outputSchema: OutputSchema(
                 properties: [
-                  PropertyEntry.array(name: 'colors', items: PropertyEntry.string(name: 'item')),
+                  PropertyEntry.array(
+                    name: 'colors',
+                    items: PropertyType.string,
+                  ),
                   PropertyEntry.number(name: 'confidence'),
                 ],
                 required: ['colors', 'confidence'],
@@ -364,12 +365,15 @@ void main() {
               stepConfig: StepConfig(
                 audits: [PaletteQualityAudit()],
                 outputSchema: OutputSchema(
-                properties: [
-                  PropertyEntry.array(name: 'colors', items: PropertyEntry.string(name: 'item')),
-                  PropertyEntry.number(name: 'confidence'),
-                ],
-                required: ['colors', 'confidence'],
-              ),
+                  properties: [
+                    PropertyEntry.array(
+                      name: 'colors',
+                      items: PropertyType.string,
+                    ),
+                    PropertyEntry.number(name: 'confidence'),
+                  ],
+                  required: ['colors', 'confidence'],
+                ),
               ),
             ),
             ToolCallStep(
@@ -382,12 +386,12 @@ void main() {
               stepConfig: StepConfig(
                 audits: [ThemeValidationAudit()],
                 outputSchema: OutputSchema(
-                properties: [
-                  PropertyEntry.object(name: 'theme'),
-                  PropertyEntry.string(name: 'category'),
-                ],
-                required: ['theme', 'category'],
-              ),
+                  properties: [
+                    PropertyEntry.object(name: 'theme'),
+                    PropertyEntry.string(name: 'category'),
+                  ],
+                  required: ['theme', 'category'],
+                ),
               ),
             ),
           ],
@@ -434,7 +438,10 @@ void main() {
             stepConfig: StepConfig(
               outputSchema: OutputSchema(
                 properties: [
-                  PropertyEntry.array(name: 'colors', items: PropertyEntry.string(name: 'item')),
+                  PropertyEntry.array(
+                    name: 'colors',
+                    items: PropertyType.string,
+                  ),
                   PropertyEntry.number(name: 'confidence'),
                 ],
                 required: ['colors', 'confidence'],
@@ -473,12 +480,15 @@ void main() {
               inputBuilder: (previousResults) => {'image': 'test.jpg'},
               stepConfig: StepConfig(
                 outputSchema: OutputSchema(
-                properties: [
-                  PropertyEntry.array(name: 'colors', items: PropertyEntry.string(name: 'item')),
-                  PropertyEntry.number(name: 'confidence'),
-                ],
-                required: ['colors', 'confidence'],
-              ),
+                  properties: [
+                    PropertyEntry.array(
+                      name: 'colors',
+                      items: PropertyType.string,
+                    ),
+                    PropertyEntry.number(name: 'confidence'),
+                  ],
+                  required: ['colors', 'confidence'],
+                ),
               ),
             ),
           ],

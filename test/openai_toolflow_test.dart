@@ -257,7 +257,7 @@ void main() {
             properties: [
               PropertyEntry.array(
                 name: 'colors',
-                items: PropertyEntry.string(name: 'color'),
+                items: PropertyType.string,
                 description: 'Extracted color hex codes',
               ),
             ],
@@ -326,7 +326,7 @@ void main() {
                 properties: [
                   PropertyEntry.array(
                     name: 'colors',
-                    items: PropertyEntry.string(name: 'color'),
+                    items: PropertyType.string,
                     description: 'Extracted color hex codes',
                   ),
                 ],
@@ -378,7 +378,7 @@ void main() {
                 properties: [
                   PropertyEntry.array(
                     name: 'colors',
-                    items: PropertyEntry.string(name: 'color'),
+                    items: PropertyType.string,
                     description: 'Extracted color hex codes',
                   ),
                 ],
@@ -423,7 +423,7 @@ void main() {
                 properties: [
                   PropertyEntry.array(
                     name: 'colors',
-                    items: PropertyEntry.string(name: 'color'),
+                    items: PropertyType.string,
                     description: 'Extracted color hex codes',
                   ),
                 ],
@@ -440,7 +440,7 @@ void main() {
                 properties: [
                   PropertyEntry.array(
                     name: 'refined_colors',
-                    items: PropertyEntry.string(name: 'color'),
+                    items: PropertyType.string,
                     description: 'Refined color hex codes',
                   ),
                 ],
@@ -519,7 +519,7 @@ void main() {
                 properties: [
                   PropertyEntry.array(
                     name: 'colors',
-                    items: PropertyEntry.string(name: 'color'),
+                    items: PropertyType.string,
                     description: 'Extracted color hex codes',
                   ),
                 ],
@@ -592,7 +592,7 @@ void main() {
                 properties: [
                   PropertyEntry.array(
                     name: 'refined_colors',
-                    items: PropertyEntry.string(name: 'color'),
+                    items: PropertyType.string,
                     description: 'Refined color hex codes',
                   ),
                 ],
@@ -609,7 +609,7 @@ void main() {
                 properties: [
                   PropertyEntry.array(
                     name: 'refined_colors',
-                    items: PropertyEntry.string(name: 'color'),
+                    items: PropertyType.string,
                     description: 'Refined color hex codes',
                   ),
                 ],

@@ -154,7 +154,7 @@ class PaletteExtractionOutput extends ToolOutput {
       properties: [
         PropertyEntry.array(
           name: 'colors',
-          items: PropertyEntry.string(name: 'color'),
+          items: PropertyType.string,
           description: 'Array of extracted color codes',
         ),
         PropertyEntry.number(
@@ -213,12 +213,12 @@ class ColorRefinementOutput extends ToolOutput {
       properties: [
         PropertyEntry.array(
           name: 'refined_colors',
-          items: PropertyEntry.string(name: 'color'),
+          items: PropertyType.string,
           description: 'List of refined color codes',
         ),
         PropertyEntry.array(
           name: 'improvements_made',
-          items: PropertyEntry.string(name: 'improvement'),
+          items: PropertyType.string,
           description: 'List of improvements that were applied',
         ),
         PropertyEntry.object(
