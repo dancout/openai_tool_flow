@@ -31,6 +31,59 @@ This repository is intended to be published as a package on [pub.dev](https://pu
 
 ---
 
+## Type-Safe Step Configuration
+
+`openai_toolflow` provides a **StepDefinition pattern** for type-safe tool configuration that eliminates error-prone string usage and automates registration:
+
+### Step Definitions
+
+Define step metadata in centralized classes that encapsulate:
+- Static step name constants
+- Output schema definitions  
+- Type-safe factory methods
+- Automatic registration
+
+```dart
+class PaletteExtractionStepDefinition extends StepDefinition<PaletteExtractionOutput> {
+  @override
+  String get stepName => PaletteExtractionOutput.stepName;
+  
+  @override
+  OutputSchema get outputSchema => PaletteExtractionOutput.getOutputSchema();
+  
+  @override
+  PaletteExtractionOutput fromMap(Map<String, dynamic> data, int round) =>
+      PaletteExtractionOutput.fromMap(data, round);
+}
+```
+
+### Automatic Registration
+
+Use `ToolCallStep.fromStepDefinition()` for automatic registration and type safety:
+
+```dart
+final paletteStep = PaletteExtractionStepDefinition();
+
+final workflow = {
+  paletteStep.stepName: ToolCallStep.fromStepDefinition(
+    paletteStep,
+    model: 'gpt-4',
+    inputBuilder: (previousResults) => {'imagePath': 'assets/image.jpg'},
+    // StepConfig is automatically created with correct output schema
+    // ToolOutputRegistry registration happens automatically
+  ),
+};
+```
+
+### Benefits
+
+- **Compile-time safety**: Use `PaletteExtractionOutput.stepName` instead of error-prone strings
+- **Automatic registration**: No need to manually call `ToolOutputRegistry.register()`
+- **Single source of truth**: All step metadata centralized in one place
+- **IDE support**: Full autocomplete and refactoring support
+
+---
+
 ## Example: Color Theme Generator
 
 
