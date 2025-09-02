@@ -72,14 +72,17 @@ class SimpleAuditFunction<T extends ToolOutput> extends AuditFunction<T> {
 class TestToolOutput extends ToolOutput {
   final Map<String, dynamic> data;
 
-  const TestToolOutput(this.data) : super.subclass();
+  const TestToolOutput(this.data, {required int round}) : super.subclass(round: round);
 
-  factory TestToolOutput.fromMap(Map<String, dynamic> map) {
-    return TestToolOutput(Map<String, dynamic>.from(map));
+  factory TestToolOutput.fromMap(Map<String, dynamic> map, int round) {
+    return TestToolOutput(Map<String, dynamic>.from(map), round: round);
   }
 
   @override
-  Map<String, dynamic> toMap() => Map<String, dynamic>.from(data);
+  Map<String, dynamic> toMap() => {
+    '_round': round,
+    ...Map<String, dynamic>.from(data),
+  };
 
   static OutputSchema getOutputSchema() {
     return OutputSchema(
@@ -105,35 +108,35 @@ void main() {
   setUpAll(() {
     ToolOutputRegistry.register(
       'test_tool',
-      (data) => TestToolOutput.fromMap(data),
+      (data, round) => TestToolOutput.fromMap(data, round),
     );
     ToolOutputRegistry.register(
       'original_tool',
-      (data) => TestToolOutput.fromMap(data),
+      (data, round) => TestToolOutput.fromMap(data, round),
     );
     ToolOutputRegistry.register(
       'extract_palette',
-      (data) => TestToolOutput.fromMap(data),
+      (data, round) => TestToolOutput.fromMap(data, round),
     );
     ToolOutputRegistry.register(
       'refine_colors',
-      (data) => TestToolOutput.fromMap(data),
+      (data, round) => TestToolOutput.fromMap(data, round),
     );
     ToolOutputRegistry.register(
       'generate_theme',
-      (data) => TestToolOutput.fromMap(data),
+      (data, round) => TestToolOutput.fromMap(data, round),
     );
     ToolOutputRegistry.register(
       'step1_tool',
-      (data) => TestToolOutput.fromMap(data),
+      (data, round) => TestToolOutput.fromMap(data, round),
     );
     ToolOutputRegistry.register(
       'step2_tool',
-      (data) => TestToolOutput.fromMap(data),
+      (data, round) => TestToolOutput.fromMap(data, round),
     );
     ToolOutputRegistry.register(
       'step3_tool',
-      (data) => TestToolOutput.fromMap(data),
+      (data, round) => TestToolOutput.fromMap(data, round),
     );
   });
 
@@ -177,7 +180,7 @@ void main() {
   group('ToolResult', () {
     test('should create a tool result with required fields', () {
       final input = TestToolInput(data: {'param': 'value'});
-      final output = TestToolOutput({'result': 'success'});
+      final output = TestToolOutput({'result': 'success'}, round: 0);
 
       final result = ToolResult(
         toolName: 'test_tool',
@@ -202,7 +205,7 @@ void main() {
       );
 
       final input = TestToolInput(data: {'param': 'value'});
-      final output = TestToolOutput({'result': 'success'});
+      final output = TestToolOutput({'result': 'success'}, round: 0);
 
       final result = ToolResult(
         toolName: 'test_tool',
@@ -291,7 +294,7 @@ void main() {
       final result = ToolResult(
         toolName: 'test',
         input: TestToolInput(),
-        output: TestToolOutput({}),
+        output: TestToolOutput({}, round: 0),
       );
 
       final issues = audit.run(result);
@@ -697,13 +700,13 @@ void main() {
       final originalResult = ToolResult(
         toolName: 'original_tool',
         input: TestToolInput(data: {'original': 'input'}),
-        output: TestToolOutput({'original': 'output'}),
+        output: TestToolOutput({'original': 'output'}, round: 0),
         issues: [],
       );
 
       final copiedResult = originalResult.copyWith(
         toolName: 'modified_tool',
-        output: TestToolOutput({'modified': 'output'}),
+        output: TestToolOutput({'modified': 'output'}, round: 0),
       );
 
       expect(copiedResult.toolName, equals('modified_tool'));
@@ -734,12 +737,12 @@ void main() {
       final originalResult = ToolResult(
         toolName: 'tool',
         input: TestToolInput(data: {'key': 'value'}),
-        output: TestToolOutput({'result': 'data'}),
+        output: TestToolOutput({'result': 'data'}, round: 0),
         issues: [issue],
       );
 
       final copiedResult = originalResult.copyWith(
-        output: TestToolOutput({'new': 'result'}),
+        output: TestToolOutput({'new': 'result'}, round: 0),
       );
 
       expect(copiedResult.toolName, equals('tool')); // Preserved

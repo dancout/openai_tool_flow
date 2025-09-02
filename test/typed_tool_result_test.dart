@@ -9,12 +9,14 @@ class PaletteExtractionOutput extends ToolOutput {
   const PaletteExtractionOutput({
     required this.colors,
     required this.confidence,
-  }) : super.subclass();
+    required int round,
+  }) : super.subclass(round: round);
 
-  factory PaletteExtractionOutput.fromMap(Map<String, dynamic> map) {
+  factory PaletteExtractionOutput.fromMap(Map<String, dynamic> map, int round) {
     return PaletteExtractionOutput(
       colors: List<String>.from(map['colors'] as List),
       confidence: (map['confidence'] as num).toDouble(),
+      round: round,
     );
   }
 
@@ -29,13 +31,17 @@ class ThemeGenerationOutput extends ToolOutput {
   final Map<String, String> theme;
   final String category;
 
-  const ThemeGenerationOutput({required this.theme, required this.category})
-    : super.subclass();
+  const ThemeGenerationOutput({
+    required this.theme,
+    required this.category,
+    required int round,
+  }) : super.subclass(round: round);
 
-  factory ThemeGenerationOutput.fromMap(Map<String, dynamic> map) {
+  factory ThemeGenerationOutput.fromMap(Map<String, dynamic> map, int round) {
     return ThemeGenerationOutput(
       theme: Map<String, String>.from(map['theme'] as Map),
       category: map['category'] as String,
+      round: round,
     );
   }
 
@@ -213,19 +219,19 @@ void main() {
       // Register typed outputs for the test tools
       ToolOutputRegistry.register<PaletteExtractionOutput>(
         'extract_palette',
-        (data) => PaletteExtractionOutput.fromMap(data),
+        (data, round) => PaletteExtractionOutput.fromMap(data, round),
       );
       ToolOutputRegistry.register<PaletteExtractionOutput>(
         'extract_palette_invalid',
-        (data) => PaletteExtractionOutput.fromMap(data),
+        (data, round) => PaletteExtractionOutput.fromMap(data, round),
       );
       ToolOutputRegistry.register<ThemeGenerationOutput>(
         'generate_theme',
-        (data) => ThemeGenerationOutput.fromMap(data),
+        (data, round) => ThemeGenerationOutput.fromMap(data, round),
       );
       ToolOutputRegistry.register<ThemeGenerationOutput>(
         'generate_theme_invalid',
-        (data) => ThemeGenerationOutput.fromMap(data),
+        (data, round) => ThemeGenerationOutput.fromMap(data, round),
       );
     });
 

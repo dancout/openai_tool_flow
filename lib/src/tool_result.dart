@@ -41,18 +41,15 @@ class ToolResult<T extends ToolOutput> {
       throw Exception('No typed output registered for tool "$toolName".');
     }
 
+    // Extract round from output map (ToolOutput stores it as _round)
+    final round = outputMap['_round'] as int? ?? typedInput.round;
+
     // Try to create typed output if registry has a creator for this tool
     final typedOutput = ToolOutputRegistry.create(
       toolName: toolName,
       data: outputMap,
+      round: round,
     );
-
-    if (typedOutput == null) {
-      throw Exception(
-        'Failed to create typed output for tool "$toolName". '
-        'This should not happen as ToolOutput should always work.',
-      );
-    }
 
     // TODO: We need a better constructor here, because what if the extended <T> has other parameters that aren't included in the base ToolResult?
     return ToolResult<ToolOutput>(

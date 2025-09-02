@@ -115,21 +115,26 @@ void main() async {
   }
 }
 
+/// Helper function to filter issues by severity
+List<Issue> issuesWithSeverity(List<Issue> allIssues, IssueSeverity severity) {
+  return allIssues.where((issue) => issue.severity == severity).toList();
+}
+
 /// Register typed outputs for type-safe operations
 void registerColorThemeTypedOutputs() {
   ToolOutputRegistry.register(
     'extract_palette',
-    (data) => PaletteExtractionOutput.fromMap(data),
+    (data, round) => PaletteExtractionOutput.fromMap(data, round),
   );
 
   ToolOutputRegistry.register(
     'refine_colors',
-    (data) => ColorRefinementOutput.fromMap(data),
+    (data, round) => ColorRefinementOutput.fromMap(data, round),
   );
 
   ToolOutputRegistry.register(
     'generate_theme',
-    (data) => ThemeGenerationOutput.fromMap(data),
+    (data, round) => ThemeGenerationOutput.fromMap(data, round),
   );
 }
 
@@ -140,13 +145,13 @@ void _displayExecutionSummary(ToolFlowResult result) {
   print('Tools used: ${result.resultsByToolName.keys.join(', ')}');
   print('Total issues found: ${result.allIssues.length}');
   print(
-    'Critical issues: ${result.issuesWithSeverity(IssueSeverity.critical).length}',
+    'Critical issues: ${issuesWithSeverity(result.allIssues, IssueSeverity.critical).length}',
   );
-  print('High issues: ${result.issuesWithSeverity(IssueSeverity.high).length}');
+  print('High issues: ${issuesWithSeverity(result.allIssues, IssueSeverity.high).length}');
   print(
-    'Medium issues: ${result.issuesWithSeverity(IssueSeverity.medium).length}',
+    'Medium issues: ${issuesWithSeverity(result.allIssues, IssueSeverity.medium).length}',
   );
-  print('Low issues: ${result.issuesWithSeverity(IssueSeverity.low).length}\n');
+  print('Low issues: ${issuesWithSeverity(result.allIssues, IssueSeverity.low).length}\n');
 }
 
 /// Demonstrate tool name-based result retrieval
@@ -269,7 +274,7 @@ void _displayIssuesAnalysis(ToolFlowResult result) {
   });
 
   // Show critical issues that need attention
-  final criticalIssues = result.issuesWithSeverity(IssueSeverity.critical);
+  final criticalIssues = issuesWithSeverity(result.allIssues, IssueSeverity.critical);
   if (criticalIssues.isNotEmpty) {
     print('\n🚨 Critical Issues Requiring Attention:');
     for (final issue in criticalIssues) {
@@ -313,7 +318,8 @@ void _exportEnhancedResults(ToolFlowResult result) {
   // Tool name mapping for easy reference
   print('🗂️ Tool Name Mapping:');
   result.resultsByToolName.forEach((toolName, toolResult) {
-    final stepIndex = result.results.indexOf(toolResult);
+    final typedResult = result.getTypedResultByToolName(toolName);
+    final stepIndex = typedResult != null ? result.results.indexOf(typedResult) : -1;
     print('  $toolName -> Step ${stepIndex + 1}');
   });
   print('');
