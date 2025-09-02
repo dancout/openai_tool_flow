@@ -86,11 +86,9 @@ class TypedToolResult {
     return null;
   }
 
-  // TODO: Does it make sense to instead just use copyWith instead of withAdditionalIssues?
-  /// Creates a copy with additional issues
-  TypedToolResult withAdditionalIssues(List<Issue> newIssues) {
-    final updatedResult = _result.withAdditionalIssues(newIssues);
-    return TypedToolResult.fromWithType(updatedResult, _outputType);
+  /// Creates a copy of this TypedToolResult with optional updated fields
+  TypedToolResult copyWith({ToolResult<ToolOutput>? result, Type? outputType}) {
+    return TypedToolResult._(result ?? _result, outputType ?? _outputType);
   }
 
   /// Converts to JSON for serialization

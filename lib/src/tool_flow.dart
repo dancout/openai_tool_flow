@@ -281,7 +281,11 @@ class ToolFlow {
           )
           .toList();
 
-      auditedResult = auditedResult.withAdditionalIssues(roundedIssues);
+      auditedResult = auditedResult.copyWith(
+        result: auditedResult.underlyingResult.copyWith(
+          issues: [...auditedResult.underlyingResult.issues, ...roundedIssues],
+        ),
+      );
     }
 
     return auditedResult;

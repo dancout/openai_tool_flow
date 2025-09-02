@@ -82,16 +82,6 @@ class ToolResult<T extends ToolOutput> {
     };
   }
 
-  /// Creates a copy of this ToolResult with additional issues
-  ToolResult<T> withAdditionalIssues(List<Issue> newIssues) {
-    return ToolResult<T>(
-      toolName: toolName,
-      input: input,
-      output: output,
-      issues: [...issues, ...newIssues],
-    );
-  }
-
   /// Creates a copy of this ToolResult with optional field overrides
   ToolResult<T> copyWith({
     String? toolName,
