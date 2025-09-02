@@ -1,3 +1,5 @@
+import 'package:meta/meta.dart';
+
 import 'output_schema.dart';
 
 /// Base class for strongly-typed tool inputs.
@@ -154,6 +156,7 @@ abstract class StepDefinition<T extends ToolOutput> {
 /// Registry for creating typed outputs from tool results
 class ToolOutputRegistry {
   /// Clears all registered creators and output types (for test isolation)
+  @visibleForTesting
   static void clearRegistry() {
     _creators.clear();
     _outputTypes.clear();
