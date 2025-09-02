@@ -366,7 +366,14 @@ void main() {
         ],
       );
 
-      final mockService = MockOpenAiToolService();
+      final mockService = MockOpenAiToolService(
+        responses: {
+          'extract_palette': {
+            'colors': ['#FF5733', '#33FF57', '#3357FF'],
+            'confidence': 0.85,
+          },
+        },
+      );
 
       final flow = ToolFlow(
         config: config,
