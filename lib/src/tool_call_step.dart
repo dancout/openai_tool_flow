@@ -1,6 +1,5 @@
-import 'issue.dart';
-import 'step_config.dart';
-import 'tool_result.dart';
+import 'package:meta/meta.dart';
+import 'package:openai_toolflow/openai_toolflow.dart';
 
 /// Defines a single tool call step in a ToolFlow.
 ///
@@ -51,14 +50,15 @@ class ToolCallStep {
   /// Helps provide context for retry attempts
   final List<Issue> issues;
 
-  /// Maximum number of retry attempts for this step
-  /// Defaults to 3 attempts
-  final int maxRetries;
-
   /// Configuration for this step including audits, forwarding, and sanitization
   final StepConfig stepConfig;
 
+  /// Schema definition for the expected tool output.
+  /// This defines the structure that OpenAI tool calls should conform to.
+  final OutputSchema outputSchema;
+
   /// Creates a ToolCallStep
+  @visibleForTesting
   const ToolCallStep({
     required this.toolName,
     required this.model,
@@ -94,10 +94,35 @@ class ToolCallStep {
     required this.inputBuilder,
     this.buildInputsFrom = const [],
     this.issues = const [],
-    this.maxRetries = 3,
     required this.stepConfig,
-    // TODO: Consider moving outputSchema to the ToolCallStep instead of the stepConfig. I'm not sure which is better.
+    required this.outputSchema,
   });
+
+  /// Creates a ToolCallStep from a StepDefinition
+  ///
+  /// This automatically registers the step definition in the ToolOutputRegistry
+  /// and creates a StepConfig with the appropriate output schema.
+  static ToolCallStep fromStepDefinition<T extends ToolOutput>(
+    StepDefinition<T> stepDefinition, {
+    required String model,
+    required Map<String, dynamic> Function(List<ToolResult>) inputBuilder,
+    List<Object> buildInputsFrom = const [],
+    List<Issue> issues = const [],
+    StepConfig? stepConfig,
+  }) {
+    // Auto-register the step definition
+    ToolOutputRegistry.registerStepDefinition(stepDefinition);
+
+    return ToolCallStep(
+      toolName: stepDefinition.stepName,
+      model: model,
+      inputBuilder: inputBuilder,
+      buildInputsFrom: buildInputsFrom,
+      issues: issues,
+      outputSchema: stepDefinition.outputSchema,
+      stepConfig: stepConfig ?? StepConfig(),
+    );
+  }
 
   /// Creates a copy of this ToolCallStep with updated parameters
   ToolCallStep copyWith({
@@ -108,6 +133,7 @@ class ToolCallStep {
     List<Issue>? issues,
     int? maxRetries,
     StepConfig? stepConfig,
+    OutputSchema? outputSchema,
   }) {
     return ToolCallStep(
       toolName: toolName ?? this.toolName,
@@ -115,14 +141,14 @@ class ToolCallStep {
       inputBuilder: inputBuilder ?? this.inputBuilder,
       buildInputsFrom: buildInputsFrom ?? this.buildInputsFrom,
       issues: issues ?? this.issues,
-      maxRetries: maxRetries ?? this.maxRetries,
       stepConfig: stepConfig ?? this.stepConfig,
+      outputSchema: outputSchema ?? this.outputSchema,
     );
   }
 
   @override
   String toString() {
-    return 'ToolCallStep(toolName: $toolName, model: $model, maxRetries: $maxRetries)';
+    return 'ToolCallStep(toolName: $toolName, model: $model)';
   }
 
   @override
@@ -131,11 +157,10 @@ class ToolCallStep {
     return other is ToolCallStep &&
         other.toolName == toolName &&
         other.model == model &&
-        other.buildInputsFrom.toString() == buildInputsFrom.toString() &&
-        other.maxRetries == maxRetries;
+        other.buildInputsFrom.toString() == buildInputsFrom.toString();
     // Note: inputBuilder functions cannot be compared
   }
 
   @override
-  int get hashCode => Object.hash(toolName, model, buildInputsFrom, maxRetries);
+  int get hashCode => Object.hash(toolName, model, buildInputsFrom);
 }

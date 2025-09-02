@@ -59,7 +59,7 @@ class ToolFlow {
       TypedToolResult? stepResult;
       bool stepPassed = false;
       int attemptCount = 0;
-      final maxRetries = stepConfig.getEffectiveMaxRetries(step.maxRetries);
+      final maxRetries = stepConfig.maxRetries;
 
       // Retry loop for this step
       while (attemptCount <= maxRetries && !stepPassed) {
@@ -102,7 +102,9 @@ class ToolFlow {
           final errorToolResult = ToolResult<ToolOutput>(
             toolName: step.toolName,
             input: errorStepInput,
-            output: ToolOutput({'error': e.toString()}, round: attemptCount - 1),
+            output: ToolOutput({
+              'error': e.toString(),
+            }, round: attemptCount - 1),
             issues: [
               Issue(
                 id: 'error_${step.toolName}_${i}_attempt_$attemptCount',
@@ -503,10 +505,10 @@ class ToolFlowResult {
   }
 
   /// Gets all results by tool names (including duplicates)
-  List<TypedToolResult> getAllResultsByToolNames(
-    List<String> toolNames,
-  ) {
-    return toolNames.expand((name) => getAllTypedResultsByToolName(name)).toList();
+  List<TypedToolResult> getAllResultsByToolNames(List<String> toolNames) {
+    return toolNames
+        .expand((name) => getAllTypedResultsByToolName(name))
+        .toList();
   }
 
   /// Converts this result to a JSON map

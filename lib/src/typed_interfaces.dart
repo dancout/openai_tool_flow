@@ -1,3 +1,7 @@
+import 'package:meta/meta.dart';
+
+import 'output_schema.dart';
+
 /// Base class for strongly-typed tool inputs.
 ///
 /// Provides type safety and validation for tool call parameters
@@ -131,8 +135,34 @@ class ToolOutput {
   int get hashCode => Object.hash(round, toMap().toString().hashCode);
 }
 
+/// Interface for defining tool step metadata and functionality
+///
+/// Encapsulates step name, output schema, and factory method to eliminate
+/// error-prone string usage and enable automatic registration.
+// TODO: But is this actually easier to understand as opposed to needing to register the tools yourself?
+abstract class StepDefinition<T extends ToolOutput> {
+  /// The unique name identifier for this tool step
+  String get stepName;
+
+  /// The output schema definition for this step
+  OutputSchema get outputSchema;
+
+  /// Factory method to create typed output from map data
+  T fromMap(Map<String, dynamic> data, int round);
+
+  /// The output type for this step
+  Type get outputType => T;
+}
+
 /// Registry for creating typed outputs from tool results
 class ToolOutputRegistry {
+  /// Clears all registered creators and output types (for test isolation)
+  @visibleForTesting
+  static void clearRegistry() {
+    _creators.clear();
+    _outputTypes.clear();
+  }
+
   static final Map<String, ToolOutput Function(Map<String, dynamic>, int)>
   _creators = {};
 
@@ -146,6 +176,13 @@ class ToolOutputRegistry {
   ) {
     _creators[toolName] = creator;
     _outputTypes[toolName] = T;
+  }
+
+  /// Automatically registers a step definition
+  static void registerStepDefinition<T extends ToolOutput>(
+    StepDefinition<T> stepDefinition,
+  ) {
+    register<T>(stepDefinition.stepName, stepDefinition.fromMap);
   }
 
   /// Creates a typed output for the given tool name, data, and round

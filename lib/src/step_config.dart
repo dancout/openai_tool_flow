@@ -1,6 +1,5 @@
 import 'audit_function.dart';
 import 'issue.dart';
-import 'output_schema.dart';
 
 /// Configuration for a specific step in a tool flow.
 ///
@@ -12,7 +11,7 @@ class StepConfig {
 
   /// Maximum number of retry attempts for this step
   /// Overrides the default from ToolCallStep if provided
-  final int? maxRetries;
+  final int maxRetries;
 
   /// Custom pass/fail criteria function for this step
   /// If provided, this will be used instead of individual audit criteria
@@ -98,23 +97,15 @@ class StepConfig {
   /// Not sure if we can be extending ToolOutput or a Schema or something.
   outputSanitizer;
 
-  /// Schema definition for the expected tool output.
-  /// This defines the structure that OpenAI tool calls should conform to.
-  ///
-  /// **When to use:** Define the exact output structure you expect from the tool call,
-  /// ensuring type safety and consistent data formats.
-  final OutputSchema outputSchema;
-
   const StepConfig({
     this.audits = const [],
-    this.maxRetries,
+    this.maxRetries = 3,
     this.customPassCriteria,
     this.customFailureReason,
     this.stopOnFailure = true,
     this.includeOutputsFrom = const [],
     this.inputSanitizer,
     this.outputSanitizer,
-    required this.outputSchema,
   });
 
   /// Returns true if this step has any audits configured
@@ -130,12 +121,6 @@ class StepConfig {
 
   /// Returns true if this step has output sanitization configured
   bool get hasOutputSanitizer => outputSanitizer != null;
-
-  /// Returns the effective max retries for this step
-  /// Uses the override if provided, otherwise falls back to default
-  int getEffectiveMaxRetries(int defaultMaxRetries) {
-    return maxRetries ?? defaultMaxRetries;
-  }
 
   /// Determines if the criteria are met for the given issues
   /// Uses custom criteria if provided, otherwise delegates to audit functions

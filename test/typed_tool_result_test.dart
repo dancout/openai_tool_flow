@@ -248,18 +248,14 @@ void main() {
             toolName: 'extract_palette',
             model: 'gpt-4',
             inputBuilder: (previousResults) => {'image': 'test.jpg'},
-            stepConfig: StepConfig(
-              outputSchema: OutputSchema(
-                properties: [
-                  PropertyEntry.array(
-                    name: 'colors',
-                    items: PropertyType.string,
-                  ),
-                  PropertyEntry.number(name: 'confidence'),
-                ],
-                required: ['colors', 'confidence'],
-              ),
+            outputSchema: OutputSchema(
+              properties: [
+                PropertyEntry.array(name: 'colors', items: PropertyType.string),
+                PropertyEntry.number(name: 'confidence'),
+              ],
+              required: ['colors', 'confidence'],
             ),
+            stepConfig: StepConfig(),
           ),
           ToolCallStep(
             toolName: 'generate_theme',
@@ -268,15 +264,14 @@ void main() {
               'palette': previousResults.first.output.toMap(),
             },
             buildInputsFrom: [0],
-            stepConfig: StepConfig(
-              outputSchema: OutputSchema(
-                properties: [
-                  PropertyEntry.object(name: 'theme'),
-                  PropertyEntry.string(name: 'category'),
-                ],
-                required: ['theme', 'category'],
-              ),
+            outputSchema: OutputSchema(
+              properties: [
+                PropertyEntry.object(name: 'theme'),
+                PropertyEntry.string(name: 'category'),
+              ],
+              required: ['theme', 'category'],
             ),
+            stepConfig: StepConfig(),
           ),
         ],
       );
@@ -314,19 +309,14 @@ void main() {
             toolName: 'extract_palette',
             model: 'gpt-4',
             inputBuilder: (previousResults) => {'image': 'test.jpg'},
-            stepConfig: StepConfig(
-              audits: [PaletteQualityAudit()],
-              outputSchema: OutputSchema(
-                properties: [
-                  PropertyEntry.array(
-                    name: 'colors',
-                    items: PropertyType.string,
-                  ),
-                  PropertyEntry.number(name: 'confidence'),
-                ],
-                required: ['colors', 'confidence'],
-              ),
+            outputSchema: OutputSchema(
+              properties: [
+                PropertyEntry.array(name: 'colors', items: PropertyType.string),
+                PropertyEntry.number(name: 'confidence'),
+              ],
+              required: ['colors', 'confidence'],
             ),
+            stepConfig: StepConfig(audits: [PaletteQualityAudit()]),
           ),
           ToolCallStep(
             toolName: 'generate_theme',
@@ -335,16 +325,14 @@ void main() {
               'palette': previousResults.first.output.toMap(),
             },
             buildInputsFrom: [0],
-            stepConfig: StepConfig(
-              audits: [ThemeValidationAudit()],
-              outputSchema: OutputSchema(
-                properties: [
-                  PropertyEntry.object(name: 'theme'),
-                  PropertyEntry.string(name: 'category'),
-                ],
-                required: ['theme', 'category'],
-              ),
+            outputSchema: OutputSchema(
+              properties: [
+                PropertyEntry.object(name: 'theme'),
+                PropertyEntry.string(name: 'category'),
+              ],
+              required: ['theme', 'category'],
             ),
+            stepConfig: StepConfig(audits: [ThemeValidationAudit()]),
           ),
         ],
       );
@@ -368,19 +356,17 @@ void main() {
               toolName: 'extract_palette_invalid',
               model: 'gpt-4',
               inputBuilder: (previousResults) => {'image': 'test.jpg'},
-              stepConfig: StepConfig(
-                audits: [PaletteQualityAudit()],
-                outputSchema: OutputSchema(
-                  properties: [
-                    PropertyEntry.array(
-                      name: 'colors',
-                      items: PropertyType.string,
-                    ),
-                    PropertyEntry.number(name: 'confidence'),
-                  ],
-                  required: ['colors', 'confidence'],
-                ),
+              outputSchema: OutputSchema(
+                properties: [
+                  PropertyEntry.array(
+                    name: 'colors',
+                    items: PropertyType.string,
+                  ),
+                  PropertyEntry.number(name: 'confidence'),
+                ],
+                required: ['colors', 'confidence'],
               ),
+              stepConfig: StepConfig(audits: [PaletteQualityAudit()]),
             ),
             ToolCallStep(
               toolName: 'generate_theme_invalid',
@@ -389,16 +375,14 @@ void main() {
                 'palette': previousResults.first.output.toMap(),
               },
               buildInputsFrom: [0],
-              stepConfig: StepConfig(
-                audits: [ThemeValidationAudit()],
-                outputSchema: OutputSchema(
-                  properties: [
-                    PropertyEntry.object(name: 'theme'),
-                    PropertyEntry.string(name: 'category'),
-                  ],
-                  required: ['theme', 'category'],
-                ),
+              outputSchema: OutputSchema(
+                properties: [
+                  PropertyEntry.object(name: 'theme'),
+                  PropertyEntry.string(name: 'category'),
+                ],
+                required: ['theme', 'category'],
               ),
+              stepConfig: StepConfig(audits: [ThemeValidationAudit()]),
             ),
           ],
         );
@@ -441,18 +425,14 @@ void main() {
             toolName: 'extract_palette',
             model: 'gpt-4',
             inputBuilder: (previousResults) => {'image': 'test.jpg'},
-            stepConfig: StepConfig(
-              outputSchema: OutputSchema(
-                properties: [
-                  PropertyEntry.array(
-                    name: 'colors',
-                    items: PropertyType.string,
-                  ),
-                  PropertyEntry.number(name: 'confidence'),
-                ],
-                required: ['colors', 'confidence'],
-              ),
+            outputSchema: OutputSchema(
+              properties: [
+                PropertyEntry.array(name: 'colors', items: PropertyType.string),
+                PropertyEntry.number(name: 'confidence'),
+              ],
+              required: ['colors', 'confidence'],
             ),
+            stepConfig: StepConfig(),
           ),
         ],
       );
@@ -484,18 +464,17 @@ void main() {
               toolName: 'extract_palette',
               model: 'gpt-4',
               inputBuilder: (previousResults) => {'image': 'test.jpg'},
-              stepConfig: StepConfig(
-                outputSchema: OutputSchema(
-                  properties: [
-                    PropertyEntry.array(
-                      name: 'colors',
-                      items: PropertyType.string,
-                    ),
-                    PropertyEntry.number(name: 'confidence'),
-                  ],
-                  required: ['colors', 'confidence'],
-                ),
+              outputSchema: OutputSchema(
+                properties: [
+                  PropertyEntry.array(
+                    name: 'colors',
+                    items: PropertyType.string,
+                  ),
+                  PropertyEntry.number(name: 'confidence'),
+                ],
+                required: ['colors', 'confidence'],
               ),
+              stepConfig: StepConfig(),
             ),
           ],
         );

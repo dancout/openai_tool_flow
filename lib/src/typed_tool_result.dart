@@ -59,7 +59,7 @@ class TypedToolResult {
   /// This is used internally by ToolFlow for backward compatibility
   /// and should not be used by external code
   /// // TODO: Does this need to be generic T?
-  /// // TODO Does there need to be a getter here for the private result, or can we just expose _result directly?
+  /// // TODO: Does there need to be a getter here for the private result, or can we just expose _result directly?
   /// also, why are we still worrying about backwards compatibility?
   ToolResult<ToolOutput> get underlyingResult => _result;
 

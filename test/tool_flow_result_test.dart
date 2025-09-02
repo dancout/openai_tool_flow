@@ -1,4 +1,4 @@
-/// Tests for ToolFlowResult class functionality  
+/// Tests for ToolFlowResult class functionality
 library;
 
 import 'package:openai_toolflow/openai_toolflow.dart';
@@ -59,9 +59,8 @@ void main() {
               toolName: 'test_tool_results',
               model: 'gpt-4',
               inputBuilder: (previousResults) => {'input': 'test'},
-              stepConfig: StepConfig(
-                outputSchema: OutputSchema(properties: [], required: []),
-              ),
+              outputSchema: OutputSchema(properties: [], required: []),
+              stepConfig: StepConfig(),
             ),
           ],
           openAiService: mockService,
@@ -97,20 +96,21 @@ void main() {
               toolName: 'typed_result_test',
               model: 'gpt-4',
               inputBuilder: (previousResults) => {'input': 'test'},
-              stepConfig: StepConfig(
-                outputSchema: OutputSchema(properties: [], required: []),
-              ),
+              outputSchema: OutputSchema(properties: [], required: []),
+              stepConfig: StepConfig(),
             ),
           ],
           openAiService: mockService,
         );
 
         return flow.run().then((result) {
-          final typedResult = result.getTypedResultByToolName('typed_result_test');
+          final typedResult = result.getTypedResultByToolName(
+            'typed_result_test',
+          );
           expect(typedResult, isNotNull);
           expect(typedResult!.toolName, equals('typed_result_test'));
           expect(typedResult.output, isA<TestOutput>());
-          
+
           final testOutput = typedResult.output as TestOutput;
           expect(testOutput.message, equals('typed response'));
         });
@@ -136,29 +136,29 @@ void main() {
               toolName: 'multiple_typed_test',
               model: 'gpt-4',
               inputBuilder: (previousResults) => {'input': 'test1'},
-              stepConfig: StepConfig(
-                outputSchema: OutputSchema(properties: [], required: []),
-              ),
+              outputSchema: OutputSchema(properties: [], required: []),
+              stepConfig: StepConfig(),
             ),
             ToolCallStep(
               toolName: 'multiple_typed_test', // Same tool name
               model: 'gpt-4',
               inputBuilder: (previousResults) => {'input': 'test2'},
-              stepConfig: StepConfig(
-                outputSchema: OutputSchema(properties: [], required: []),
-              ),
+              outputSchema: OutputSchema(properties: [], required: []),
+              stepConfig: StepConfig(),
             ),
           ],
           openAiService: mockService,
         );
 
         return flow.run().then((result) {
-          final allTypedResults = result.getAllTypedResultsByToolName('multiple_typed_test');
+          final allTypedResults = result.getAllTypedResultsByToolName(
+            'multiple_typed_test',
+          );
           expect(allTypedResults.length, equals(2));
-          
+
           expect(allTypedResults[0].toolName, equals('multiple_typed_test'));
           expect(allTypedResults[1].toolName, equals('multiple_typed_test'));
-          
+
           // Verify they are different step results
           expect(allTypedResults[0].input.toMap()['input'], equals('test1'));
           expect(allTypedResults[1].input.toMap()['input'], equals('test2'));
@@ -187,9 +187,8 @@ void main() {
               toolName: 'compat_test',
               model: 'gpt-4',
               inputBuilder: (previousResults) => {'input': 'test'},
-              stepConfig: StepConfig(
-                outputSchema: OutputSchema(properties: [], required: []),
-              ),
+              outputSchema: OutputSchema(properties: [], required: []),
+              stepConfig: StepConfig(),
             ),
           ],
           openAiService: mockService,
@@ -200,11 +199,11 @@ void main() {
           final resultByName = result.getResultByToolName('compat_test');
           expect(resultByName, isNotNull);
           expect(resultByName!.toolName, equals('compat_test'));
-          
+
           final allResults = result.getAllResultsByToolName('compat_test');
           expect(allResults.length, equals(1));
           expect(allResults.first.toolName, equals('compat_test'));
-          
+
           final resultsByNames = result.getResultsByToolNames(['compat_test']);
           expect(resultsByNames.length, equals(1));
           expect(resultsByNames.first.toolName, equals('compat_test'));
