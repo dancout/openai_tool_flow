@@ -1,23 +1,20 @@
 /// Tests for Round 11 updates: non-optional ToolOutputRegistry, round param, TypedToolResult results
 library;
 
-import 'package:test/test.dart';
 import 'package:openai_toolflow/openai_toolflow.dart';
+import 'package:test/test.dart';
 
 class TestOutput extends ToolOutput {
   final String message;
-  
-  const TestOutput(this.message, {required int round}) : super.subclass(round: round);
-  
+
+  const TestOutput(this.message, {required super.round}) : super.subclass();
+
   factory TestOutput.fromMap(Map<String, dynamic> map, int round) {
     return TestOutput(map['message'] as String, round: round);
   }
-  
+
   @override
-  Map<String, dynamic> toMap() => {
-    '_round': round,
-    'message': message,
-  };
+  Map<String, dynamic> toMap() => {'_round': round, 'message': message};
 }
 
 void main() {
@@ -35,11 +32,15 @@ void main() {
             data: {'test': 'data'},
             round: 0,
           ),
-          throwsA(isA<Exception>().having(
-            (e) => e.toString(),
-            'message',
-            contains('No typed output creator registered for tool: unregistered_tool'),
-          )),
+          throwsA(
+            isA<Exception>().having(
+              (e) => e.toString(),
+              'message',
+              contains(
+                'No typed output creator registered for tool: unregistered_tool',
+              ),
+            ),
+          ),
         );
       });
 
@@ -65,11 +66,13 @@ void main() {
       test('should throw when no output type is registered', () {
         expect(
           () => ToolOutputRegistry.getOutputType('unregistered_tool'),
-          throwsA(isA<Exception>().having(
-            (e) => e.toString(),
-            'message',
-            contains('No output type registered for tool: unregistered_tool'),
-          )),
+          throwsA(
+            isA<Exception>().having(
+              (e) => e.toString(),
+              'message',
+              contains('No output type registered for tool: unregistered_tool'),
+            ),
+          ),
         );
       });
 
@@ -94,14 +97,14 @@ void main() {
       test('should include round in toMap output', () {
         const output = TestOutput('test message', round: 3);
         final map = output.toMap();
-        
+
         expect(map['_round'], equals(3));
         expect(map['message'], equals('test message'));
       });
 
       test('should handle round in fromMap factory', () {
         final output = TestOutput.fromMap({'message': 'from map'}, 7);
-        
+
         expect(output.round, equals(7));
         expect(output.message, equals('from map'));
       });
@@ -115,9 +118,11 @@ void main() {
           (data, round) => TestOutput.fromMap(data, round),
         );
 
-        final mockService = MockOpenAiToolService(responses: {
-          'test_tool_results': {'message': 'response'},
-        });
+        final mockService = MockOpenAiToolService(
+          responses: {
+            'test_tool_results': {'message': 'response'},
+          },
+        );
 
         final flow = ToolFlow(
           config: OpenAIConfig(apiKey: 'test'),
@@ -170,18 +175,26 @@ void main() {
         ];
 
         // Helper function (same as in usage.dart)
-        List<Issue> issuesWithSeverity(List<Issue> allIssues, IssueSeverity severity) {
-          return allIssues.where((issue) => issue.severity == severity).toList();
+        List<Issue> issuesWithSeverity(
+          List<Issue> allIssues,
+          IssueSeverity severity,
+        ) {
+          return allIssues
+              .where((issue) => issue.severity == severity)
+              .toList();
         }
 
-        final criticalIssues = issuesWithSeverity(issues, IssueSeverity.critical);
+        final criticalIssues = issuesWithSeverity(
+          issues,
+          IssueSeverity.critical,
+        );
         final highIssues = issuesWithSeverity(issues, IssueSeverity.high);
         final lowIssues = issuesWithSeverity(issues, IssueSeverity.low);
 
         expect(criticalIssues.length, equals(2));
         expect(highIssues.length, equals(1));
         expect(lowIssues.length, equals(0));
-        
+
         expect(criticalIssues.first.id, equals('critical-1'));
         expect(criticalIssues.last.id, equals('critical-2'));
         expect(highIssues.first.id, equals('high-1'));
@@ -196,9 +209,11 @@ void main() {
           (data, round) => TestOutput.fromMap(data, round),
         );
 
-        final mockService = MockOpenAiToolService(responses: {
-          'integration_tool_e2e': {'message': 'integration test success'},
-        });
+        final mockService = MockOpenAiToolService(
+          responses: {
+            'integration_tool_e2e': {'message': 'integration test success'},
+          },
+        );
 
         final flow = ToolFlow(
           config: OpenAIConfig(apiKey: 'test'),
@@ -219,15 +234,17 @@ void main() {
           // Test new results type
           expect(result.results, isA<List<TypedToolResult>>());
           final typedResult = result.results.first;
-          
+
           // Test round information is preserved
           expect(typedResult.output, isA<TestOutput>());
           final testOutput = typedResult.output as TestOutput;
           expect(testOutput.round, equals(0)); // First attempt
           expect(testOutput.message, equals('integration test success'));
-          
+
           // Test tool name retrieval still works
-          final resultByName = result.getTypedResultByToolName('integration_tool_e2e');
+          final resultByName = result.getTypedResultByToolName(
+            'integration_tool_e2e',
+          );
           expect(resultByName, isNotNull);
           expect(resultByName!.toolName, equals('integration_tool_e2e'));
         });

@@ -9,8 +9,8 @@ class PaletteExtractionOutput extends ToolOutput {
   const PaletteExtractionOutput({
     required this.colors,
     required this.confidence,
-    required int round,
-  }) : super.subclass(round: round);
+    required super.round,
+  }) : super.subclass();
 
   factory PaletteExtractionOutput.fromMap(Map<String, dynamic> map, int round) {
     return PaletteExtractionOutput(
@@ -34,8 +34,8 @@ class ThemeGenerationOutput extends ToolOutput {
   const ThemeGenerationOutput({
     required this.theme,
     required this.category,
-    required int round,
-  }) : super.subclass(round: round);
+    required super.round,
+  }) : super.subclass();
 
   factory ThemeGenerationOutput.fromMap(Map<String, dynamic> map, int round) {
     return ThemeGenerationOutput(

@@ -72,7 +72,7 @@ class SimpleAuditFunction<T extends ToolOutput> extends AuditFunction<T> {
 class TestToolOutput extends ToolOutput {
   final Map<String, dynamic> data;
 
-  const TestToolOutput(this.data, {required int round}) : super.subclass(round: round);
+  const TestToolOutput(this.data, {required super.round}) : super.subclass();
 
   factory TestToolOutput.fromMap(Map<String, dynamic> map, int round) {
     return TestToolOutput(Map<String, dynamic>.from(map), round: round);
