@@ -158,6 +158,8 @@ Map<String, ToolCallStep> createColorThemeWorkflow() {
         // That way, the user doesn't have to worry about how to parse it.
         // Or they could even have the option to override the issue parser for that step if they'd like.
         includeOutputsFrom: ['extract_palette'],
+        // TODO: We could also include a "severity level" or similar name that specifies to include issues above a certain severity.
+        /// That way, if there are a ton of low priority issues but 1 or 2 criticals, we may only be interested in the criticals and don't want token bloat.
         inputSanitizer: ExampleSanitizers.paletteToRefinementInputSanitizer,
         customPassCriteria: (issues) {
           return !issues.any(

@@ -89,26 +89,30 @@ class ToolInput {
 /// Provides type safety for tool results while maintaining
 /// backward compatibility with Map-based interface.
 /// Can be extended for custom tool outputs or used directly for simple cases.
+// TODO: Consider making ToolOutput abstract and then you can have the other classes be typed, and force them to implement things like toMap and fromMap.
 class ToolOutput {
+  /// Current retry round (0 for first attempt)
+  final int round;
+
   /// The output data (only used when ToolOutput is used directly)
   final Map<String, dynamic>? _data;
 
-  /// Creates a ToolOutput with the given data (for direct usage)
-  const ToolOutput(this._data);
+  /// Creates a ToolOutput with the given data and round (for direct usage)
+  const ToolOutput(this._data, {required this.round});
 
   /// Creates a ToolOutput for subclasses
   /// (they provide their own toMap implementation)
-  const ToolOutput.subclass() : _data = null;
+  const ToolOutput.subclass({required this.round}) : _data = null;
 
   /// Creates a ToolOutput from a Map
-  factory ToolOutput.fromMap(Map<String, dynamic> map) {
-    return ToolOutput(Map<String, dynamic>.from(map));
+  factory ToolOutput.fromMap(Map<String, dynamic> map, {required int round}) {
+    return ToolOutput(Map<String, dynamic>.from(map), round: round);
   }
 
   /// Converts this output to a Map for serialization
   Map<String, dynamic> toMap() {
     if (_data != null) {
-      return Map<String, dynamic>.from(_data);
+      return {'_round': round, ...Map<String, dynamic>.from(_data)};
     }
     throw UnimplementedError(
       'Subclasses must override toMap() when using ToolOutput.subclass()',
@@ -119,16 +123,17 @@ class ToolOutput {
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
     return other is ToolOutput &&
+        other.round == round &&
         other.toMap().toString() == toMap().toString();
   }
 
   @override
-  int get hashCode => toMap().toString().hashCode;
+  int get hashCode => Object.hash(round, toMap().toString().hashCode);
 }
 
 /// Registry for creating typed outputs from tool results
 class ToolOutputRegistry {
-  static final Map<String, ToolOutput Function(Map<String, dynamic>)>
+  static final Map<String, ToolOutput Function(Map<String, dynamic>, int)>
   _creators = {};
 
   /// Maps tool names to their expected output types for type-safe operations
@@ -137,19 +142,24 @@ class ToolOutputRegistry {
   /// Registers a creator function for a specific tool with type information
   static void register<T extends ToolOutput>(
     String toolName,
-    T Function(Map<String, dynamic>) creator,
+    T Function(Map<String, dynamic>, int) creator,
   ) {
     _creators[toolName] = creator;
     _outputTypes[toolName] = T;
   }
 
-  /// Creates a typed output for the given tool name and data
-  static ToolOutput? create({
+  /// Creates a typed output for the given tool name, data, and round
+  /// Throws an exception if no creator is registered for the tool name
+  static ToolOutput create({
     required String toolName,
     required Map<String, dynamic> data,
+    required int round,
   }) {
     final creator = _creators[toolName];
-    return creator?.call(data);
+    if (creator == null) {
+      throw Exception('No typed output creator registered for tool: $toolName');
+    }
+    return creator(data, round);
   }
 
   /// Checks if a tool has a registered typed output
@@ -158,8 +168,13 @@ class ToolOutputRegistry {
   }
 
   /// Gets the expected output type for a tool
-  static Type? getOutputType(String toolName) {
-    return _outputTypes[toolName];
+  /// Throws an exception if no output type is registered for the tool name
+  static Type getOutputType(String toolName) {
+    final outputType = _outputTypes[toolName];
+    if (outputType == null) {
+      throw Exception('No output type registered for tool: $toolName');
+    }
+    return outputType;
   }
 
   /// Checks if a tool's output type matches the expected type

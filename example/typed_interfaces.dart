@@ -128,14 +128,16 @@ class PaletteExtractionOutput extends ToolOutput {
     required this.confidence,
     required this.imageAnalyzed,
     this.metadata = const {},
+    required super.round,
   }) : super.subclass();
 
-  factory PaletteExtractionOutput.fromMap(Map<String, dynamic> map) {
+  factory PaletteExtractionOutput.fromMap(Map<String, dynamic> map, int round) {
     return PaletteExtractionOutput(
       colors: List<String>.from(map['colors'] as List),
       confidence: map['confidence'] as double,
       imageAnalyzed: map['image_analyzed'] as String,
       metadata: Map<String, dynamic>.from(map['metadata'] as Map? ?? {}),
+      round: round,
     );
   }
 
@@ -187,15 +189,17 @@ class ColorRefinementOutput extends ToolOutput {
     required this.refinedColors,
     required this.improvementsMade,
     this.accessibilityScores = const {},
+    required super.round,
   }) : super.subclass();
 
-  factory ColorRefinementOutput.fromMap(Map<String, dynamic> map) {
+  factory ColorRefinementOutput.fromMap(Map<String, dynamic> map, int round) {
     return ColorRefinementOutput(
       refinedColors: List<String>.from(map['refined_colors'] as List),
       improvementsMade: List<String>.from(map['improvements_made'] as List),
       accessibilityScores: Map<String, double>.from(
         map['accessibility_scores'] as Map? ?? {},
       ),
+      round: round,
     );
   }
 
@@ -236,13 +240,17 @@ class ThemeGenerationOutput extends ToolOutput {
   final Map<String, String> theme;
   final Map<String, dynamic> metadata;
 
-  const ThemeGenerationOutput({required this.theme, this.metadata = const {}})
-    : super.subclass();
+  const ThemeGenerationOutput({
+    required this.theme,
+    this.metadata = const {},
+    required super.round,
+  }) : super.subclass();
 
-  factory ThemeGenerationOutput.fromMap(Map<String, dynamic> map) {
+  factory ThemeGenerationOutput.fromMap(Map<String, dynamic> map, int round) {
     return ThemeGenerationOutput(
       theme: Map<String, String>.from(map['theme'] as Map),
       metadata: Map<String, dynamic>.from(map['metadata'] as Map? ?? {}),
+      round: round,
     );
   }
 
@@ -266,22 +274,4 @@ class ThemeGenerationOutput extends ToolOutput {
       required: ['theme'],
     );
   }
-}
-
-/// Registers typed outputs for type-safe operations
-void registerColorThemeTypedOutputs() {
-  ToolOutputRegistry.register(
-    'extract_palette',
-    (data) => PaletteExtractionOutput.fromMap(data),
-  );
-
-  ToolOutputRegistry.register(
-    'refine_colors',
-    (data) => ColorRefinementOutput.fromMap(data),
-  );
-
-  ToolOutputRegistry.register(
-    'generate_theme',
-    (data) => ThemeGenerationOutput.fromMap(data),
-  );
 }

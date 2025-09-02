@@ -102,7 +102,7 @@ class ToolFlow {
           final errorToolResult = ToolResult<ToolOutput>(
             toolName: step.toolName,
             input: errorStepInput,
-            output: ToolOutput({'error': e.toString()}),
+            output: ToolOutput({'error': e.toString()}, round: attemptCount - 1),
             issues: [
               Issue(
                 id: 'error_${step.toolName}_${i}_attempt_$attemptCount',
@@ -193,23 +193,12 @@ class ToolFlow {
       throw Exception('No typed output registered for ${step.toolName}');
     }
 
-    // Attempt to create typed output if registry has a creator using sanitized data
-
-    try {
-      // TODO: Consider trying to make this a non-null return type for cleaner code here. Maybe this create function throws if a null object is trying to be returned.
-      final trialTypedOutput = ToolOutputRegistry.create(
-        toolName: step.toolName,
-        data: sanitizedOutput,
-      );
-      if (trialTypedOutput == null) {
-        throw Exception(
-          'No typed output could be created for ${step.toolName}',
-        );
-      }
-      typedOutput = trialTypedOutput;
-    } catch (e) {
-      throw Exception('Failed to create typed output for ${step.toolName}: $e');
-    }
+    // Create typed output using registry with round information
+    typedOutput = ToolOutputRegistry.create(
+      toolName: step.toolName,
+      data: sanitizedOutput,
+      round: round,
+    );
 
     // Create initial result without issues (audits will add them)
     final result = ToolResult<ToolOutput>(
@@ -220,12 +209,7 @@ class ToolFlow {
     );
 
     // Create TypedToolResult with type information from registry
-    final outputType =
-        // TODO: Consider if this should probably fail more loudly if we cannot find the output type.
-        /// Defaulting to ToolOutput means that the data would be the only real parameter, but maybe in some cases that's OK?
-        /// So why make the user define another extended class that also only defined data?
-        /// I'M NOT SURE!
-        ToolOutputRegistry.getOutputType(step.toolName) ?? ToolOutput;
+    final outputType = ToolOutputRegistry.getOutputType(step.toolName);
     return TypedToolResult.fromWithType(result, outputType);
   }
 
@@ -385,12 +369,8 @@ class ToolFlowResult {
   /// Internal typed results from all executed steps
   final List<TypedToolResult> _typedResults;
 
-  // TODO: Same here. Is this backwards compatible necessary? Should it instead just be all forwards compatible, and make it the proper type?
-  /// So maybe convert this to be `List&lt;TypedToolResult&gt;`?
-  ///
-  /// Results from all executed steps (backward compatible interface)
-  List<ToolResult<ToolOutput>> get results =>
-      _typedResults.map((tr) => tr.underlyingResult).toList();
+  /// Results from all executed steps (now returns TypedToolResult)
+  List<TypedToolResult> get results => List.unmodifiable(_typedResults);
 
   /// Final state after all steps completed
   final Map<String, dynamic> finalState;
@@ -457,11 +437,6 @@ class ToolFlowResult {
   /// Returns true if any step produced issues
   bool get hasIssues => allIssues.isNotEmpty;
 
-  /// Returns issues filtered by severity
-  List<Issue> issuesWithSeverity(IssueSeverity severity) {
-    return allIssues.where((issue) => issue.severity == severity).toList();
-  }
-
   /// Returns the final output from the last successful step
   Map<String, dynamic>? get finalOutput {
     if (results.isEmpty) return null;
@@ -505,27 +480,33 @@ class ToolFlowResult {
     return allResultsByToolName[toolName] ?? [];
   }
 
+  /// Gets all typed results for a specific tool name (handles duplicates)
+  /// Returns results in execution order
+  List<TypedToolResult> getAllTypedResultsByToolName(String toolName) {
+    return _allTypedResultsByToolName[toolName] ?? [];
+  }
+
   /// Gets all results for tools matching a pattern
-  List<ToolResult<ToolOutput>> getResultsWhere(
-    bool Function(ToolResult<ToolOutput>) predicate,
+  List<TypedToolResult> getResultsWhere(
+    bool Function(TypedToolResult) predicate,
   ) {
     return results.where(predicate).toList();
   }
 
   /// Gets results by tool names (most recent for each tool)
-  List<ToolResult<ToolOutput>> getResultsByToolNames(List<String> toolNames) {
+  List<TypedToolResult> getResultsByToolNames(List<String> toolNames) {
     return toolNames
-        .map((name) => resultsByToolName[name])
+        .map((name) => _typedResultsByToolName[name])
         .where((result) => result != null)
-        .cast<ToolResult<ToolOutput>>()
+        .cast<TypedToolResult>()
         .toList();
   }
 
   /// Gets all results by tool names (including duplicates)
-  List<ToolResult<ToolOutput>> getAllResultsByToolNames(
+  List<TypedToolResult> getAllResultsByToolNames(
     List<String> toolNames,
   ) {
-    return toolNames.expand((name) => getAllResultsByToolName(name)).toList();
+    return toolNames.expand((name) => getAllTypedResultsByToolName(name)).toList();
   }
 
   /// Converts this result to a JSON map

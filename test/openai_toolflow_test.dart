@@ -72,14 +72,17 @@ class SimpleAuditFunction<T extends ToolOutput> extends AuditFunction<T> {
 class TestToolOutput extends ToolOutput {
   final Map<String, dynamic> data;
 
-  const TestToolOutput(this.data) : super.subclass();
+  const TestToolOutput(this.data, {required super.round}) : super.subclass();
 
-  factory TestToolOutput.fromMap(Map<String, dynamic> map) {
-    return TestToolOutput(Map<String, dynamic>.from(map));
+  factory TestToolOutput.fromMap(Map<String, dynamic> map, int round) {
+    return TestToolOutput(Map<String, dynamic>.from(map), round: round);
   }
 
   @override
-  Map<String, dynamic> toMap() => Map<String, dynamic>.from(data);
+  Map<String, dynamic> toMap() => {
+    '_round': round,
+    ...Map<String, dynamic>.from(data),
+  };
 
   static OutputSchema getOutputSchema() {
     return OutputSchema(
@@ -105,35 +108,35 @@ void main() {
   setUpAll(() {
     ToolOutputRegistry.register(
       'test_tool',
-      (data) => TestToolOutput.fromMap(data),
+      (data, round) => TestToolOutput.fromMap(data, round),
     );
     ToolOutputRegistry.register(
       'original_tool',
-      (data) => TestToolOutput.fromMap(data),
+      (data, round) => TestToolOutput.fromMap(data, round),
     );
     ToolOutputRegistry.register(
       'extract_palette',
-      (data) => TestToolOutput.fromMap(data),
+      (data, round) => TestToolOutput.fromMap(data, round),
     );
     ToolOutputRegistry.register(
       'refine_colors',
-      (data) => TestToolOutput.fromMap(data),
+      (data, round) => TestToolOutput.fromMap(data, round),
     );
     ToolOutputRegistry.register(
       'generate_theme',
-      (data) => TestToolOutput.fromMap(data),
+      (data, round) => TestToolOutput.fromMap(data, round),
     );
     ToolOutputRegistry.register(
       'step1_tool',
-      (data) => TestToolOutput.fromMap(data),
+      (data, round) => TestToolOutput.fromMap(data, round),
     );
     ToolOutputRegistry.register(
       'step2_tool',
-      (data) => TestToolOutput.fromMap(data),
+      (data, round) => TestToolOutput.fromMap(data, round),
     );
     ToolOutputRegistry.register(
       'step3_tool',
-      (data) => TestToolOutput.fromMap(data),
+      (data, round) => TestToolOutput.fromMap(data, round),
     );
   });
 
@@ -177,7 +180,7 @@ void main() {
   group('ToolResult', () {
     test('should create a tool result with required fields', () {
       final input = TestToolInput(data: {'param': 'value'});
-      final output = TestToolOutput({'result': 'success'});
+      final output = TestToolOutput({'result': 'success'}, round: 0);
 
       final result = ToolResult(
         toolName: 'test_tool',
@@ -202,7 +205,7 @@ void main() {
       );
 
       final input = TestToolInput(data: {'param': 'value'});
-      final output = TestToolOutput({'result': 'success'});
+      final output = TestToolOutput({'result': 'success'}, round: 0);
 
       final result = ToolResult(
         toolName: 'test_tool',
@@ -291,7 +294,7 @@ void main() {
       final result = ToolResult(
         toolName: 'test',
         input: TestToolInput(),
-        output: TestToolOutput({}),
+        output: TestToolOutput({}, round: 0),
       );
 
       final issues = audit.run(result);
@@ -363,7 +366,14 @@ void main() {
         ],
       );
 
-      final mockService = MockOpenAiToolService();
+      final mockService = MockOpenAiToolService(
+        responses: {
+          'extract_palette': {
+            'colors': ['#FF5733', '#33FF57', '#3357FF'],
+            'confidence': 0.85,
+          },
+        },
+      );
 
       final flow = ToolFlow(
         config: config,
@@ -697,13 +707,13 @@ void main() {
       final originalResult = ToolResult(
         toolName: 'original_tool',
         input: TestToolInput(data: {'original': 'input'}),
-        output: TestToolOutput({'original': 'output'}),
+        output: TestToolOutput({'original': 'output'}, round: 0),
         issues: [],
       );
 
       final copiedResult = originalResult.copyWith(
         toolName: 'modified_tool',
-        output: TestToolOutput({'modified': 'output'}),
+        output: TestToolOutput({'modified': 'output'}, round: 0),
       );
 
       expect(copiedResult.toolName, equals('modified_tool'));
@@ -734,12 +744,12 @@ void main() {
       final originalResult = ToolResult(
         toolName: 'tool',
         input: TestToolInput(data: {'key': 'value'}),
-        output: TestToolOutput({'result': 'data'}),
+        output: TestToolOutput({'result': 'data'}, round: 0),
         issues: [issue],
       );
 
       final copiedResult = originalResult.copyWith(
-        output: TestToolOutput({'new': 'result'}),
+        output: TestToolOutput({'new': 'result'}, round: 0),
       );
 
       expect(copiedResult.toolName, equals('tool')); // Preserved
@@ -815,4 +825,73 @@ void main() {
       expect(result.results[2].toolName, equals('step3_tool'));
     });
   });
+
+  group('Round 11 Integration', () {
+    test('should work end-to-end with new APIs', () {
+      // Register test output
+      ToolOutputRegistry.register(
+        'integration_tool_e2e',
+        (data, round) => TestToolOutput.fromMap(data, round),
+      );
+
+      final mockService = MockOpenAiToolService(
+        responses: {
+          'integration_tool_e2e': {'message': 'integration test success'},
+        },
+      );
+
+      final flow = ToolFlow(
+        config: OpenAIConfig(apiKey: 'test'),
+        steps: [
+          ToolCallStep(
+            toolName: 'integration_tool_e2e',
+            model: 'gpt-4',
+            inputBuilder: (previousResults) => {'input': 'integration'},
+            stepConfig: StepConfig(
+              outputSchema: OutputSchema(properties: [], required: []),
+            ),
+          ),
+        ],
+        openAiService: mockService,
+      );
+
+      return flow.run().then((result) {
+        // Test new results type
+        expect(result.results, isA<List<TypedToolResult>>());
+        final typedResult = result.results.first;
+
+        // Test round information is preserved
+        expect(typedResult.output, isA<TestToolOutput>());
+        final testOutput = typedResult.output as TestToolOutput;
+        expect(testOutput.round, equals(0)); // First attempt
+        expect(testOutput.data['message'], equals('integration test success'));
+
+        // Test tool name retrieval still works
+        final resultByName = result.getTypedResultByToolName(
+          'integration_tool_e2e',
+        );
+        expect(resultByName, isNotNull);
+        expect(resultByName!.toolName, equals('integration_tool_e2e'));
+      });
+    });
+  });
+}
+
+/// Mock service for testing
+class MockOpenAiToolService implements OpenAiToolService {
+  final Map<String, Map<String, dynamic>> responses;
+
+  MockOpenAiToolService({this.responses = const {}});
+
+  @override
+  Future<Map<String, dynamic>> executeToolCall(
+    ToolCallStep step,
+    ToolInput input,
+  ) async {
+    final response = responses[step.toolName];
+    if (response == null) {
+      throw Exception('No mock response for ${step.toolName}');
+    }
+    return response;
+  }
 }

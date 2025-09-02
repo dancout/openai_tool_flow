@@ -17,6 +17,8 @@ void main() async {
   print('===============================================\n');
 
   // Register typed outputs for type safety
+  // TODO: I don't love that we MUST run this function to register our themed outputs.
+  /// Is there a more straightforward way that we can populate the registry, but potentially within the ToolFlow setup?
   registerColorThemeTypedOutputs();
 
   // Create configuration (in practice, this would load from environment or .env)
@@ -115,21 +117,31 @@ void main() async {
   }
 }
 
+/// Helper function to filter issues by severity
+List<Issue> issuesWithSeverity(List<Issue> allIssues, IssueSeverity severity) {
+  return allIssues.where((issue) => issue.severity == severity).toList();
+}
+
+// TODO: Could we have some object that holds the name of this step ('extract_palette'), it holds the "fromMap", it holds the output schema, and inadvertantly the type.
+/// Then, we wouldn't have to check against a string "extract_palette", which is prone to errors, we could instead check against "PaletteExtractionOutput.stepName".
+/// We could also include all these objects in the ToolFlow config and under the hood it could run to register all these typed outputs there!
+/// That way, a user won't accidentally forget to register a typed output.
+
 /// Register typed outputs for type-safe operations
 void registerColorThemeTypedOutputs() {
   ToolOutputRegistry.register(
     'extract_palette',
-    (data) => PaletteExtractionOutput.fromMap(data),
+    (data, round) => PaletteExtractionOutput.fromMap(data, round),
   );
 
   ToolOutputRegistry.register(
     'refine_colors',
-    (data) => ColorRefinementOutput.fromMap(data),
+    (data, round) => ColorRefinementOutput.fromMap(data, round),
   );
 
   ToolOutputRegistry.register(
     'generate_theme',
-    (data) => ThemeGenerationOutput.fromMap(data),
+    (data, round) => ThemeGenerationOutput.fromMap(data, round),
   );
 }
 
@@ -140,13 +152,17 @@ void _displayExecutionSummary(ToolFlowResult result) {
   print('Tools used: ${result.resultsByToolName.keys.join(', ')}');
   print('Total issues found: ${result.allIssues.length}');
   print(
-    'Critical issues: ${result.issuesWithSeverity(IssueSeverity.critical).length}',
+    'Critical issues: ${issuesWithSeverity(result.allIssues, IssueSeverity.critical).length}',
   );
-  print('High issues: ${result.issuesWithSeverity(IssueSeverity.high).length}');
   print(
-    'Medium issues: ${result.issuesWithSeverity(IssueSeverity.medium).length}',
+    'High issues: ${issuesWithSeverity(result.allIssues, IssueSeverity.high).length}',
   );
-  print('Low issues: ${result.issuesWithSeverity(IssueSeverity.low).length}\n');
+  print(
+    'Medium issues: ${issuesWithSeverity(result.allIssues, IssueSeverity.medium).length}',
+  );
+  print(
+    'Low issues: ${issuesWithSeverity(result.allIssues, IssueSeverity.low).length}\n',
+  );
 }
 
 /// Demonstrate tool name-based result retrieval
@@ -269,7 +285,10 @@ void _displayIssuesAnalysis(ToolFlowResult result) {
   });
 
   // Show critical issues that need attention
-  final criticalIssues = result.issuesWithSeverity(IssueSeverity.critical);
+  final criticalIssues = issuesWithSeverity(
+    result.allIssues,
+    IssueSeverity.critical,
+  );
   if (criticalIssues.isNotEmpty) {
     print('\n🚨 Critical Issues Requiring Attention:');
     for (final issue in criticalIssues) {
@@ -313,7 +332,10 @@ void _exportEnhancedResults(ToolFlowResult result) {
   // Tool name mapping for easy reference
   print('🗂️ Tool Name Mapping:');
   result.resultsByToolName.forEach((toolName, toolResult) {
-    final stepIndex = result.results.indexOf(toolResult);
+    final typedResult = result.getTypedResultByToolName(toolName);
+    final stepIndex = typedResult != null
+        ? result.results.indexOf(typedResult)
+        : -1;
     print('  $toolName -> Step ${stepIndex + 1}');
   });
   print('');
