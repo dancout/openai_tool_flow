@@ -16,9 +16,7 @@ void main() async {
   print('🎨 Comprehensive Color Theme Generator Example');
   print('===============================================\n');
 
-  // Register typed outputs for type safety - this is now automated
-  // TODO: Registration is now handled automatically by ToolCallStep.fromStepDefinition()
-  // registerColorThemeTypedOutputs();
+  // Registration is now handled automatically by ToolCallStep.fromStepDefinition()
 
   // Create configuration (in practice, this would load from environment or .env)
   final config = OpenAIConfig(
