@@ -1,3 +1,5 @@
+import 'package:collection/collection.dart';
+
 /// Enumeration of valid property types for schema definitions
 enum PropertyType { string, number, boolean, array, object }
 
@@ -55,6 +57,36 @@ class PropertyEntry {
     this.properties,
     this.requiredProperties,
   });
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    if (other is! PropertyEntry) return false;
+    final listEq = const ListEquality();
+    return name == other.name &&
+        type == other.type &&
+        description == other.description &&
+        items == other.items &&
+        minimum == other.minimum &&
+        maximum == other.maximum &&
+        listEq.equals(properties, other.properties) &&
+        listEq.equals(requiredProperties, other.requiredProperties);
+  }
+
+  @override
+  int get hashCode {
+    final listEq = const ListEquality();
+    return Object.hash(
+      name,
+      type,
+      description,
+      items,
+      minimum,
+      maximum,
+      listEq.hash(properties),
+      listEq.hash(requiredProperties),
+    );
+  }
 
   /// Factory method for string properties
   factory PropertyEntry.string({required String name, String? description}) {
@@ -165,5 +197,21 @@ class OutputSchema {
       'properties': {for (final prop in properties) prop.name: prop.toMap()},
       'required': required,
     };
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    if (other is! OutputSchema) return false;
+    final listEq = const ListEquality();
+    return type == other.type &&
+        listEq.equals(properties, other.properties) &&
+        listEq.equals(required, other.required);
+  }
+
+  @override
+  int get hashCode {
+    final listEq = const ListEquality();
+    return Object.hash(type, listEq.hash(properties), listEq.hash(required));
   }
 }

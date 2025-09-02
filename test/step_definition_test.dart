@@ -7,7 +7,7 @@ import 'package:test/test.dart';
 /// Test output class
 class TestStepOutput extends ToolOutput {
   static const String stepName = 'test_step';
-  
+
   final String message;
 
   const TestStepOutput(this.message, {required super.round}) : super.subclass();
@@ -22,10 +22,7 @@ class TestStepOutput extends ToolOutput {
   static OutputSchema getOutputSchema() {
     return OutputSchema(
       properties: [
-        PropertyEntry.string(
-          name: 'message',
-          description: 'A test message',
-        ),
+        PropertyEntry.string(name: 'message', description: 'A test message'),
       ],
       required: ['message'],
     );
@@ -36,10 +33,10 @@ class TestStepOutput extends ToolOutput {
 class TestStepDefinition extends StepDefinition<TestStepOutput> {
   @override
   String get stepName => TestStepOutput.stepName;
-  
+
   @override
   OutputSchema get outputSchema => TestStepOutput.getOutputSchema();
-  
+
   @override
   TestStepOutput fromMap(Map<String, dynamic> data, int round) =>
       TestStepOutput.fromMap(data, round);
@@ -86,19 +83,13 @@ void main() {
 
     test('should automatically register step definition', () {
       // Before registration, should not be registered
-      expect(
-        ToolOutputRegistry.hasTypedOutput(stepDef.stepName),
-        isFalse,
-      );
+      expect(ToolOutputRegistry.hasTypedOutput(stepDef.stepName), isFalse);
 
       // Register using step definition
       ToolOutputRegistry.registerStepDefinition(stepDef);
 
       // After registration, should be registered
-      expect(
-        ToolOutputRegistry.hasTypedOutput(stepDef.stepName),
-        isTrue,
-      );
+      expect(ToolOutputRegistry.hasTypedOutput(stepDef.stepName), isTrue);
 
       // Should be able to create output
       final output = ToolOutputRegistry.create(
@@ -130,6 +121,7 @@ void main() {
     late TestStepDefinition stepDef;
 
     setUp(() {
+      ToolOutputRegistry.clearRegistry();
       stepDef = TestStepDefinition();
     });
 
@@ -147,10 +139,7 @@ void main() {
 
     test('should automatically register step definition during creation', () {
       // Ensure not registered initially
-      expect(
-        ToolOutputRegistry.hasTypedOutput(stepDef.stepName),
-        isFalse,
-      );
+      expect(ToolOutputRegistry.hasTypedOutput(stepDef.stepName), isFalse);
 
       // Create step using step definition
       ToolCallStep.fromStepDefinition(
@@ -160,10 +149,7 @@ void main() {
       );
 
       // Should now be registered
-      expect(
-        ToolOutputRegistry.hasTypedOutput(stepDef.stepName),
-        isTrue,
-      );
+      expect(ToolOutputRegistry.hasTypedOutput(stepDef.stepName), isTrue);
     });
 
     test('should pass through StepConfig parameters correctly', () {
@@ -195,7 +181,9 @@ void main() {
           isA<Exception>().having(
             (e) => e.toString(),
             'message',
-            contains('No typed output creator registered for tool: missing_step'),
+            contains(
+              'No typed output creator registered for tool: missing_step',
+            ),
           ),
         ),
       );
@@ -220,10 +208,7 @@ void main() {
       ToolOutputRegistry.registerStepDefinition(stepDef);
 
       // This should work
-      expect(
-        ToolOutputRegistry.hasTypedOutput(stepDef.stepName),
-        isTrue,
-      );
+      expect(ToolOutputRegistry.hasTypedOutput(stepDef.stepName), isTrue);
 
       // This should fail (typo in step name)
       expect(

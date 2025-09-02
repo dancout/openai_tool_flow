@@ -102,10 +102,10 @@ class ToolCallStep {
   });
 
   /// Creates a ToolCallStep from a StepDefinition
-  /// 
+  ///
   /// This automatically registers the step definition in the ToolOutputRegistry
   /// and creates a StepConfig with the appropriate output schema.
-  factory ToolCallStep.fromStepDefinition<T extends ToolOutput>(
+  static ToolCallStep fromStepDefinition<T extends ToolOutput>(
     StepDefinition<T> stepDefinition, {
     required String model,
     required Map<String, dynamic> Function(List<ToolResult>) inputBuilder,

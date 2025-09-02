@@ -140,19 +140,25 @@ class ToolOutput {
 abstract class StepDefinition<T extends ToolOutput> {
   /// The unique name identifier for this tool step
   String get stepName;
-  
+
   /// The output schema definition for this step
   OutputSchema get outputSchema;
-  
+
   /// Factory method to create typed output from map data
   T fromMap(Map<String, dynamic> data, int round);
-  
+
   /// The output type for this step
   Type get outputType => T;
 }
 
 /// Registry for creating typed outputs from tool results
 class ToolOutputRegistry {
+  /// Clears all registered creators and output types (for test isolation)
+  static void clearRegistry() {
+    _creators.clear();
+    _outputTypes.clear();
+  }
+
   static final Map<String, ToolOutput Function(Map<String, dynamic>, int)>
   _creators = {};
 

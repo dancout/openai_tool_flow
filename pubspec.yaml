@@ -8,6 +8,7 @@ environment:
 
 # Add regular dependencies here.
 dependencies:
+  collection: ^1.19.1
   http: ^1.1.0
   meta: ^1.10.0
 
