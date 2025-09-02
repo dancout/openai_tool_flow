@@ -1,3 +1,5 @@
+import 'package:meta/meta.dart';
+
 import 'audit_function.dart';
 import 'issue.dart';
 import 'step_config.dart';
@@ -61,6 +63,7 @@ class ToolCallStep {
   final StepConfig stepConfig;
 
   /// Creates a ToolCallStep
+  @visibleForTesting
   const ToolCallStep({
     required this.toolName,
     required this.model,
