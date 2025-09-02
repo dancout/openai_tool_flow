@@ -35,8 +35,17 @@ I need your help with the following content.
         - Users do not need to manually register typed outputs with string keys
         - Step name checks and references use the static property/constant instead of raw strings
     - Ensure the new pattern is used in the color theme example (`usage.dart`) and related workflow setup
+    - Remove any redundant or duplicate data/configuration (e.g., step names, output schemas, factory methods) that are now encapsulated by the new step object/class, so all references use the single source of truth
     - Update documentation and examples to reflect the new approach
     - Add tests to verify that missing registration or incorrect step name usage is caught at compile-time or runtime
+
+### Misc
+- This set of requests is a bit open ended in how you can accomplish it, so feel free to consolidate other existing classes or restructure them so that this new flow works.
+    - I am absolutely not suggesting you SHOULD do this, but I am curious if the TODO above the `ToolOutput` class is relevant here.
+        - Like should you make `ToolOutput` abstract and enfore the `fromMap` and other functions to be implemented by the classes that extend/implement it?
+        - However, does this trip over the fact that we have a `TypedToolResult` at all?
+        - I'm really not sure! That's why I want you to think on it, and if it makes sense to shift things around here, then do so. Otherwise, leave it be.
+- Please just think long and hard about what exactly you are doing, write up an ADR, and probably have a "thought" or "reasoning" step in your execution pipeline to really decide what makes sense.
 
 ### FINAL REQUIREMENTS
 - [ ] Please update all relevant existing tests or create new ones for new functionality before officially completing your work.
