@@ -116,9 +116,11 @@ Map<String, ToolCallStep> createColorThemeWorkflow() {
         };
         return input;
       },
-      audits: [diversityAudit],
-      stepMaxRetries: 3,
-      outputSanitizer: ExampleSanitizers.paletteOutputSanitizer,
+      stepConfig: StepConfig(
+        audits: [diversityAudit],
+        maxRetries: 3,
+        outputSanitizer: ExampleSanitizers.paletteOutputSanitizer,
+      ),
     ),
 
     refinementStep.stepName: ToolCallStep.fromStepDefinition(
@@ -152,24 +154,26 @@ Map<String, ToolCallStep> createColorThemeWorkflow() {
 
         return input;
       },
-      audits: [colorFormatAudit],
-      stepMaxRetries: 5,
-      // TODO: Related to how we can easily pull previous outputs/issues forward automatically for the user so they don't have to parse it.
-      // This could be a tuple or new object with a bool that represents if we should include that step's issues in the final tool call.
-      // That way, the user doesn't have to worry about how to parse it.
-      // Or they could even have the option to override the issue parser for that step if they'd like.
-      includeOutputsFrom: [paletteStep.stepName],
-      // TODO: We could also include a "severity level" or similar name that specifies to include issues above a certain severity.
-      /// That way, if there are a ton of low priority issues but 1 or 2 criticals, we may only be interested in the criticals and don't want token bloat.
-      inputSanitizer: ExampleSanitizers.paletteToRefinementInputSanitizer,
-      customPassCriteria: (issues) {
-        return !issues.any(
-          (issue) =>
-              issue.severity == IssueSeverity.medium ||
-              issue.severity == IssueSeverity.high ||
-              issue.severity == IssueSeverity.critical,
-        );
-      },
+      stepConfig: StepConfig(
+        audits: [colorFormatAudit],
+        maxRetries: 5,
+        // TODO: Related to how we can easily pull previous outputs/issues forward automatically for the user so they don't have to parse it.
+        // This could be a tuple or new object with a bool that represents if we should include that step's issues in the final tool call.
+        // That way, the user doesn't have to worry about how to parse it.
+        // Or they could even have the option to override the issue parser for that step if they'd like.
+        includeOutputsFrom: [paletteStep.stepName],
+        // TODO: We could also include a "severity level" or similar name that specifies to include issues above a certain severity.
+        /// That way, if there are a ton of low priority issues but 1 or 2 criticals, we may only be interested in the criticals and don't want token bloat.
+        inputSanitizer: ExampleSanitizers.paletteToRefinementInputSanitizer,
+        customPassCriteria: (issues) {
+          return !issues.any(
+            (issue) =>
+                issue.severity == IssueSeverity.medium ||
+                issue.severity == IssueSeverity.high ||
+                issue.severity == IssueSeverity.critical,
+          );
+        },
+      ),
     ),
 
     themeStep.stepName: ToolCallStep.fromStepDefinition(
@@ -181,7 +185,9 @@ Map<String, ToolCallStep> createColorThemeWorkflow() {
             previousResults
                 .where((r) => r.toolName == refinementStep.stepName)
                 .isNotEmpty
-            ? previousResults.where((r) => r.toolName == refinementStep.stepName).first
+            ? previousResults
+                  .where((r) => r.toolName == refinementStep.stepName)
+                  .first
             : null;
 
         List<dynamic> baseColors = [];
@@ -199,10 +205,12 @@ Map<String, ToolCallStep> createColorThemeWorkflow() {
           if (baseColors.isNotEmpty) 'primary_color': baseColors.first,
         };
       },
-      audits: [],
-      stopOnFailure: false,
-      includeOutputsFrom: [refinementStep.stepName],
-      inputSanitizer: ExampleSanitizers.refinementToThemeInputSanitizer,
+      stepConfig: StepConfig(
+        audits: [],
+        stopOnFailure: false,
+        includeOutputsFrom: [refinementStep.stepName],
+        inputSanitizer: ExampleSanitizers.refinementToThemeInputSanitizer,
+      ),
     ),
   };
 }

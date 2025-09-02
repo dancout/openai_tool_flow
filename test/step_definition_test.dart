@@ -134,7 +134,7 @@ void main() {
 
       expect(step.toolName, equals(stepDef.stepName));
       expect(step.model, equals('gpt-4'));
-      expect(step.stepConfig.outputSchema, equals(stepDef.outputSchema));
+      expect(step.outputSchema, equals(stepDef.outputSchema));
     });
 
     test('should automatically register step definition during creation', () {
@@ -157,9 +157,11 @@ void main() {
         stepDef,
         model: 'gpt-4',
         inputBuilder: (results) => {'input': 'test'},
-        stepMaxRetries: 5,
-        stopOnFailure: false,
-        includeOutputsFrom: ['previous_step'],
+        stepConfig: StepConfig(
+          maxRetries: 5,
+          stopOnFailure: false,
+          includeOutputsFrom: ['previous_step'],
+        ),
       );
 
       expect(step.stepConfig.getEffectiveMaxRetries(3), equals(5));

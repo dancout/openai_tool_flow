@@ -1,10 +1,5 @@
 import 'package:meta/meta.dart';
-
-import 'audit_function.dart';
-import 'issue.dart';
-import 'step_config.dart';
-import 'tool_result.dart';
-import 'typed_interfaces.dart';
+import 'package:openai_toolflow/openai_toolflow.dart';
 
 /// Defines a single tool call step in a ToolFlow.
 ///
@@ -55,12 +50,17 @@ class ToolCallStep {
   /// Helps provide context for retry attempts
   final List<Issue> issues;
 
+  // TODO: Yeah, remove this and getEffectiveMaxRetries
   /// Maximum number of retry attempts for this step
   /// Defaults to 3 attempts
   final int maxRetries;
 
   /// Configuration for this step including audits, forwarding, and sanitization
   final StepConfig stepConfig;
+
+  /// Schema definition for the expected tool output.
+  /// This defines the structure that OpenAI tool calls should conform to.
+  final OutputSchema outputSchema;
 
   /// Creates a ToolCallStep
   @visibleForTesting
@@ -101,7 +101,7 @@ class ToolCallStep {
     this.issues = const [],
     this.maxRetries = 3,
     required this.stepConfig,
-    // TODO: Consider moving outputSchema to the ToolCallStep instead of the stepConfig. I'm not sure which is better.
+    required this.outputSchema,
   });
 
   /// Creates a ToolCallStep from a StepDefinition
@@ -115,14 +115,7 @@ class ToolCallStep {
     List<Object> buildInputsFrom = const [],
     List<Issue> issues = const [],
     int maxRetries = 3,
-    List<AuditFunction> audits = const [],
-    int? stepMaxRetries,
-    bool Function(List<Issue>)? customPassCriteria,
-    String Function(List<Issue>)? customFailureReason,
-    bool stopOnFailure = true,
-    List<dynamic> includeOutputsFrom = const [],
-    Map<String, dynamic> Function(Map<String, dynamic>)? inputSanitizer,
-    Map<String, dynamic> Function(Map<String, dynamic>)? outputSanitizer,
+    StepConfig? stepConfig,
   }) {
     // Auto-register the step definition
     ToolOutputRegistry.registerStepDefinition(stepDefinition);
@@ -133,18 +126,10 @@ class ToolCallStep {
       inputBuilder: inputBuilder,
       buildInputsFrom: buildInputsFrom,
       issues: issues,
+      // TODO: Why does maxRetries exist on both ToolCallStep AND StepConfig? It should live in only one place.
       maxRetries: maxRetries,
-      stepConfig: StepConfig(
-        audits: audits,
-        maxRetries: stepMaxRetries,
-        customPassCriteria: customPassCriteria,
-        customFailureReason: customFailureReason,
-        stopOnFailure: stopOnFailure,
-        includeOutputsFrom: includeOutputsFrom,
-        inputSanitizer: inputSanitizer,
-        outputSanitizer: outputSanitizer,
-        outputSchema: stepDefinition.outputSchema,
-      ),
+      outputSchema: stepDefinition.outputSchema,
+      stepConfig: stepConfig ?? StepConfig(),
     );
   }
 
@@ -157,6 +142,7 @@ class ToolCallStep {
     List<Issue>? issues,
     int? maxRetries,
     StepConfig? stepConfig,
+    OutputSchema? outputSchema,
   }) {
     return ToolCallStep(
       toolName: toolName ?? this.toolName,
@@ -166,6 +152,7 @@ class ToolCallStep {
       issues: issues ?? this.issues,
       maxRetries: maxRetries ?? this.maxRetries,
       stepConfig: stepConfig ?? this.stepConfig,
+      outputSchema: outputSchema ?? this.outputSchema,
     );
   }
 

@@ -255,18 +255,17 @@ void main() {
         toolName: 'extract_colors',
         model: 'gpt-4',
         inputBuilder: (previousResults) => {'max_colors': 5},
-        stepConfig: StepConfig(
-          outputSchema: OutputSchema(
-            properties: [
-              PropertyEntry.array(
-                name: 'colors',
-                items: PropertyType.string,
-                description: 'Extracted color hex codes',
-              ),
-            ],
-            required: ['colors'],
-          ),
+        outputSchema: OutputSchema(
+          properties: [
+            PropertyEntry.array(
+              name: 'colors',
+              items: PropertyType.string,
+              description: 'Extracted color hex codes',
+            ),
+          ],
+          required: ['colors'],
         ),
+        stepConfig: StepConfig(),
       );
 
       expect(step.toolName, equals('extract_colors'));
@@ -324,18 +323,17 @@ void main() {
             toolName: 'extract_palette',
             model: 'gpt-4',
             inputBuilder: (previousResults) => {'max_colors': 3},
-            stepConfig: StepConfig(
-              outputSchema: OutputSchema(
-                properties: [
-                  PropertyEntry.array(
-                    name: 'colors',
-                    items: PropertyType.string,
-                    description: 'Extracted color hex codes',
-                  ),
-                ],
-                required: ['colors'],
-              ),
+            outputSchema: OutputSchema(
+              properties: [
+                PropertyEntry.array(
+                  name: 'colors',
+                  items: PropertyType.string,
+                  description: 'Extracted color hex codes',
+                ),
+              ],
+              required: ['colors'],
             ),
+            stepConfig: StepConfig(),
           ),
         ],
         openAiService: mockService,
@@ -382,19 +380,17 @@ void main() {
             toolName: 'extract_palette',
             model: 'gpt-4',
             inputBuilder: (previousResults) => {},
-            stepConfig: StepConfig(
-              audits: [audit],
-              outputSchema: OutputSchema(
-                properties: [
-                  PropertyEntry.array(
-                    name: 'colors',
-                    items: PropertyType.string,
-                    description: 'Extracted color hex codes',
-                  ),
-                ],
-                required: ['colors'],
-              ),
+            outputSchema: OutputSchema(
+              properties: [
+                PropertyEntry.array(
+                  name: 'colors',
+                  items: PropertyType.string,
+                  description: 'Extracted color hex codes',
+                ),
+              ],
+              required: ['colors'],
             ),
+            stepConfig: StepConfig(audits: [audit]),
           ),
         ],
         openAiService: mockService,
@@ -428,35 +424,33 @@ void main() {
             toolName: 'extract_palette',
             model: 'gpt-4',
             inputBuilder: (previousResults) => {},
-            stepConfig: StepConfig(
-              outputSchema: OutputSchema(
-                properties: [
-                  PropertyEntry.array(
-                    name: 'colors',
-                    items: PropertyType.string,
-                    description: 'Extracted color hex codes',
-                  ),
-                ],
-                required: ['colors'],
-              ),
+            outputSchema: OutputSchema(
+              properties: [
+                PropertyEntry.array(
+                  name: 'colors',
+                  items: PropertyType.string,
+                  description: 'Extracted color hex codes',
+                ),
+              ],
+              required: ['colors'],
             ),
+            stepConfig: StepConfig(),
           ),
           ToolCallStep(
             toolName: 'refine_colors',
             model: 'gpt-4',
             inputBuilder: (previousResults) => {},
-            stepConfig: StepConfig(
-              outputSchema: OutputSchema(
-                properties: [
-                  PropertyEntry.array(
-                    name: 'refined_colors',
-                    items: PropertyType.string,
-                    description: 'Refined color hex codes',
-                  ),
-                ],
-                required: ['refined_colors'],
-              ),
+            outputSchema: OutputSchema(
+              properties: [
+                PropertyEntry.array(
+                  name: 'refined_colors',
+                  items: PropertyType.string,
+                  description: 'Refined color hex codes',
+                ),
+              ],
+              required: ['refined_colors'],
             ),
+            stepConfig: StepConfig(),
           ),
         ],
         openAiService: mockService,
@@ -523,19 +517,17 @@ void main() {
             toolName: 'extract_palette',
             model: 'gpt-4',
             inputBuilder: (previousResults) => {},
-            stepConfig: StepConfig(
-              audits: [audit],
-              outputSchema: OutputSchema(
-                properties: [
-                  PropertyEntry.array(
-                    name: 'colors',
-                    items: PropertyType.string,
-                    description: 'Extracted color hex codes',
-                  ),
-                ],
-                required: ['colors'],
-              ),
+            outputSchema: OutputSchema(
+              properties: [
+                PropertyEntry.array(
+                  name: 'colors',
+                  items: PropertyType.string,
+                  description: 'Extracted color hex codes',
+                ),
+              ],
+              required: ['colors'],
             ),
+            stepConfig: StepConfig(audits: [audit]),
           ),
           ToolCallStep(
             toolName: 'refine_colors',
@@ -550,13 +542,11 @@ void main() {
               return {'extract_palette_colors': paletteColors};
             },
             buildInputsFrom: [0],
-            stepConfig: StepConfig(
-              includeOutputsFrom: [0],
-              outputSchema: OutputSchema(
-                properties: [PropertyEntry.string(name: 'result')],
-                required: ['result'],
-              ),
+            outputSchema: OutputSchema(
+              properties: [PropertyEntry.string(name: 'result')],
+              required: ['result'],
             ),
+            stepConfig: StepConfig(includeOutputsFrom: [0]),
           ),
         ],
         openAiService: mockService,
@@ -597,35 +587,33 @@ void main() {
             toolName: 'refine_colors',
             model: 'gpt-4',
             inputBuilder: (previousResults) => {'iteration': 1},
-            stepConfig: StepConfig(
-              outputSchema: OutputSchema(
-                properties: [
-                  PropertyEntry.array(
-                    name: 'refined_colors',
-                    items: PropertyType.string,
-                    description: 'Refined color hex codes',
-                  ),
-                ],
-                required: ['refined_colors'],
-              ),
+            outputSchema: OutputSchema(
+              properties: [
+                PropertyEntry.array(
+                  name: 'refined_colors',
+                  items: PropertyType.string,
+                  description: 'Refined color hex codes',
+                ),
+              ],
+              required: ['refined_colors'],
             ),
+            stepConfig: StepConfig(),
           ),
           ToolCallStep(
             toolName: 'refine_colors', // Same tool name
             model: 'gpt-4',
             inputBuilder: (previousResults) => {'iteration': 2},
-            stepConfig: StepConfig(
-              outputSchema: OutputSchema(
-                properties: [
-                  PropertyEntry.array(
-                    name: 'refined_colors',
-                    items: PropertyType.string,
-                    description: 'Refined color hex codes',
-                  ),
-                ],
-                required: ['refined_colors'],
-              ),
+            outputSchema: OutputSchema(
+              properties: [
+                PropertyEntry.array(
+                  name: 'refined_colors',
+                  items: PropertyType.string,
+                  description: 'Refined color hex codes',
+                ),
+              ],
+              required: ['refined_colors'],
             ),
+            stepConfig: StepConfig(),
           ),
         ],
         openAiService: mockService,
@@ -782,34 +770,32 @@ void main() {
             toolName: 'step1_tool',
             model: 'gpt-4',
             inputBuilder: (previousResults) => {},
-            stepConfig: StepConfig(
-              outputSchema: OutputSchema(
-                properties: [PropertyEntry.string(name: 'result')],
-                required: ['result'],
-              ),
+            outputSchema: OutputSchema(
+              properties: [PropertyEntry.string(name: 'result')],
+              required: ['result'],
             ),
+            stepConfig: StepConfig(),
           ),
           ToolCallStep(
             toolName: 'step2_tool',
             model: 'gpt-4',
             inputBuilder: (previousResults) => {},
-            stepConfig: StepConfig(
-              outputSchema: OutputSchema(
-                properties: [PropertyEntry.string(name: 'result')],
-                required: ['result'],
-              ),
+            outputSchema: OutputSchema(
+              properties: [PropertyEntry.string(name: 'result')],
+              required: ['result'],
             ),
+            stepConfig: StepConfig(),
           ),
           ToolCallStep(
             toolName: 'step3_tool',
             model: 'gpt-4',
             inputBuilder: (previousResults) => {},
+            outputSchema: OutputSchema(
+              properties: [PropertyEntry.string(name: 'result')],
+              required: ['result'],
+            ),
             stepConfig: StepConfig(
               includeOutputsFrom: ['step1_tool'], // Only include step1
-              outputSchema: OutputSchema(
-                properties: [PropertyEntry.string(name: 'result')],
-                required: ['result'],
-              ),
             ),
           ),
         ],
@@ -847,9 +833,8 @@ void main() {
             toolName: 'integration_tool_e2e',
             model: 'gpt-4',
             inputBuilder: (previousResults) => {'input': 'integration'},
-            stepConfig: StepConfig(
-              outputSchema: OutputSchema(properties: [], required: []),
-            ),
+            outputSchema: OutputSchema(properties: [], required: []),
+            stepConfig: StepConfig(),
           ),
         ],
         openAiService: mockService,

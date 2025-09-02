@@ -1,6 +1,5 @@
 import 'audit_function.dart';
 import 'issue.dart';
-import 'output_schema.dart';
 
 /// Configuration for a specific step in a tool flow.
 ///
@@ -98,13 +97,6 @@ class StepConfig {
   /// Not sure if we can be extending ToolOutput or a Schema or something.
   outputSanitizer;
 
-  /// Schema definition for the expected tool output.
-  /// This defines the structure that OpenAI tool calls should conform to.
-  ///
-  /// **When to use:** Define the exact output structure you expect from the tool call,
-  /// ensuring type safety and consistent data formats.
-  final OutputSchema outputSchema;
-
   const StepConfig({
     this.audits = const [],
     this.maxRetries,
@@ -114,7 +106,6 @@ class StepConfig {
     this.includeOutputsFrom = const [],
     this.inputSanitizer,
     this.outputSanitizer,
-    required this.outputSchema,
   });
 
   /// Returns true if this step has any audits configured
