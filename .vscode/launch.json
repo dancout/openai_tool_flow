@@ -10,12 +10,6 @@
             "request": "launch",
             "type": "dart",
             "program": "${workspaceFolder}/example/usage.dart"
-        },
-        {
-            "name": "color theme example",
-            "request": "launch",
-            "type": "dart",
-            "program": "${workspaceFolder}/example/color_theme_example.dart"
         }
     ]
 }

@@ -85,35 +85,6 @@ class ExampleSanitizers {
   }
 }
 
-/// Example issue filters for selective forwarding
-class ExampleIssueFilters {
-  /// Only forward critical and high severity issues
-  static bool criticalAndHighOnly(Issue issue) {
-    return issue.severity == IssueSeverity.critical ||
-        issue.severity == IssueSeverity.high;
-  }
-
-  /// Only forward issues that mention specific keywords
-  static bool Function(Issue) keywordFilter(List<String> keywords) {
-    return (Issue issue) {
-      final description = issue.description.toLowerCase();
-      return keywords.any(
-        (keyword) => description.contains(keyword.toLowerCase()),
-      );
-    };
-  }
-
-  /// Only forward recent issues (from the last round)
-  static bool recentIssuesOnly(Issue issue) {
-    return issue.round >= 0; // Adjust based on current round
-  }
-
-  /// Filter by issue ID pattern
-  static bool Function(Issue) idPatternFilter(RegExp pattern) {
-    return (Issue issue) => pattern.hasMatch(issue.id);
-  }
-}
-
 /// Helper function to create a complete workflow configuration
 Map<String, ToolCallStep> createColorThemeWorkflow() {
   // Define audit functions
