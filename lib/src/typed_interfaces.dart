@@ -100,9 +100,6 @@ class ToolOutput {
   /// (they provide their own toMap implementation)
   const ToolOutput.subclass() : _data = null;
 
-  // TODO: Does it make sense to define certain metadata about this output? Like the round number, or previous issues?
-  /// The answer may very well be no, because that info may exist elsewhere or just not be useful.
-
   /// Creates a ToolOutput from a Map
   factory ToolOutput.fromMap(Map<String, dynamic> map) {
     return ToolOutput(Map<String, dynamic>.from(map));

@@ -2,7 +2,7 @@
 ///
 /// This example demonstrates how to create a color theme generation pipeline
 /// that extracts colors from an image, refines them, and generates a final theme.
-/// Features strongly-typed interfaces, per-step audits, retry logic, and 
+/// Features strongly-typed interfaces, per-step audits, retry logic, and
 /// advanced workflow patterns including tool name-based retrieval and output forwarding.
 library;
 
@@ -42,7 +42,7 @@ void main() async {
         'refined_colors': ['#E74C3C', '#2ECC71', '#3498DB', '#9B59B6'],
         'improvements_made': [
           'contrast adjustment',
-          'saturation optimization', 
+          'saturation optimization',
           'accessibility compliance',
         ],
         'accessibility_scores': {

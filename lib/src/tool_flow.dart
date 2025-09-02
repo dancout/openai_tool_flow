@@ -315,6 +315,7 @@ class ToolFlow {
     try {
       // TODO: Should the output of the inputBuilder be more like a structured object that always has a schema, a toMap, any of the internal custom data, etc?
       /// And then we could pass that value into ToolInput under what is currently customData as a more structured object that we can call .toMap on later just before the open ai tool call.
+      /// ---> I think this might be one to skip.
       customData = step.inputBuilder(inputBuilderResults);
     } catch (e) {
       throw Exception(
@@ -362,8 +363,6 @@ class ToolFlow {
       }
 
       if (sourceTypedResult != null) {
-        // TODO: Investigate what is truly meant by backwards compatibility here. Is that necessary? Can it be deleted?
-        // Extract the underlying ToolResult for backward compatibility
         inputResults.add(sourceTypedResult.underlyingResult);
       }
     }
@@ -393,7 +392,6 @@ class ToolFlowResult {
   List<ToolResult<ToolOutput>> get results =>
       _typedResults.map((tr) => tr.underlyingResult).toList();
 
-  // TODO: Is finalState ever used? It's basically the _state collection that was passed around, and is also now not used I don't think.
   /// Final state after all steps completed
   final Map<String, dynamic> finalState;
 
