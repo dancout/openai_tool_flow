@@ -175,8 +175,9 @@ class TypedMockOpenAiService implements OpenAiToolService {
   @override
   Future<Map<String, dynamic>> executeToolCall(
     ToolCallStep step,
-    ToolInput input,
-  ) async {
+    ToolInput input, {
+    List<ToolResult> includedResults = const [],
+  }) async {
     switch (step.toolName) {
       case 'extract_palette':
         return {

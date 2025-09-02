@@ -6,6 +6,7 @@ import 'package:openai_toolflow/src/typed_interfaces.dart';
 import 'openai_config.dart';
 import 'openai_service.dart';
 import 'tool_call_step.dart';
+import 'tool_result.dart';
 
 /// Default implementation of OpenAiToolService that makes actual API calls.
 class DefaultOpenAiToolService implements OpenAiToolService {
@@ -21,13 +22,18 @@ class DefaultOpenAiToolService implements OpenAiToolService {
   @override
   Future<Map<String, dynamic>> executeToolCall(
     ToolCallStep step,
-    ToolInput input,
-  ) async {
+    ToolInput input, {
+    List<ToolResult> includedResults = const [],
+  }) async {
     final client = _httpClient ?? http.Client();
 
     try {
-      // Build the OpenAI request
-      final request = _buildOpenAiRequest(step: step, input: input);
+      // Build the OpenAI request with included results
+      final request = _buildOpenAiRequest(
+        step: step, 
+        input: input,
+        includedResults: includedResults,
+      );
 
       final response = await client.post(
         Uri.parse('${config.baseUrl}/chat/completions'),
@@ -60,15 +66,16 @@ class DefaultOpenAiToolService implements OpenAiToolService {
   OpenAiRequest _buildOpenAiRequest({
     required ToolCallStep step,
     required ToolInput input,
+    List<ToolResult> includedResults = const [],
   }) {
     // Create tool definition
     final toolDefinition = _buildToolDefinition(step: step, input: input);
 
-    // previousResults removed from ToolInput; pass workflow context to inputBuilder and messaging as needed
+    // Include previous results with filtered issues in system message context
     final systemMessageInput = SystemMessageInput(
       toolFlowContext: 'Executing tool call in a structured workflow',
       stepDescription: 'Tool: ${step.toolName}, Model: ${step.model}',
-      previousResults: [], // No previousResults on ToolInput
+      previousResults: includedResults,
       additionalContext: {'step_tool': step.toolName, 'step_model': step.model},
     );
 
@@ -124,7 +131,32 @@ class DefaultOpenAiToolService implements OpenAiToolService {
     buffer.writeln('Context: ${input.toolFlowContext}');
     buffer.writeln('Current Step: ${input.stepDescription}');
 
-    // previousResults logic removed; handle workflow context in inputBuilder and messaging as needed
+    // Include previous results and their associated issues if provided
+    if (input.previousResults.isNotEmpty) {
+      buffer.writeln();
+      buffer.writeln('Previous step results and associated issues:');
+      for (int i = 0; i < input.previousResults.length; i++) {
+        final result = input.previousResults[i];
+        buffer.writeln(
+          '  Step: ${result.toolName} -> Output keys: ${result.output.toMap().keys.join(', ')}',
+        );
+
+        // Include issues associated with this specific result
+        if (result.issues.isNotEmpty) {
+          buffer.writeln('    Associated issues:');
+          for (final issue in result.issues) {
+            buffer.writeln(
+              '      - ${issue.severity.name.toUpperCase()}: ${issue.description}',
+            );
+            if (issue.suggestions.isNotEmpty) {
+              buffer.writeln(
+                '        Suggestions: ${issue.suggestions.join(', ')}',
+              );
+            }
+          }
+        }
+      }
+    }
 
     if (input.additionalContext.isNotEmpty) {
       buffer.writeln();
@@ -232,8 +264,9 @@ class MockOpenAiToolService implements OpenAiToolService {
   @override
   Future<Map<String, dynamic>> executeToolCall(
     ToolCallStep step,
-    ToolInput input,
-  ) async {
+    ToolInput input, {
+    List<ToolResult> includedResults = const [],
+  }) async {
     // Simulate some processing time
     await Future.delayed(const Duration(milliseconds: 100));
     final inputJson = input.toMap();

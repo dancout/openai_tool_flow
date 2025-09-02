@@ -180,8 +180,17 @@ class ToolFlow {
       round: round,
     );
 
-    // Execute using the injected OpenAI service
-    final response = await openAiService.executeToolCall(step, stepInput);
+    // Get results to include in tool call if configured
+    final includedResults = step.stepConfig.hasResultInclusion 
+        ? _getIncludedResults(step: step)
+        : <ToolResult<ToolOutput>>[];
+
+    // Execute using the injected OpenAI service with included results
+    final response = await openAiService.executeToolCall(
+      step, 
+      stepInput,
+      includedResults: includedResults,
+    );
 
     // Apply output sanitization first if configured
     final sanitizedOutput = step.stepConfig.hasOutputSanitizer
@@ -333,7 +342,7 @@ class ToolFlow {
   }
 
   /// Gets the list of results that should be passed to inputBuilder
-  // TODO: This logic seems really similar to how we get the includeOutputsFrom list.
+  // TODO: This logic seems really similar to how we get the includeResultsInToolcall list.
   /// // Consider consolidating the logic to a reusable helper function.
   List<ToolResult<ToolOutput>> _getInputBuilderResults({
     required ToolCallStep step,
@@ -358,6 +367,63 @@ class ToolFlow {
     }
 
     return inputResults;
+  }
+
+  /// Gets the list of results to include in tool call system messages with filtered issues
+  List<ToolResult<ToolOutput>> _getIncludedResults({
+    required ToolCallStep step,
+  }) {
+    final includedResults = <ToolResult<ToolOutput>>[];
+    final stepConfig = step.stepConfig;
+
+    for (final reference in stepConfig.includeResultsInToolcall) {
+      TypedToolResult? sourceTypedResult;
+
+      // Find the source result by index or tool name  
+      if (reference is int) {
+        if (reference >= 0 && reference < _results.length) {
+          sourceTypedResult = _results[reference];
+        }
+      } else if (reference is String) {
+        sourceTypedResult = _resultsByToolName[reference];
+      }
+
+      if (sourceTypedResult != null) {
+        // Filter issues by severity level
+        final filteredIssues = sourceTypedResult.issues
+            .where((issue) => _isIssueSeverityIncluded(
+                  issue.severity, 
+                  stepConfig.issuesSeverityFilter,
+                ))
+            .toList();
+
+        // Only include result if it has issues matching the filter
+        if (filteredIssues.isNotEmpty) {
+          // Create a copy of the result with filtered issues
+          final filteredResult = sourceTypedResult.underlyingResult.copyWith(
+            issues: filteredIssues,
+          );
+          includedResults.add(filteredResult);
+        }
+      }
+    }
+
+    return includedResults;
+  }
+
+  /// Checks if an issue severity should be included based on the filter level
+  bool _isIssueSeverityIncluded(IssueSeverity issueSeverity, IssueSeverity filterLevel) {
+    final severityLevels = [
+      IssueSeverity.low,
+      IssueSeverity.medium, 
+      IssueSeverity.high,
+      IssueSeverity.critical,
+    ];
+    
+    final issueIndex = severityLevels.indexOf(issueSeverity);
+    final filterIndex = severityLevels.indexOf(filterLevel);
+    
+    return issueIndex >= filterIndex;
   }
 
   /// Gets all issues from all completed steps

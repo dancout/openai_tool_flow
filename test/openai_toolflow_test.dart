@@ -138,6 +138,14 @@ void main() {
       'step3_tool',
       (data, round) => TestToolOutput.fromMap(data, round),
     );
+    ToolOutputRegistry.register(
+      'extract_colors',
+      (data, round) => TestToolOutput.fromMap(data, round),
+    );
+    ToolOutputRegistry.register(
+      'validate_colors',
+      (data, round) => TestToolOutput.fromMap(data, round),
+    );
   });
 
   group('Issue', () {
@@ -546,7 +554,7 @@ void main() {
               properties: [PropertyEntry.string(name: 'result')],
               required: ['result'],
             ),
-            stepConfig: StepConfig(includeOutputsFrom: [0]),
+            stepConfig: StepConfig(includeResultsInToolcall: [0]),
           ),
         ],
         openAiService: mockService,
@@ -795,7 +803,7 @@ void main() {
               required: ['result'],
             ),
             stepConfig: StepConfig(
-              includeOutputsFrom: ['step1_tool'], // Only include step1
+              includeResultsInToolcall: ['step1_tool'], // Only include step1
             ),
           ),
         ],
@@ -859,6 +867,220 @@ void main() {
         expect(resultByName!.toolName, equals('integration_tool_e2e'));
       });
     });
+
+    group('ToolFlow includeResultsInToolcall', () {
+      test('should include results with filtered issues in system message', () async {
+        final config = OpenAIConfig(apiKey: 'test-key', defaultModel: 'gpt-4');
+        final testService = TestSystemMessageService(
+          responses: {
+            'step1_tool': {'result': 'step1 output'},
+            'step2_tool': {'result': 'step2 output'},
+          },
+        );
+
+        final flow = ToolFlow(
+          config: config,
+          steps: [
+            ToolCallStep(
+              toolName: 'step1_tool',
+              model: 'gpt-4',
+              inputBuilder: (previousResults) => {'input': 'step1'},
+              outputSchema: OutputSchema(
+                properties: [PropertyEntry.string(name: 'result')],
+                required: ['result'],
+              ),
+              stepConfig: StepConfig(
+                audits: [
+                  SimpleAuditFunction<TestToolOutput>(
+                    name: 'test_audit',
+                    auditFunction: (result) => [
+                      Issue(
+                        id: 'high-issue',
+                        severity: IssueSeverity.high,
+                        description: 'High severity issue',
+                        context: {},
+                        suggestions: ['Fix this'],
+                      ),
+                      Issue(
+                        id: 'low-issue',
+                        severity: IssueSeverity.low,
+                        description: 'Low severity issue',
+                        context: {},
+                        suggestions: [],
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            ToolCallStep(
+              toolName: 'step2_tool',
+              model: 'gpt-4',
+              inputBuilder: (previousResults) => {'input': 'step2'},
+              outputSchema: OutputSchema(
+                properties: [PropertyEntry.string(name: 'result')],
+                required: ['result'],
+              ),
+              stepConfig: StepConfig(
+                includeResultsInToolcall: [0], // Include step 0
+                issuesSeverityFilter: IssueSeverity.high, // Only high+ severity
+              ),
+            ),
+          ],
+          openAiService: testService,
+        );
+
+        final result = await flow.run();
+
+        expect(result.results.length, equals(2));
+        expect(testService.lastSystemMessage, isNotNull);
+        expect(testService.lastSystemMessage!, contains('HIGH: High severity issue'));
+        expect(testService.lastSystemMessage!, isNot(contains('LOW: Low severity issue')));
+        expect(testService.lastSystemMessage!, contains('Suggestions: Fix this'));
+      });
+
+      test('should not include anything when no issues match severity filter', () async {
+        final config = OpenAIConfig(apiKey: 'test-key', defaultModel: 'gpt-4');
+        final testService = TestSystemMessageService(
+          responses: {
+            'step1_tool': {'result': 'step1 output'},
+            'step2_tool': {'result': 'step2 output'},
+          },
+        );
+
+        final flow = ToolFlow(
+          config: config,
+          steps: [
+            ToolCallStep(
+              toolName: 'step1_tool',
+              model: 'gpt-4',
+              inputBuilder: (previousResults) => {'input': 'step1'},
+              outputSchema: OutputSchema(
+                properties: [PropertyEntry.string(name: 'result')],
+                required: ['result'],
+              ),
+              stepConfig: StepConfig(
+                audits: [
+                  SimpleAuditFunction<TestToolOutput>(
+                    name: 'test_audit',
+                    auditFunction: (result) => [
+                      Issue(
+                        id: 'low-issue',
+                        severity: IssueSeverity.low,
+                        description: 'Low severity issue',
+                        context: {},
+                        suggestions: [],
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            ToolCallStep(
+              toolName: 'step2_tool',
+              model: 'gpt-4',
+              inputBuilder: (previousResults) => {'input': 'step2'},
+              outputSchema: OutputSchema(
+                properties: [PropertyEntry.string(name: 'result')],
+                required: ['result'],
+              ),
+              stepConfig: StepConfig(
+                includeResultsInToolcall: [0], // Include step 0
+                issuesSeverityFilter: IssueSeverity.critical, // Only critical severity
+              ),
+            ),
+          ],
+          openAiService: testService,
+        );
+
+        final result = await flow.run();
+
+        expect(result.results.length, equals(2));
+        expect(testService.lastSystemMessage, isNull);
+      });
+
+      test('should support tool name references in includeResultsInToolcall', () async {
+        final config = OpenAIConfig(apiKey: 'test-key', defaultModel: 'gpt-4');
+        final testService = TestSystemMessageService(
+          responses: {
+            'extract_colors': {'colors': ['red', 'blue']},
+            'validate_colors': {'valid': true},
+          },
+        );
+
+        final flow = ToolFlow(
+          config: config,
+          steps: [
+            ToolCallStep(
+              toolName: 'extract_colors',
+              model: 'gpt-4',
+              inputBuilder: (previousResults) => {'input': 'extract'},
+              outputSchema: OutputSchema(
+                properties: [PropertyEntry.array(name: 'colors', items: PropertyType.string)],
+                required: ['colors'],
+              ),
+              stepConfig: StepConfig(
+                audits: [
+                  SimpleAuditFunction<TestToolOutput>(
+                    name: 'color_audit',
+                    auditFunction: (result) => [
+                      Issue(
+                        id: 'color-issue',
+                        severity: IssueSeverity.medium,
+                        description: 'Colors need validation',
+                        context: {},
+                        suggestions: ['Check color format'],
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            ToolCallStep(
+              toolName: 'validate_colors',
+              model: 'gpt-4',
+              inputBuilder: (previousResults) => {'input': 'validate'},
+              outputSchema: OutputSchema(
+                properties: [PropertyEntry.boolean(name: 'valid')],
+                required: ['valid'],
+              ),
+              stepConfig: StepConfig(
+                includeResultsInToolcall: ['extract_colors'], // Include by tool name
+                issuesSeverityFilter: IssueSeverity.medium,
+              ),
+            ),
+          ],
+          openAiService: testService,
+        );
+
+        final result = await flow.run();
+
+        expect(result.results.length, equals(2));
+        expect(testService.lastSystemMessage, isNotNull);
+        expect(testService.lastSystemMessage!, contains('extract_colors'));
+        expect(testService.lastSystemMessage!, contains('MEDIUM: Colors need validation'));
+      });
+    });
+
+    group('StepConfig issuesSeverityFilter', () {
+      test('should have high severity as default', () {
+        const stepConfig = StepConfig();
+        expect(stepConfig.issuesSeverityFilter, equals(IssueSeverity.high));
+      });
+
+      test('should allow custom severity filter', () {
+        const stepConfig = StepConfig(issuesSeverityFilter: IssueSeverity.low);
+        expect(stepConfig.issuesSeverityFilter, equals(IssueSeverity.low));
+      });
+
+      test('hasResultInclusion should work correctly', () {
+        const stepConfigEmpty = StepConfig();
+        expect(stepConfigEmpty.hasResultInclusion, isFalse);
+
+        const stepConfigWithResults = StepConfig(includeResultsInToolcall: [0]);
+        expect(stepConfigWithResults.hasResultInclusion, isTrue);
+      });
+    });
   });
 }
 
@@ -871,8 +1093,58 @@ class MockOpenAiToolService implements OpenAiToolService {
   @override
   Future<Map<String, dynamic>> executeToolCall(
     ToolCallStep step,
-    ToolInput input,
-  ) async {
+    ToolInput input, {
+    List<ToolResult> includedResults = const [],
+  }) async {
+    final response = responses[step.toolName];
+    if (response == null) {
+      throw Exception('No mock response for ${step.toolName}');
+    }
+    return response;
+  }
+}
+
+class TestSystemMessageService implements OpenAiToolService {
+  String? lastSystemMessage;
+  final Map<String, Map<String, dynamic>> responses;
+
+  TestSystemMessageService({this.responses = const {}});
+
+  @override
+  Future<Map<String, dynamic>> executeToolCall(
+    ToolCallStep step,
+    ToolInput input, {
+    List<ToolResult> includedResults = const [],
+  }) async {
+    // For testing, we'll capture what would be the system message
+    // by simulating the system message generation
+    if (includedResults.isNotEmpty) {
+      final buffer = StringBuffer();
+      buffer.writeln('Previous step results and associated issues:');
+      for (int i = 0; i < includedResults.length; i++) {
+        final result = includedResults[i];
+        buffer.writeln(
+          '  Step: ${result.toolName} -> Output keys: ${result.output.toMap().keys.join(', ')}',
+        );
+        if (result.issues.isNotEmpty) {
+          buffer.writeln('    Associated issues:');
+          for (final issue in result.issues) {
+            buffer.writeln(
+              '      - ${issue.severity.name.toUpperCase()}: ${issue.description}',
+            );
+            if (issue.suggestions.isNotEmpty) {
+              buffer.writeln(
+                '        Suggestions: ${issue.suggestions.join(', ')}',
+              );
+            }
+          }
+        }
+      }
+      lastSystemMessage = buffer.toString();
+    } else {
+      lastSystemMessage = null;
+    }
+
     final response = responses[step.toolName];
     if (response == null) {
       throw Exception('No mock response for ${step.toolName}');
