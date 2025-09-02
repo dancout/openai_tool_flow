@@ -139,6 +139,7 @@ class ToolOutput {
 ///
 /// Encapsulates step name, output schema, and factory method to eliminate
 /// error-prone string usage and enable automatic registration.
+// TODO: But is this actually easier to understand as opposed to needing to register the tools yourself?
 abstract class StepDefinition<T extends ToolOutput> {
   /// The unique name identifier for this tool step
   String get stepName;
