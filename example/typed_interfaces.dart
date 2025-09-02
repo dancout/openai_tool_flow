@@ -275,21 +275,3 @@ class ThemeGenerationOutput extends ToolOutput {
     );
   }
 }
-
-/// Registers typed outputs for type-safe operations
-void registerColorThemeTypedOutputs() {
-  ToolOutputRegistry.register(
-    'extract_palette',
-    (data, round) => PaletteExtractionOutput.fromMap(data, round),
-  );
-
-  ToolOutputRegistry.register(
-    'refine_colors',
-    (data, round) => ColorRefinementOutput.fromMap(data, round),
-  );
-
-  ToolOutputRegistry.register(
-    'generate_theme',
-    (data, round) => ThemeGenerationOutput.fromMap(data, round),
-  );
-}
