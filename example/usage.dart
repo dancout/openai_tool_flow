@@ -122,6 +122,11 @@ List<Issue> issuesWithSeverity(List<Issue> allIssues, IssueSeverity severity) {
   return allIssues.where((issue) => issue.severity == severity).toList();
 }
 
+// TODO: Could we have some object that holds the name of this step ('extract_palette'), it holds the "fromMap", it holds the output schema, and inadvertantly the type.
+/// Then, we wouldn't have to check against a string "extract_palette", which is prone to errors, we could instead check against "PaletteExtractionOutput.stepName".
+/// We could also include all these objects in the ToolFlow config and under the hood it could run to register all these typed outputs there!
+/// That way, a user won't accidentally forget to register a typed output.
+
 /// Register typed outputs for type-safe operations
 void registerColorThemeTypedOutputs() {
   ToolOutputRegistry.register(
