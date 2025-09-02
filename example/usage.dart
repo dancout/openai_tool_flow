@@ -16,10 +16,9 @@ void main() async {
   print('🎨 Comprehensive Color Theme Generator Example');
   print('===============================================\n');
 
-  // Register typed outputs for type safety
-  // TODO: I don't love that we MUST run this function to register our themed outputs.
-  /// Is there a more straightforward way that we can populate the registry, but potentially within the ToolFlow setup?
-  registerColorThemeTypedOutputs();
+  // Register typed outputs for type safety - this is now automated
+  // TODO: Registration is now handled automatically by ToolCallStep.fromStepDefinition()
+  // registerColorThemeTypedOutputs();
 
   // Create configuration (in practice, this would load from environment or .env)
   final config = OpenAIConfig(
@@ -32,7 +31,7 @@ void main() async {
   // Create a mock service for demonstration with enhanced responses
   final mockService = MockOpenAiToolService(
     responses: {
-      'extract_palette': {
+      PaletteExtractionOutput.stepName: {
         // NOTE: Some colors missing '#' prefix - handled by sanitizer
         'colors': ['#FF5733', '33FF57', '3357FF', '#F333FF', '#FF33F5'],
         'confidence': 0.85,
@@ -40,7 +39,7 @@ void main() async {
         'metadata': {'extraction_method': 'k-means', 'processing_time': 2.3},
         'debugInfo': 'Palette extraction debug log',
       },
-      'refine_colors': {
+      ColorRefinementOutput.stepName: {
         'refined_colors': ['#E74C3C', '#2ECC71', '#3498DB', '#9B59B6'],
         'improvements_made': [
           'contrast adjustment',
@@ -54,7 +53,7 @@ void main() async {
           '#9B59B6': 5.1,
         },
       },
-      'generate_theme': {
+      ThemeGenerationOutput.stepName: {
         'theme': {
           'primary': '#E74C3C',
           'secondary': '#2ECC71',
@@ -126,24 +125,7 @@ List<Issue> issuesWithSeverity(List<Issue> allIssues, IssueSeverity severity) {
 /// Then, we wouldn't have to check against a string "extract_palette", which is prone to errors, we could instead check against "PaletteExtractionOutput.stepName".
 /// We could also include all these objects in the ToolFlow config and under the hood it could run to register all these typed outputs there!
 /// That way, a user won't accidentally forget to register a typed output.
-
-/// Register typed outputs for type-safe operations
-void registerColorThemeTypedOutputs() {
-  ToolOutputRegistry.register(
-    'extract_palette',
-    (data, round) => PaletteExtractionOutput.fromMap(data, round),
-  );
-
-  ToolOutputRegistry.register(
-    'refine_colors',
-    (data, round) => ColorRefinementOutput.fromMap(data, round),
-  );
-
-  ToolOutputRegistry.register(
-    'generate_theme',
-    (data, round) => ThemeGenerationOutput.fromMap(data, round),
-  );
-}
+/// ✅ IMPLEMENTED: This is now addressed by StepDefinition classes and ToolCallStep.fromStepDefinition() 
 
 /// Display enhanced execution summary
 void _displayExecutionSummary(ToolFlowResult result) {
@@ -170,7 +152,7 @@ void _demonstrateToolNameRetrieval(ToolFlowResult result) {
   print('🔍 Tool Name-Based Retrieval:');
 
   // Single tool retrieval
-  final paletteResult = result.getResultByToolName('extract_palette');
+  final paletteResult = result.getResultByToolName(PaletteExtractionOutput.stepName);
   if (paletteResult != null) {
     print(
       '  Extract Palette: Found result with ${paletteResult.output.toMap().keys.length} output keys',
@@ -179,8 +161,8 @@ void _demonstrateToolNameRetrieval(ToolFlowResult result) {
 
   // Multiple tool retrieval
   final multipleResults = result.getResultsByToolNames([
-    'extract_palette',
-    'refine_colors',
+    PaletteExtractionOutput.stepName,
+    ColorRefinementOutput.stepName,
   ]);
   print('  Multiple tools: Retrieved ${multipleResults.length} results');
 

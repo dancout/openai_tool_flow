@@ -118,6 +118,9 @@ class ColorRefinementInput extends ToolInput {
 
 /// Example concrete implementation for palette extraction output
 class PaletteExtractionOutput extends ToolOutput {
+  /// Static step name for this tool output type
+  static const String stepName = 'extract_palette';
+
   final List<String> colors;
   final double confidence;
   final String imageAnalyzed;
@@ -181,6 +184,9 @@ class PaletteExtractionOutput extends ToolOutput {
 
 /// Example concrete implementation for color refinement output
 class ColorRefinementOutput extends ToolOutput {
+  /// Static step name for this tool output type
+  static const String stepName = 'refine_colors';
+
   final List<String> refinedColors;
   final List<String> improvementsMade;
   final Map<String, double> accessibilityScores;
@@ -237,6 +243,9 @@ class ColorRefinementOutput extends ToolOutput {
 
 /// Example concrete implementation for theme generation output
 class ThemeGenerationOutput extends ToolOutput {
+  /// Static step name for this tool output type
+  static const String stepName = 'generate_theme';
+
   final Map<String, String> theme;
   final Map<String, dynamic> metadata;
 
@@ -274,4 +283,45 @@ class ThemeGenerationOutput extends ToolOutput {
       required: ['theme'],
     );
   }
+}
+
+/// Step definitions that encapsulate tool metadata and functionality
+
+/// Step definition for palette extraction
+class PaletteExtractionStepDefinition extends StepDefinition<PaletteExtractionOutput> {
+  @override
+  String get stepName => PaletteExtractionOutput.stepName;
+  
+  @override
+  OutputSchema get outputSchema => PaletteExtractionOutput.getOutputSchema();
+  
+  @override
+  PaletteExtractionOutput fromMap(Map<String, dynamic> data, int round) =>
+      PaletteExtractionOutput.fromMap(data, round);
+}
+
+/// Step definition for color refinement
+class ColorRefinementStepDefinition extends StepDefinition<ColorRefinementOutput> {
+  @override
+  String get stepName => ColorRefinementOutput.stepName;
+  
+  @override
+  OutputSchema get outputSchema => ColorRefinementOutput.getOutputSchema();
+  
+  @override
+  ColorRefinementOutput fromMap(Map<String, dynamic> data, int round) =>
+      ColorRefinementOutput.fromMap(data, round);
+}
+
+/// Step definition for theme generation
+class ThemeGenerationStepDefinition extends StepDefinition<ThemeGenerationOutput> {
+  @override
+  String get stepName => ThemeGenerationOutput.stepName;
+  
+  @override
+  OutputSchema get outputSchema => ThemeGenerationOutput.getOutputSchema();
+  
+  @override
+  ThemeGenerationOutput fromMap(Map<String, dynamic> data, int round) =>
+      ThemeGenerationOutput.fromMap(data, round);
 }

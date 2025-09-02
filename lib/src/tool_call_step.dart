@@ -1,6 +1,8 @@
+import 'audit_function.dart';
 import 'issue.dart';
 import 'step_config.dart';
 import 'tool_result.dart';
+import 'typed_interfaces.dart';
 
 /// Defines a single tool call step in a ToolFlow.
 ///
@@ -98,6 +100,50 @@ class ToolCallStep {
     required this.stepConfig,
     // TODO: Consider moving outputSchema to the ToolCallStep instead of the stepConfig. I'm not sure which is better.
   });
+
+  /// Creates a ToolCallStep from a StepDefinition
+  /// 
+  /// This automatically registers the step definition in the ToolOutputRegistry
+  /// and creates a StepConfig with the appropriate output schema.
+  factory ToolCallStep.fromStepDefinition<T extends ToolOutput>(
+    StepDefinition<T> stepDefinition, {
+    required String model,
+    required Map<String, dynamic> Function(List<ToolResult>) inputBuilder,
+    List<Object> buildInputsFrom = const [],
+    List<Issue> issues = const [],
+    int maxRetries = 3,
+    List<AuditFunction> audits = const [],
+    int? stepMaxRetries,
+    bool Function(List<Issue>)? customPassCriteria,
+    String Function(List<Issue>)? customFailureReason,
+    bool stopOnFailure = true,
+    List<dynamic> includeOutputsFrom = const [],
+    Map<String, dynamic> Function(Map<String, dynamic>)? inputSanitizer,
+    Map<String, dynamic> Function(Map<String, dynamic>)? outputSanitizer,
+  }) {
+    // Auto-register the step definition
+    ToolOutputRegistry.registerStepDefinition(stepDefinition);
+
+    return ToolCallStep(
+      toolName: stepDefinition.stepName,
+      model: model,
+      inputBuilder: inputBuilder,
+      buildInputsFrom: buildInputsFrom,
+      issues: issues,
+      maxRetries: maxRetries,
+      stepConfig: StepConfig(
+        audits: audits,
+        maxRetries: stepMaxRetries,
+        customPassCriteria: customPassCriteria,
+        customFailureReason: customFailureReason,
+        stopOnFailure: stopOnFailure,
+        includeOutputsFrom: includeOutputsFrom,
+        inputSanitizer: inputSanitizer,
+        outputSanitizer: outputSanitizer,
+        outputSchema: stepDefinition.outputSchema,
+      ),
+    );
+  }
 
   /// Creates a copy of this ToolCallStep with updated parameters
   ToolCallStep copyWith({
