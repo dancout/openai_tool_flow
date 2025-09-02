@@ -75,19 +75,11 @@ class ToolFlow {
 
           // Run audits if configured for this step
           if (stepConfig.hasAudits) {
-            // TODO: What's all this extra stuff? If we have an audit function, we should run it right?
-            final shouldRunAudits =
-                !stepConfig.auditOnlyFinalAttempt ||
-                attemptCount > maxRetries ||
-                attemptCount == 1; // Always run on first attempt
-
-            if (shouldRunAudits) {
-              stepResult = await _runAuditsForStep(
-                result: stepResult,
-                stepConfig: stepConfig,
-                stepIndex: i,
-              );
-            }
+            stepResult = await _runAuditsForStep(
+              result: stepResult,
+              stepConfig: stepConfig,
+              stepIndex: i,
+            );
           }
 
           // Check if step passed criteria
@@ -387,8 +379,6 @@ class ToolFlow {
     }
     return allIssues;
   }
-
-
 }
 
 /// Result of executing a ToolFlow

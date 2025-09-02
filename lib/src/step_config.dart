@@ -26,10 +26,6 @@ class StepConfig {
   /// Defaults to true for backward compatibility
   final bool stopOnFailure;
 
-  /// Whether to run audits on retry attempts or only on the final attempt
-  /// Defaults to false (run audits on every attempt)
-  final bool auditOnlyFinalAttempt;
-
   /// Simple list of steps to include outputs from.
   /// Can be int (step index) or String (tool name).
   ///
@@ -96,6 +92,7 @@ class StepConfig {
   /// }
   /// ```
   final Map<String, dynamic> Function(Map<String, dynamic> output)?
+  //
   // TODO: Is there any way to force the `output` input (lol) to conform to a specific schema?
   /// Also, we need to enforce the output of this function to conform to that same schema.
   /// Not sure if we can be extending ToolOutput or a Schema or something.
@@ -114,7 +111,6 @@ class StepConfig {
     this.customPassCriteria,
     this.customFailureReason,
     this.stopOnFailure = true,
-    this.auditOnlyFinalAttempt = false,
     this.includeOutputsFrom = const [],
     this.inputSanitizer,
     this.outputSanitizer,
