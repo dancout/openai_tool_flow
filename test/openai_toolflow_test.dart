@@ -818,4 +818,73 @@ void main() {
       expect(result.results[2].toolName, equals('step3_tool'));
     });
   });
+
+  group('Round 11 Integration', () {
+    test('should work end-to-end with new APIs', () {
+      // Register test output
+      ToolOutputRegistry.register(
+        'integration_tool_e2e',
+        (data, round) => TestToolOutput.fromMap(data, round),
+      );
+
+      final mockService = MockOpenAiToolService(
+        responses: {
+          'integration_tool_e2e': {'message': 'integration test success'},
+        },
+      );
+
+      final flow = ToolFlow(
+        config: OpenAIConfig(apiKey: 'test'),
+        steps: [
+          ToolCallStep(
+            toolName: 'integration_tool_e2e',
+            model: 'gpt-4',
+            inputBuilder: (previousResults) => {'input': 'integration'},
+            stepConfig: StepConfig(
+              outputSchema: OutputSchema(properties: [], required: []),
+            ),
+          ),
+        ],
+        openAiService: mockService,
+      );
+
+      return flow.run().then((result) {
+        // Test new results type
+        expect(result.results, isA<List<TypedToolResult>>());
+        final typedResult = result.results.first;
+
+        // Test round information is preserved
+        expect(typedResult.output, isA<TestToolOutput>());
+        final testOutput = typedResult.output as TestToolOutput;
+        expect(testOutput.round, equals(0)); // First attempt
+        expect(testOutput.data['message'], equals('integration test success'));
+
+        // Test tool name retrieval still works
+        final resultByName = result.getTypedResultByToolName(
+          'integration_tool_e2e',
+        );
+        expect(resultByName, isNotNull);
+        expect(resultByName!.toolName, equals('integration_tool_e2e'));
+      });
+    });
+  });
+}
+
+/// Mock service for testing
+class MockOpenAiToolService implements OpenAiToolService {
+  final Map<String, Map<String, dynamic>> responses;
+
+  MockOpenAiToolService({this.responses = const {}});
+
+  @override
+  Future<Map<String, dynamic>> executeToolCall(
+    ToolCallStep step,
+    ToolInput input,
+  ) async {
+    final response = responses[step.toolName];
+    if (response == null) {
+      throw Exception('No mock response for ${step.toolName}');
+    }
+    return response;
+  }
 }
