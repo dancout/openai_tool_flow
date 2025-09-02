@@ -50,11 +50,6 @@ class ToolCallStep {
   /// Helps provide context for retry attempts
   final List<Issue> issues;
 
-  // TODO: Yeah, remove this and getEffectiveMaxRetries
-  /// Maximum number of retry attempts for this step
-  /// Defaults to 3 attempts
-  final int maxRetries;
-
   /// Configuration for this step including audits, forwarding, and sanitization
   final StepConfig stepConfig;
 
@@ -99,7 +94,6 @@ class ToolCallStep {
     required this.inputBuilder,
     this.buildInputsFrom = const [],
     this.issues = const [],
-    this.maxRetries = 3,
     required this.stepConfig,
     required this.outputSchema,
   });
@@ -114,7 +108,6 @@ class ToolCallStep {
     required Map<String, dynamic> Function(List<ToolResult>) inputBuilder,
     List<Object> buildInputsFrom = const [],
     List<Issue> issues = const [],
-    int maxRetries = 3,
     StepConfig? stepConfig,
   }) {
     // Auto-register the step definition
@@ -126,8 +119,6 @@ class ToolCallStep {
       inputBuilder: inputBuilder,
       buildInputsFrom: buildInputsFrom,
       issues: issues,
-      // TODO: Why does maxRetries exist on both ToolCallStep AND StepConfig? It should live in only one place.
-      maxRetries: maxRetries,
       outputSchema: stepDefinition.outputSchema,
       stepConfig: stepConfig ?? StepConfig(),
     );
@@ -150,7 +141,6 @@ class ToolCallStep {
       inputBuilder: inputBuilder ?? this.inputBuilder,
       buildInputsFrom: buildInputsFrom ?? this.buildInputsFrom,
       issues: issues ?? this.issues,
-      maxRetries: maxRetries ?? this.maxRetries,
       stepConfig: stepConfig ?? this.stepConfig,
       outputSchema: outputSchema ?? this.outputSchema,
     );
@@ -158,7 +148,7 @@ class ToolCallStep {
 
   @override
   String toString() {
-    return 'ToolCallStep(toolName: $toolName, model: $model, maxRetries: $maxRetries)';
+    return 'ToolCallStep(toolName: $toolName, model: $model)';
   }
 
   @override
@@ -167,11 +157,10 @@ class ToolCallStep {
     return other is ToolCallStep &&
         other.toolName == toolName &&
         other.model == model &&
-        other.buildInputsFrom.toString() == buildInputsFrom.toString() &&
-        other.maxRetries == maxRetries;
+        other.buildInputsFrom.toString() == buildInputsFrom.toString();
     // Note: inputBuilder functions cannot be compared
   }
 
   @override
-  int get hashCode => Object.hash(toolName, model, buildInputsFrom, maxRetries);
+  int get hashCode => Object.hash(toolName, model, buildInputsFrom);
 }

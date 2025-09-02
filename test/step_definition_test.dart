@@ -164,7 +164,7 @@ void main() {
         ),
       );
 
-      expect(step.stepConfig.getEffectiveMaxRetries(3), equals(5));
+      expect(step.stepConfig.maxRetries, equals(5));
       expect(step.stepConfig.stopOnFailure, isFalse);
       expect(step.stepConfig.includeOutputsFrom, contains('previous_step'));
     });
