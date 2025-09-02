@@ -89,6 +89,7 @@ class ToolInput {
 /// Provides type safety for tool results while maintaining
 /// backward compatibility with Map-based interface.
 /// Can be extended for custom tool outputs or used directly for simple cases.
+// TODO: Consider making ToolOutput abstract and then you can have the other classes be typed, and force them to implement things like toMap and fromMap.
 class ToolOutput {
   /// Current retry round (0 for first attempt)
   final int round;
@@ -111,10 +112,7 @@ class ToolOutput {
   /// Converts this output to a Map for serialization
   Map<String, dynamic> toMap() {
     if (_data != null) {
-      return {
-        '_round': round,
-        ...Map<String, dynamic>.from(_data),
-      };
+      return {'_round': round, ...Map<String, dynamic>.from(_data)};
     }
     throw UnimplementedError(
       'Subclasses must override toMap() when using ToolOutput.subclass()',

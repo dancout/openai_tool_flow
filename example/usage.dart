@@ -17,6 +17,8 @@ void main() async {
   print('===============================================\n');
 
   // Register typed outputs for type safety
+  // TODO: I don't love that we MUST run this function to register our themed outputs.
+  /// Is there a more straightforward way that we can populate the registry, but potentially within the ToolFlow setup?
   registerColorThemeTypedOutputs();
 
   // Create configuration (in practice, this would load from environment or .env)
@@ -147,11 +149,15 @@ void _displayExecutionSummary(ToolFlowResult result) {
   print(
     'Critical issues: ${issuesWithSeverity(result.allIssues, IssueSeverity.critical).length}',
   );
-  print('High issues: ${issuesWithSeverity(result.allIssues, IssueSeverity.high).length}');
+  print(
+    'High issues: ${issuesWithSeverity(result.allIssues, IssueSeverity.high).length}',
+  );
   print(
     'Medium issues: ${issuesWithSeverity(result.allIssues, IssueSeverity.medium).length}',
   );
-  print('Low issues: ${issuesWithSeverity(result.allIssues, IssueSeverity.low).length}\n');
+  print(
+    'Low issues: ${issuesWithSeverity(result.allIssues, IssueSeverity.low).length}\n',
+  );
 }
 
 /// Demonstrate tool name-based result retrieval
@@ -274,7 +280,10 @@ void _displayIssuesAnalysis(ToolFlowResult result) {
   });
 
   // Show critical issues that need attention
-  final criticalIssues = issuesWithSeverity(result.allIssues, IssueSeverity.critical);
+  final criticalIssues = issuesWithSeverity(
+    result.allIssues,
+    IssueSeverity.critical,
+  );
   if (criticalIssues.isNotEmpty) {
     print('\n🚨 Critical Issues Requiring Attention:');
     for (final issue in criticalIssues) {
@@ -319,7 +328,9 @@ void _exportEnhancedResults(ToolFlowResult result) {
   print('🗂️ Tool Name Mapping:');
   result.resultsByToolName.forEach((toolName, toolResult) {
     final typedResult = result.getTypedResultByToolName(toolName);
-    final stepIndex = typedResult != null ? result.results.indexOf(typedResult) : -1;
+    final stepIndex = typedResult != null
+        ? result.results.indexOf(typedResult)
+        : -1;
     print('  $toolName -> Step ${stepIndex + 1}');
   });
   print('');
