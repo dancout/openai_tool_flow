@@ -119,12 +119,6 @@ List<Issue> issuesWithSeverity(List<Issue> allIssues, IssueSeverity severity) {
   return allIssues.where((issue) => issue.severity == severity).toList();
 }
 
-// TODO: Could we have some object that holds the name of this step ('extract_palette'), it holds the "fromMap", it holds the output schema, and inadvertantly the type.
-/// Then, we wouldn't have to check against a string "extract_palette", which is prone to errors, we could instead check against "PaletteExtractionOutput.stepName".
-/// We could also include all these objects in the ToolFlow config and under the hood it could run to register all these typed outputs there!
-/// That way, a user won't accidentally forget to register a typed output.
-/// ✅ IMPLEMENTED: This is now addressed by StepDefinition classes and ToolCallStep.fromStepDefinition() 
-
 /// Display enhanced execution summary
 void _displayExecutionSummary(ToolFlowResult result) {
   print('📊 Enhanced Execution Summary:');
@@ -150,7 +144,9 @@ void _demonstrateToolNameRetrieval(ToolFlowResult result) {
   print('🔍 Tool Name-Based Retrieval:');
 
   // Single tool retrieval
-  final paletteResult = result.getResultByToolName(PaletteExtractionOutput.stepName);
+  final paletteResult = result.getResultByToolName(
+    PaletteExtractionOutput.stepName,
+  );
   if (paletteResult != null) {
     print(
       '  Extract Palette: Found result with ${paletteResult.output.toMap().keys.length} output keys',
