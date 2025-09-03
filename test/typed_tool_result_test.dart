@@ -297,8 +297,8 @@ void main() {
 
       expect(typedPaletteResult, isNotNull);
       expect(typedThemeResult, isNotNull);
-      expect(typedPaletteResult!.output.colors, contains('#FF0000'));
-      expect(typedThemeResult!.output.category, equals('vibrant'));
+      expect(typedPaletteResult.output.colors, contains('#FF0000'));
+      expect(typedThemeResult.output.category, equals('vibrant'));
     });
 
     test('should execute type-safe audits correctly', () async {
@@ -417,42 +417,52 @@ void main() {
       },
     );
 
-    test('should prevent type mismatches with safe casting', () async {
-      final flow = ToolFlow(
-        config: OpenAIConfig(apiKey: 'test-key'),
-        openAiService: mockService,
-        steps: [
-          ToolCallStep(
-            toolName: 'extract_palette',
-            model: 'gpt-4',
-            inputBuilder: (previousResults) => {'image': 'test.jpg'},
-            outputSchema: OutputSchema(
-              properties: [
-                PropertyEntry.array(name: 'colors', items: PropertyType.string),
-                PropertyEntry.number(name: 'confidence'),
-              ],
-              required: ['colors', 'confidence'],
+    test(
+      'should prevent type mismatches with safe casting and throw on incorrect cast',
+      () async {
+        final flow = ToolFlow(
+          config: OpenAIConfig(apiKey: 'test-key'),
+          openAiService: mockService,
+          steps: [
+            ToolCallStep(
+              toolName: 'extract_palette',
+              model: 'gpt-4',
+              inputBuilder: (previousResults) => {'image': 'test.jpg'},
+              outputSchema: OutputSchema(
+                properties: [
+                  PropertyEntry.array(
+                    name: 'colors',
+                    items: PropertyType.string,
+                  ),
+                  PropertyEntry.number(name: 'confidence'),
+                ],
+                required: ['colors', 'confidence'],
+              ),
+              stepConfig: StepConfig(),
             ),
-            stepConfig: StepConfig(),
-          ),
-        ],
-      );
+          ],
+        );
 
-      final result = await flow.run();
-      final paletteResult = result.getTypedResultByToolName('extract_palette')!;
+        final result = await flow.run();
+        final paletteResult = result.getTypedResultByToolName(
+          'extract_palette',
+        )!;
 
-      // Safe casting should work for correct type
-      final correctCast = paletteResult.asTyped<PaletteExtractionOutput>();
-      expect(correctCast, isNotNull);
+        // Safe casting should work for correct type
+        final correctCast = paletteResult.asTyped<PaletteExtractionOutput>();
+        expect(correctCast, isNotNull);
 
-      // Safe casting should return null for incorrect type
-      final incorrectCast = paletteResult.asTyped<ThemeGenerationOutput>();
-      expect(incorrectCast, isNull);
+        // Type checking should work correctly
+        expect(paletteResult.hasOutputType<PaletteExtractionOutput>(), isTrue);
+        expect(paletteResult.hasOutputType<ThemeGenerationOutput>(), isFalse);
 
-      // Type checking should work correctly
-      expect(paletteResult.hasOutputType<PaletteExtractionOutput>(), isTrue);
-      expect(paletteResult.hasOutputType<ThemeGenerationOutput>(), isFalse);
-    });
+        // Should throw when forcibly casting to incorrect type
+        expect(
+          () => paletteResult.asTyped<ThemeGenerationOutput>(),
+          throwsA(isA<Exception>()),
+        );
+      },
+    );
 
     test(
       'should maintain backward compatibility with existing interfaces',

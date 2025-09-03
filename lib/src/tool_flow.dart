@@ -342,10 +342,8 @@ class ToolFlow {
   /// Gets the list of results that should be passed to inputBuilder
   // TODO: (SKIP) This logic seems really similar to how we get the includeResultsInToolcall list.
   /// // Consider consolidating the logic to a reusable helper function.
-  List<ToolResult<ToolOutput>> _getInputBuilderResults({
-    required ToolCallStep step,
-  }) {
-    final inputResults = <ToolResult<ToolOutput>>[];
+  List<TypedToolResult> _getInputBuilderResults({required ToolCallStep step}) {
+    final inputResults = <TypedToolResult>[];
 
     for (final reference in step.buildInputsFrom) {
       TypedToolResult? sourceTypedResult;
@@ -360,7 +358,7 @@ class ToolFlow {
       }
 
       if (sourceTypedResult != null) {
-        inputResults.add(sourceTypedResult.underlyingResult);
+        inputResults.add(sourceTypedResult);
       }
     }
 

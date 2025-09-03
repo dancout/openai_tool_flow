@@ -128,32 +128,30 @@ Map<String, ToolCallStep> createColorThemeWorkflow() {
       model: 'gpt-4',
       inputBuilder: (previousResults) {
         // Extract colors and confidence from previous palette step
-        final paletteResult =
-            previousResults
-                .where((r) => r.toolName == paletteStep.stepName)
-                .isNotEmpty
-            ? previousResults
-                  .where((r) => r.toolName == paletteStep.stepName)
-                  .first
-            : null;
+        final paletteResult = previousResults
+            .where((result) => result.hasOutputType<PaletteExtractionOutput>())
+            .first
+            .asTyped<PaletteExtractionOutput>();
 
-        final extractedColors = paletteResult?.output.toMap()['colors'] ?? [];
-        final confidence =
-            paletteResult?.output.toMap()['confidence'] as double?;
+        final extractedColors = paletteResult.output.colors;
+        final confidence = paletteResult.output.confidence;
 
         final input = ColorRefinementInput(
           colors: extractedColors.cast<String>(),
+          confidence: confidence,
           enhanceContrast: true,
           targetAccessibility: 'AA',
         ).toMap();
 
-        // Add confidence to input for sanitizer
-        if (confidence != null) {
-          input['confidence'] = confidence;
-        }
+        // Add metadata to input for inputSanitizer to remove later
+        input['metadata'] = {
+          'timestamp': DateTime.now().toIso8601String(),
+          'message': 'Color refinement debug log',
+        };
 
         return input;
       },
+      buildInputsFrom: [paletteStep.stepName],
       includeResultsInToolcall: [paletteStep.stepName],
       stepConfig: StepConfig(
         issuesSeverityFilter: IssueSeverity.medium,
@@ -176,22 +174,15 @@ Map<String, ToolCallStep> createColorThemeWorkflow() {
       model: 'gpt-4',
       inputBuilder: (previousResults) {
         // Extract refined colors from previous refinement step
-        final refinementResult =
-            previousResults
-                .where((r) => r.toolName == refinementStep.stepName)
-                .isNotEmpty
-            ? previousResults
-                  .where((r) => r.toolName == refinementStep.stepName)
-                  .first
-            : null;
+        final refinementResult = previousResults
+            .where((result) => result.hasOutputType<ColorRefinementOutput>())
+            .first
+            .asTyped<ColorRefinementOutput>();
 
-        List<dynamic> baseColors = [];
-        if (refinementResult != null) {
-          final refinedColors =
-              refinementResult.output.toMap()['refined_colors'] as List?;
-          if (refinedColors != null && refinedColors.isNotEmpty) {
-            baseColors = refinedColors.take(4).toList();
-          }
+        List<String> baseColors = [];
+        final refinedColors = refinementResult.output.refinedColors;
+        if (refinedColors.isNotEmpty) {
+          baseColors = refinedColors.take(4).toList();
         }
 
         return {
@@ -200,6 +191,7 @@ Map<String, ToolCallStep> createColorThemeWorkflow() {
           if (baseColors.isNotEmpty) 'primary_color': baseColors.first,
         };
       },
+      buildInputsFrom: [refinementStep.stepName],
       includeResultsInToolcall: [refinementStep.stepName],
       stepConfig: StepConfig(
         audits: [],

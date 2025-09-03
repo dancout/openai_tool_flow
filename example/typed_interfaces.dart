@@ -68,11 +68,13 @@ class PaletteExtractionInput extends ToolInput {
 /// Example concrete implementation for color refinement input
 class ColorRefinementInput extends ToolInput {
   final List<String> colors;
+  final double confidence;
   final bool enhanceContrast;
   final String targetAccessibility;
 
   const ColorRefinementInput({
     required this.colors,
+    required this.confidence,
     this.enhanceContrast = true,
     this.targetAccessibility = 'AA',
   });
@@ -80,6 +82,7 @@ class ColorRefinementInput extends ToolInput {
   factory ColorRefinementInput.fromMap(Map<String, dynamic> map) {
     return ColorRefinementInput(
       colors: List<String>.from(map['colors'] as List),
+      confidence: map['confidence'] as double,
       enhanceContrast: map['enhance_contrast'] as bool? ?? true,
       targetAccessibility: map['target_accessibility'] as String? ?? 'AA',
     );
@@ -89,6 +92,7 @@ class ColorRefinementInput extends ToolInput {
   Map<String, dynamic> toMap() {
     return {
       'colors': colors,
+      'confidence': confidence,
       'enhance_contrast': enhanceContrast,
       'target_accessibility': targetAccessibility,
     };
@@ -100,6 +104,10 @@ class ColorRefinementInput extends ToolInput {
 
     if (colors.isEmpty) {
       issues.add('colors list cannot be empty');
+    }
+
+    if (confidence < 0.0 || confidence > 1.0) {
+      issues.add('confidence must be between 0.0 and 1.0');
     }
 
     for (final color in colors) {

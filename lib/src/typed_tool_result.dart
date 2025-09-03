@@ -65,22 +65,25 @@ class TypedToolResult {
     return _outputType == T;
   }
 
-  /// Safely creates a new properly-typed result for the given type
+  /// Creates a new properly-typed result for the given type.
   ///
-  /// Returns null if the output type doesn't match, otherwise returns a new
-  /// `ToolResult<T>` with the correct type parameter. This enables type-safe audit execution.
-  ToolResult<T>? asTyped<T extends ToolOutput>() {
-    if (hasOutputType<T>()) {
-      // Create a new properly typed result instead of casting
-      // This works around Dart's non-covariant generics
-      return ToolResult<T>(
-        toolName: _result.toolName,
-        input: _result.input,
-        output: _result.output as T,
-        issues: _result.issues,
+  /// Throws an exception if the output type doesn't match; otherwise returns a new
+  /// `ToolResult<T>` with the correct type parameter. This enables type-safe audit execution
+  /// and enforces strict type safety.
+  ToolResult<T> asTyped<T extends ToolOutput>() {
+    if (!hasOutputType<T>()) {
+      throw Exception(
+        'TypedToolResult does not have output type $T. Actual type: $_outputType',
       );
     }
-    return null;
+    // Create a new properly typed result instead of casting
+    // This works around Dart's non-covariant generics
+    return ToolResult<T>(
+      toolName: _result.toolName,
+      input: _result.input,
+      output: _result.output as T,
+      issues: _result.issues,
+    );
   }
 
   /// Creates a copy of this TypedToolResult with optional updated fields

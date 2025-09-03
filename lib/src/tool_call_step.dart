@@ -33,7 +33,7 @@ class ToolCallStep {
   ///   };
   /// }
   /// ```
-  final Map<String, dynamic> Function(List<ToolResult>) inputBuilder;
+  final Map<String, dynamic> Function(List<TypedToolResult>) inputBuilder;
 
   /// Specifies which previous step results to pass to inputBuilder
   ///
@@ -99,7 +99,7 @@ class ToolCallStep {
   static ToolCallStep fromStepDefinition<T extends ToolOutput>(
     StepDefinition<T> stepDefinition, {
     required String model,
-    required Map<String, dynamic> Function(List<ToolResult>) inputBuilder,
+    required Map<String, dynamic> Function(List<TypedToolResult>) inputBuilder,
     List<Object> buildInputsFrom = const [],
     List<Issue> issues = const [],
     StepConfig? stepConfig,
@@ -124,7 +124,7 @@ class ToolCallStep {
   ToolCallStep copyWith({
     String? toolName,
     String? model,
-    Map<String, dynamic> Function(List<ToolResult>)? inputBuilder,
+    Map<String, dynamic> Function(List<TypedToolResult>)? inputBuilder,
     List<Object>? buildInputsFrom,
     List<Issue>? issues,
     int? maxRetries,
