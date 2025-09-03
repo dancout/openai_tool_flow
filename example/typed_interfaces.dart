@@ -264,8 +264,24 @@ class ThemeGenerationOutput extends ToolOutput {
   }) : super.subclass();
 
   factory ThemeGenerationOutput.fromMap(Map<String, dynamic> map, int round) {
+    Map<String, String> themeMap;
+
+    themeMap = {};
+    if (map.containsKey('theme_type')) {
+      themeMap['theme_type'] = map['theme_type'] as String;
+    }
+    if (map.containsKey('base_colors')) {
+      // Convert base_colors list to a comma-separated string for storage
+      final baseColors = map['base_colors'] as List?;
+      if (baseColors != null) {
+        themeMap['base_colors'] = baseColors.join(',');
+      }
+    }
+    if (map.containsKey('primary_color')) {
+      themeMap['primary_color'] = map['primary_color'] as String;
+    }
     return ThemeGenerationOutput(
-      theme: Map<String, String>.from(map['theme'] as Map),
+      theme: themeMap,
       metadata: Map<String, dynamic>.from(map['metadata'] as Map? ?? {}),
       round: round,
     );

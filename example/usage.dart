@@ -47,6 +47,15 @@ void main() async {
         },
       },
       ThemeGenerationOutput.stepName: {
+        // Expanded theme to include flattened keys for compatibility
+        'theme_type': 'material_design',
+        'base_colors': [
+          '#E74C3C', // primary
+          '#2ECC71', // secondary
+          '#3498DB', // accent
+          '#FFFFFF', // background
+        ],
+        'primary_color': '#E74C3C',
         'theme': {
           'primary': '#E74C3C',
           'secondary': '#2ECC71',
@@ -71,7 +80,8 @@ void main() async {
   final flow = ToolFlow(
     config: config,
     steps: steps,
-    openAiService: mockService, // Inject mock service for testing
+    // openAiService: mockService, // Inject mock service for testing
+    openAiService: DefaultOpenAiToolService(config: config),
   );
 
   // Execute the flow

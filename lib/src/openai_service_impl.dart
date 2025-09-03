@@ -35,13 +35,14 @@ class DefaultOpenAiToolService implements OpenAiToolService {
         includedResults: includedResults,
       );
 
+      final requestJson = request.toJson();
       final response = await client.post(
         Uri.parse('${config.baseUrl}/chat/completions'),
         headers: {
           'Authorization': 'Bearer ${config.apiKey}',
           'Content-Type': 'application/json',
         },
-        body: jsonEncode(request.toJson()),
+        body: jsonEncode(requestJson),
       );
 
       if (response.statusCode != 200) {
