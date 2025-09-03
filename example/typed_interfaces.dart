@@ -269,65 +269,6 @@ class FullColorSuiteInput extends ToolInput {
   }
 }
 
-/// Legacy class maintained for backward compatibility
-class ColorRefinementInput extends ToolInput {
-  final List<String> colors;
-  final double confidence;
-  final bool enhanceContrast;
-  final String targetAccessibility;
-
-  const ColorRefinementInput({
-    required this.colors,
-    required this.confidence,
-    this.enhanceContrast = true,
-    this.targetAccessibility = 'AA',
-  });
-
-  factory ColorRefinementInput.fromMap(Map<String, dynamic> map) {
-    return ColorRefinementInput(
-      colors: List<String>.from(map['colors'] as List),
-      confidence: map['confidence'] as double,
-      enhanceContrast: map['enhance_contrast'] as bool? ?? true,
-      targetAccessibility: map['target_accessibility'] as String? ?? 'AA',
-    );
-  }
-
-  @override
-  Map<String, dynamic> toMap() {
-    return {
-      'colors': colors,
-      'confidence': confidence,
-      'enhance_contrast': enhanceContrast,
-      'target_accessibility': targetAccessibility,
-    };
-  }
-
-  @override
-  List<String> validate() {
-    final issues = <String>[];
-
-    if (colors.isEmpty) {
-      issues.add('colors list cannot be empty');
-    }
-
-    if (confidence < 0.0 || confidence > 1.0) {
-      issues.add('confidence must be between 0.0 and 1.0');
-    }
-
-    for (final color in colors) {
-      if (!RegExp(r'^#[0-9A-Fa-f]{6}$').hasMatch(color)) {
-        issues.add('Invalid color format: $color (expected #RRGGBB)');
-      }
-    }
-
-    if (!['A', 'AA', 'AAA'].contains(targetAccessibility)) {
-      issues.add('targetAccessibility must be A, AA, or AAA');
-    }
-
-    return issues;
-  }
-}
-
 /// Output for seed color generation (Step 1)
 class SeedColorGenerationOutput extends ToolOutput {
   static const String stepName = 'generate_seed_colors';
@@ -540,7 +481,8 @@ class FullColorSuiteOutput extends ToolOutput {
   }
 }
 
-/// Legacy output maintained for backward compatibility
+/// Legacy class maintained for backward compatibility
+class ColorRefinementInput extends ToolInput {
   final List<String> colors;
   final double confidence;
   final bool enhanceContrast;
@@ -597,6 +539,8 @@ class FullColorSuiteOutput extends ToolOutput {
     return issues;
   }
 }
+
+/// Legacy output maintained for backward compatibility
 
 /// Example concrete implementation for palette extraction output
 class PaletteExtractionOutput extends ToolOutput {
