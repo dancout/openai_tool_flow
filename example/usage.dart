@@ -18,13 +18,8 @@ void main() async {
 
   // Registration is now handled automatically by ToolCallStep.fromStepDefinition()
 
-  // Create configuration (in practice, this would load from environment or .env)
-  final config = OpenAIConfig(
-    apiKey: 'your-api-key-here', // In practice: load from environment
-    defaultModel: 'gpt-4',
-    defaultTemperature: 0.7,
-    defaultMaxTokens: 2000,
-  );
+  // Create configuration from .env file
+  final config = OpenAIConfig.fromDotEnv();
 
   // Create a mock service for demonstration with enhanced responses
   final mockService = MockOpenAiToolService(

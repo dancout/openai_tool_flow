@@ -54,7 +54,7 @@ void main() {
         );
 
         final flow = ToolFlow(
-          config: OpenAIConfig(apiKey: 'test'),
+          config: OpenAIConfig(apiKey: 'test', baseUrl: 'http://localhost'),
           steps: [
             ToolCallStep(
               toolName: 'test_tool_results',
@@ -91,7 +91,7 @@ void main() {
         );
 
         final flow = ToolFlow(
-          config: OpenAIConfig(apiKey: 'test'),
+          config: OpenAIConfig(apiKey: 'test', baseUrl: 'http://localhost'),
           steps: [
             ToolCallStep(
               toolName: 'typed_result_test',
@@ -131,7 +131,7 @@ void main() {
         );
 
         final flow = ToolFlow(
-          config: OpenAIConfig(apiKey: 'test'),
+          config: OpenAIConfig(apiKey: 'test', baseUrl: 'http://localhost'),
           steps: [
             ToolCallStep(
               toolName: 'multiple_typed_test',
@@ -182,7 +182,7 @@ void main() {
         );
 
         final flow = ToolFlow(
-          config: OpenAIConfig(apiKey: 'test'),
+          config: OpenAIConfig(apiKey: 'test', baseUrl: 'http://localhost'),
           steps: [
             ToolCallStep(
               toolName: 'compat_test',

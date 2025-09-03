@@ -236,15 +236,23 @@ void main() {
 
   group('OpenAIConfig', () {
     test('should create config with required fields', () {
-      final config = OpenAIConfig(apiKey: 'test-key', defaultModel: 'gpt-4');
+      final config = OpenAIConfig(
+        apiKey: 'test-key',
+        defaultModel: 'gpt-4',
+        baseUrl: 'baseUrl',
+      );
 
       expect(config.apiKey, equals('test-key'));
       expect(config.defaultModel, equals('gpt-4'));
-      expect(config.baseUrl, equals('https://api.openai.com/v1'));
+      expect(config.baseUrl, equals('baseUrl'));
     });
 
     test('should not include API key in JSON output', () {
-      final config = OpenAIConfig(apiKey: 'secret-key', defaultModel: 'gpt-4');
+      final config = OpenAIConfig(
+        apiKey: 'secret-key',
+        defaultModel: 'gpt-4',
+        baseUrl: 'baseUrl',
+      );
 
       final json = config.toJson();
       expect(json, isNot(contains('secret-key')));
@@ -307,7 +315,11 @@ void main() {
 
   group('ToolFlow', () {
     test('should execute simple flow with mock service', () async {
-      final config = OpenAIConfig(apiKey: 'test-key', defaultModel: 'gpt-4');
+      final config = OpenAIConfig(
+        apiKey: 'test-key',
+        defaultModel: 'gpt-4',
+        baseUrl: 'baseUrl',
+      );
 
       // Create mock service with predefined responses
       final mockService = MockOpenAiToolService(
@@ -352,7 +364,11 @@ void main() {
     });
 
     test('should collect issues from audits', () async {
-      final config = OpenAIConfig(apiKey: 'test-key', defaultModel: 'gpt-4');
+      final config = OpenAIConfig(
+        apiKey: 'test-key',
+        defaultModel: 'gpt-4',
+        baseUrl: 'baseUrl',
+      );
 
       final audit = SimpleAuditFunction<TestToolOutput>(
         name: 'test_audit',
@@ -407,7 +423,11 @@ void main() {
     });
 
     test('should support tool name-based result retrieval', () async {
-      final config = OpenAIConfig(apiKey: 'test-key', defaultModel: 'gpt-4');
+      final config = OpenAIConfig(
+        apiKey: 'test-key',
+        defaultModel: 'gpt-4',
+        baseUrl: 'baseUrl',
+      );
 
       final mockService = MockOpenAiToolService(
         responses: {
@@ -484,7 +504,11 @@ void main() {
     });
 
     test('should support output inclusion between steps', () async {
-      final config = OpenAIConfig(apiKey: 'test-key', defaultModel: 'gpt-4');
+      final config = OpenAIConfig(
+        apiKey: 'test-key',
+        defaultModel: 'gpt-4',
+        baseUrl: 'baseUrl',
+      );
 
       // Create an audit that generates issues
       final audit = SimpleAuditFunction<TestToolOutput>(
@@ -574,7 +598,11 @@ void main() {
     });
 
     test('should handle duplicate tool names correctly', () async {
-      final config = OpenAIConfig(apiKey: 'test-key', defaultModel: 'gpt-4');
+      final config = OpenAIConfig(
+        apiKey: 'test-key',
+        defaultModel: 'gpt-4',
+        baseUrl: 'baseUrl',
+      );
 
       final mockService = MockOpenAiToolService(
         responses: {
@@ -757,7 +785,11 @@ void main() {
 
   group('ToolFlow with filtered previousIssues', () {
     test('should only include issues from included output steps', () async {
-      final config = OpenAIConfig(apiKey: 'test-key', defaultModel: 'gpt-4');
+      final config = OpenAIConfig(
+        apiKey: 'test-key',
+        defaultModel: 'gpt-4',
+        baseUrl: 'baseUrl',
+      );
 
       final mockService = MockOpenAiToolService(
         responses: {
@@ -830,7 +862,7 @@ void main() {
       );
 
       final flow = ToolFlow(
-        config: OpenAIConfig(apiKey: 'test'),
+        config: OpenAIConfig(apiKey: 'test', baseUrl: 'baseUrl'),
         steps: [
           ToolCallStep(
             toolName: 'integration_tool_e2e',
@@ -870,6 +902,7 @@ void main() {
           final config = OpenAIConfig(
             apiKey: 'test-key',
             defaultModel: 'gpt-4',
+            baseUrl: 'baseUrl',
           );
           final testService = TestSystemMessageService(
             responses: {
@@ -956,6 +989,7 @@ void main() {
           final config = OpenAIConfig(
             apiKey: 'test-key',
             defaultModel: 'gpt-4',
+            baseUrl: 'baseUrl',
           );
           final testService = TestSystemMessageService(
             responses: {
@@ -1023,6 +1057,7 @@ void main() {
           final config = OpenAIConfig(
             apiKey: 'test-key',
             defaultModel: 'gpt-4',
+            baseUrl: 'baseUrl',
           );
           final testService = TestSystemMessageService(
             responses: {

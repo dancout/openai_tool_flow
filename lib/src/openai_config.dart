@@ -1,21 +1,21 @@
 import 'dart:io';
 
 /// Configuration for OpenAI API access and defaults.
-/// 
+///
 /// Can load API key and defaults from environment variables or be configured programmatically.
 class OpenAIConfig {
   /// OpenAI API key
   final String apiKey;
-  
+
   /// Default model to use when not specified in a step
   final String defaultModel;
-  
+
   /// Default temperature for model calls
   final double? defaultTemperature;
-  
+
   /// Default max tokens for model calls
   final int? defaultMaxTokens;
-  
+
   /// Base URL for OpenAI API (useful for proxies or alternative endpoints)
   final String baseUrl;
 
@@ -25,11 +25,11 @@ class OpenAIConfig {
     this.defaultModel = 'gpt-4',
     this.defaultTemperature,
     this.defaultMaxTokens,
-    this.baseUrl = 'https://api.openai.com/v1',
+    required this.baseUrl,
   });
 
   /// Creates an OpenAIConfig from environment variables
-  /// 
+  ///
   /// Looks for the following environment variables:
   /// - OPENAI_API_KEY (required)
   /// - OPENAI_DEFAULT_MODEL (optional, defaults to 'gpt-4')
@@ -42,14 +42,17 @@ class OpenAIConfig {
       throw ArgumentError('OPENAI_API_KEY environment variable is required');
     }
 
-    final defaultModel = Platform.environment['OPENAI_DEFAULT_MODEL'] ?? 'gpt-4';
-    final baseUrl = Platform.environment['OPENAI_BASE_URL'] ?? 'https://api.openai.com/v1';
-    
-    final temperatureString = Platform.environment['OPENAI_DEFAULT_TEMPERATURE'];
+    final defaultModel =
+        Platform.environment['OPENAI_DEFAULT_MODEL'] ?? 'gpt-4';
+    final baseUrl =
+        Platform.environment['OPENAI_BASE_URL'] ?? 'https://api.openai.com/v1';
+
+    final temperatureString =
+        Platform.environment['OPENAI_DEFAULT_TEMPERATURE'];
     final double? defaultTemperature = temperatureString != null
         ? double.tryParse(temperatureString)
         : null;
-    
+
     final maxTokensString = Platform.environment['OPENAI_DEFAULT_MAX_TOKENS'];
     final int? defaultMaxTokens = maxTokensString != null
         ? int.tryParse(maxTokensString)
@@ -65,12 +68,12 @@ class OpenAIConfig {
   }
 
   /// Creates an OpenAIConfig from a .env file
-  /// 
+  ///
   /// This is a simplified implementation that reads key=value pairs from a .env file.
   /// In a real implementation, you might want to use a package like 'dotenv'.
   factory OpenAIConfig.fromDotEnv([String filePath = '.env']) {
     final envVars = <String, String>{};
-    
+
     try {
       final file = File(filePath);
       if (file.existsSync()) {
@@ -102,17 +105,19 @@ class OpenAIConfig {
 
     final apiKey = mergedEnv['OPENAI_API_KEY'];
     if (apiKey == null || apiKey.isEmpty) {
-      throw ArgumentError('OPENAI_API_KEY not found in .env file or environment variables');
+      throw ArgumentError(
+        'OPENAI_API_KEY not found in .env file or environment variables',
+      );
     }
 
     final defaultModel = mergedEnv['OPENAI_DEFAULT_MODEL'] ?? 'gpt-4';
     final baseUrl = mergedEnv['OPENAI_BASE_URL'] ?? 'https://api.openai.com/v1';
-    
+
     final temperatureString = mergedEnv['OPENAI_DEFAULT_TEMPERATURE'];
     final double? defaultTemperature = temperatureString != null
         ? double.tryParse(temperatureString)
         : null;
-    
+
     final maxTokensString = mergedEnv['OPENAI_DEFAULT_MAX_TOKENS'];
     final int? defaultMaxTokens = maxTokensString != null
         ? int.tryParse(maxTokensString)

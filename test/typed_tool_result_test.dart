@@ -242,7 +242,7 @@ void main() {
 
     test('should support different output types in the same flow', () async {
       final flow = ToolFlow(
-        config: OpenAIConfig(apiKey: 'test-key'),
+        config: OpenAIConfig(apiKey: 'test-key', baseUrl: 'http://localhost'),
         openAiService: mockService,
         steps: [
           ToolCallStep(
@@ -303,7 +303,7 @@ void main() {
 
     test('should execute type-safe audits correctly', () async {
       final flow = ToolFlow(
-        config: OpenAIConfig(apiKey: 'test-key'),
+        config: OpenAIConfig(apiKey: 'test-key', baseUrl: 'http://localhost'),
         openAiService: mockService,
         steps: [
           ToolCallStep(
@@ -350,7 +350,7 @@ void main() {
       'should handle audit failures with type-safe error reporting',
       () async {
         final flow = ToolFlow(
-          config: OpenAIConfig(apiKey: 'test-key'),
+          config: OpenAIConfig(apiKey: 'test-key', baseUrl: 'http://localhost'),
           openAiService: mockService,
           steps: [
             ToolCallStep(
@@ -421,7 +421,7 @@ void main() {
       'should prevent type mismatches with safe casting and throw on incorrect cast',
       () async {
         final flow = ToolFlow(
-          config: OpenAIConfig(apiKey: 'test-key'),
+          config: OpenAIConfig(apiKey: 'test-key', baseUrl: 'http://localhost'),
           openAiService: mockService,
           steps: [
             ToolCallStep(
@@ -468,7 +468,7 @@ void main() {
       'should maintain backward compatibility with existing interfaces',
       () async {
         final flow = ToolFlow(
-          config: OpenAIConfig(apiKey: 'test-key'),
+          config: OpenAIConfig(apiKey: 'test-key', baseUrl: 'http://localhost'),
           openAiService: mockService,
           steps: [
             ToolCallStep(
