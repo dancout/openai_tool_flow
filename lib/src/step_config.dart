@@ -122,9 +122,6 @@ class StepConfig {
   /// Returns true if this step has any audits configured
   bool get hasAudits => audits.isNotEmpty;
 
-  /// Returns true if this step should include results from previous steps in the tool call
-  bool get hasResultInclusion => includeResultsInToolcall.isNotEmpty;
-
   /// Returns true if this step has input sanitization configured
   bool get hasInputSanitizer => inputSanitizer != null;
 

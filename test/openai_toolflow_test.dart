@@ -869,197 +869,238 @@ void main() {
     });
 
     group('ToolFlow includeResultsInToolcall', () {
-      test('should include results with filtered issues in system message', () async {
-        final config = OpenAIConfig(apiKey: 'test-key', defaultModel: 'gpt-4');
-        final testService = TestSystemMessageService(
-          responses: {
-            'step1_tool': {'result': 'step1 output'},
-            'step2_tool': {'result': 'step2 output'},
-          },
-        );
+      test(
+        'should include results with filtered issues in system message',
+        () async {
+          final config = OpenAIConfig(
+            apiKey: 'test-key',
+            defaultModel: 'gpt-4',
+          );
+          final testService = TestSystemMessageService(
+            responses: {
+              'step1_tool': {'result': 'step1 output'},
+              'step2_tool': {'result': 'step2 output'},
+            },
+          );
 
-        final flow = ToolFlow(
-          config: config,
-          steps: [
-            ToolCallStep(
-              toolName: 'step1_tool',
-              model: 'gpt-4',
-              inputBuilder: (previousResults) => {'input': 'step1'},
-              outputSchema: OutputSchema(
-                properties: [PropertyEntry.string(name: 'result')],
-                required: ['result'],
+          final flow = ToolFlow(
+            config: config,
+            steps: [
+              ToolCallStep(
+                toolName: 'step1_tool',
+                model: 'gpt-4',
+                inputBuilder: (previousResults) => {'input': 'step1'},
+                outputSchema: OutputSchema(
+                  properties: [PropertyEntry.string(name: 'result')],
+                  required: ['result'],
+                ),
+                stepConfig: StepConfig(
+                  audits: [
+                    SimpleAuditFunction<TestToolOutput>(
+                      name: 'test_audit',
+                      auditFunction: (result) => [
+                        Issue(
+                          id: 'high-issue',
+                          severity: IssueSeverity.high,
+                          description: 'High severity issue',
+                          context: {},
+                          suggestions: ['Fix this'],
+                        ),
+                        Issue(
+                          id: 'low-issue',
+                          severity: IssueSeverity.low,
+                          description: 'Low severity issue',
+                          context: {},
+                          suggestions: [],
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
-              stepConfig: StepConfig(
-                audits: [
-                  SimpleAuditFunction<TestToolOutput>(
-                    name: 'test_audit',
-                    auditFunction: (result) => [
-                      Issue(
-                        id: 'high-issue',
-                        severity: IssueSeverity.high,
-                        description: 'High severity issue',
-                        context: {},
-                        suggestions: ['Fix this'],
-                      ),
-                      Issue(
-                        id: 'low-issue',
-                        severity: IssueSeverity.low,
-                        description: 'Low severity issue',
-                        context: {},
-                        suggestions: [],
-                      ),
-                    ],
-                  ),
-                ],
+              ToolCallStep(
+                toolName: 'step2_tool',
+                model: 'gpt-4',
+                inputBuilder: (previousResults) => {'input': 'step2'},
+                outputSchema: OutputSchema(
+                  properties: [PropertyEntry.string(name: 'result')],
+                  required: ['result'],
+                ),
+                stepConfig: StepConfig(
+                  includeResultsInToolcall: [0], // Include step 0
+                  issuesSeverityFilter:
+                      IssueSeverity.high, // Only high+ severity
+                ),
               ),
-            ),
-            ToolCallStep(
-              toolName: 'step2_tool',
-              model: 'gpt-4',
-              inputBuilder: (previousResults) => {'input': 'step2'},
-              outputSchema: OutputSchema(
-                properties: [PropertyEntry.string(name: 'result')],
-                required: ['result'],
-              ),
-              stepConfig: StepConfig(
-                includeResultsInToolcall: [0], // Include step 0
-                issuesSeverityFilter: IssueSeverity.high, // Only high+ severity
-              ),
-            ),
-          ],
-          openAiService: testService,
-        );
+            ],
+            openAiService: testService,
+          );
 
-        final result = await flow.run();
+          final result = await flow.run();
 
-        expect(result.results.length, equals(2));
-        expect(testService.lastSystemMessage, isNotNull);
-        expect(testService.lastSystemMessage!, contains('HIGH: High severity issue'));
-        expect(testService.lastSystemMessage!, isNot(contains('LOW: Low severity issue')));
-        expect(testService.lastSystemMessage!, contains('Suggestions: Fix this'));
-      });
+          expect(result.results.length, equals(2));
+          expect(testService.lastSystemMessage, isNotNull);
+          expect(
+            testService.lastSystemMessage!,
+            contains('HIGH: High severity issue'),
+          );
+          expect(
+            testService.lastSystemMessage!,
+            isNot(contains('LOW: Low severity issue')),
+          );
+          expect(
+            testService.lastSystemMessage!,
+            contains('Suggestions: Fix this'),
+          );
+        },
+      );
 
-      test('should not include anything when no issues match severity filter', () async {
-        final config = OpenAIConfig(apiKey: 'test-key', defaultModel: 'gpt-4');
-        final testService = TestSystemMessageService(
-          responses: {
-            'step1_tool': {'result': 'step1 output'},
-            'step2_tool': {'result': 'step2 output'},
-          },
-        );
+      test(
+        'should not include anything when no issues match severity filter',
+        () async {
+          final config = OpenAIConfig(
+            apiKey: 'test-key',
+            defaultModel: 'gpt-4',
+          );
+          final testService = TestSystemMessageService(
+            responses: {
+              'step1_tool': {'result': 'step1 output'},
+              'step2_tool': {'result': 'step2 output'},
+            },
+          );
 
-        final flow = ToolFlow(
-          config: config,
-          steps: [
-            ToolCallStep(
-              toolName: 'step1_tool',
-              model: 'gpt-4',
-              inputBuilder: (previousResults) => {'input': 'step1'},
-              outputSchema: OutputSchema(
-                properties: [PropertyEntry.string(name: 'result')],
-                required: ['result'],
+          final flow = ToolFlow(
+            config: config,
+            steps: [
+              ToolCallStep(
+                toolName: 'step1_tool',
+                model: 'gpt-4',
+                inputBuilder: (previousResults) => {'input': 'step1'},
+                outputSchema: OutputSchema(
+                  properties: [PropertyEntry.string(name: 'result')],
+                  required: ['result'],
+                ),
+                stepConfig: StepConfig(
+                  audits: [
+                    SimpleAuditFunction<TestToolOutput>(
+                      name: 'test_audit',
+                      auditFunction: (result) => [
+                        Issue(
+                          id: 'low-issue',
+                          severity: IssueSeverity.low,
+                          description: 'Low severity issue',
+                          context: {},
+                          suggestions: [],
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
-              stepConfig: StepConfig(
-                audits: [
-                  SimpleAuditFunction<TestToolOutput>(
-                    name: 'test_audit',
-                    auditFunction: (result) => [
-                      Issue(
-                        id: 'low-issue',
-                        severity: IssueSeverity.low,
-                        description: 'Low severity issue',
-                        context: {},
-                        suggestions: [],
-                      ),
-                    ],
-                  ),
-                ],
+              ToolCallStep(
+                toolName: 'step2_tool',
+                model: 'gpt-4',
+                inputBuilder: (previousResults) => {'input': 'step2'},
+                outputSchema: OutputSchema(
+                  properties: [PropertyEntry.string(name: 'result')],
+                  required: ['result'],
+                ),
+                stepConfig: StepConfig(
+                  includeResultsInToolcall: [0], // Include step 0
+                  issuesSeverityFilter:
+                      IssueSeverity.critical, // Only critical severity
+                ),
               ),
-            ),
-            ToolCallStep(
-              toolName: 'step2_tool',
-              model: 'gpt-4',
-              inputBuilder: (previousResults) => {'input': 'step2'},
-              outputSchema: OutputSchema(
-                properties: [PropertyEntry.string(name: 'result')],
-                required: ['result'],
-              ),
-              stepConfig: StepConfig(
-                includeResultsInToolcall: [0], // Include step 0
-                issuesSeverityFilter: IssueSeverity.critical, // Only critical severity
-              ),
-            ),
-          ],
-          openAiService: testService,
-        );
+            ],
+            openAiService: testService,
+          );
 
-        final result = await flow.run();
+          final result = await flow.run();
 
-        expect(result.results.length, equals(2));
-        expect(testService.lastSystemMessage, isNull);
-      });
+          expect(result.results.length, equals(2));
+          expect(testService.lastSystemMessage, isNull);
+        },
+      );
 
-      test('should support tool name references in includeResultsInToolcall', () async {
-        final config = OpenAIConfig(apiKey: 'test-key', defaultModel: 'gpt-4');
-        final testService = TestSystemMessageService(
-          responses: {
-            'extract_colors': {'colors': ['red', 'blue']},
-            'validate_colors': {'valid': true},
-          },
-        );
+      test(
+        'should support tool name references in includeResultsInToolcall',
+        () async {
+          final config = OpenAIConfig(
+            apiKey: 'test-key',
+            defaultModel: 'gpt-4',
+          );
+          final testService = TestSystemMessageService(
+            responses: {
+              'extract_colors': {
+                'colors': ['red', 'blue'],
+              },
+              'validate_colors': {'valid': true},
+            },
+          );
 
-        final flow = ToolFlow(
-          config: config,
-          steps: [
-            ToolCallStep(
-              toolName: 'extract_colors',
-              model: 'gpt-4',
-              inputBuilder: (previousResults) => {'input': 'extract'},
-              outputSchema: OutputSchema(
-                properties: [PropertyEntry.array(name: 'colors', items: PropertyType.string)],
-                required: ['colors'],
+          final flow = ToolFlow(
+            config: config,
+            steps: [
+              ToolCallStep(
+                toolName: 'extract_colors',
+                model: 'gpt-4',
+                inputBuilder: (previousResults) => {'input': 'extract'},
+                outputSchema: OutputSchema(
+                  properties: [
+                    PropertyEntry.array(
+                      name: 'colors',
+                      items: PropertyType.string,
+                    ),
+                  ],
+                  required: ['colors'],
+                ),
+                stepConfig: StepConfig(
+                  audits: [
+                    SimpleAuditFunction<TestToolOutput>(
+                      name: 'color_audit',
+                      auditFunction: (result) => [
+                        Issue(
+                          id: 'color-issue',
+                          severity: IssueSeverity.medium,
+                          description: 'Colors need validation',
+                          context: {},
+                          suggestions: ['Check color format'],
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
-              stepConfig: StepConfig(
-                audits: [
-                  SimpleAuditFunction<TestToolOutput>(
-                    name: 'color_audit',
-                    auditFunction: (result) => [
-                      Issue(
-                        id: 'color-issue',
-                        severity: IssueSeverity.medium,
-                        description: 'Colors need validation',
-                        context: {},
-                        suggestions: ['Check color format'],
-                      ),
-                    ],
-                  ),
-                ],
+              ToolCallStep(
+                toolName: 'validate_colors',
+                model: 'gpt-4',
+                inputBuilder: (previousResults) => {'input': 'validate'},
+                outputSchema: OutputSchema(
+                  properties: [PropertyEntry.boolean(name: 'valid')],
+                  required: ['valid'],
+                ),
+                stepConfig: StepConfig(
+                  includeResultsInToolcall: [
+                    'extract_colors',
+                  ], // Include by tool name
+                  issuesSeverityFilter: IssueSeverity.medium,
+                ),
               ),
-            ),
-            ToolCallStep(
-              toolName: 'validate_colors',
-              model: 'gpt-4',
-              inputBuilder: (previousResults) => {'input': 'validate'},
-              outputSchema: OutputSchema(
-                properties: [PropertyEntry.boolean(name: 'valid')],
-                required: ['valid'],
-              ),
-              stepConfig: StepConfig(
-                includeResultsInToolcall: ['extract_colors'], // Include by tool name
-                issuesSeverityFilter: IssueSeverity.medium,
-              ),
-            ),
-          ],
-          openAiService: testService,
-        );
+            ],
+            openAiService: testService,
+          );
 
-        final result = await flow.run();
+          final result = await flow.run();
 
-        expect(result.results.length, equals(2));
-        expect(testService.lastSystemMessage, isNotNull);
-        expect(testService.lastSystemMessage!, contains('extract_colors'));
-        expect(testService.lastSystemMessage!, contains('MEDIUM: Colors need validation'));
-      });
+          expect(result.results.length, equals(2));
+          expect(testService.lastSystemMessage, isNotNull);
+          expect(testService.lastSystemMessage!, contains('extract_colors'));
+          expect(
+            testService.lastSystemMessage!,
+            contains('MEDIUM: Colors need validation'),
+          );
+        },
+      );
     });
 
     group('StepConfig issuesSeverityFilter', () {
@@ -1075,10 +1116,10 @@ void main() {
 
       test('hasResultInclusion should work correctly', () {
         const stepConfigEmpty = StepConfig();
-        expect(stepConfigEmpty.hasResultInclusion, isFalse);
+        expect(stepConfigEmpty.includeResultsInToolcall, isEmpty);
 
         const stepConfigWithResults = StepConfig(includeResultsInToolcall: [0]);
-        expect(stepConfigWithResults.hasResultInclusion, isTrue);
+        expect(stepConfigWithResults.includeResultsInToolcall, isNotEmpty);
       });
     });
   });

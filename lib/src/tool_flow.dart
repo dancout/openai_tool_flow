@@ -181,9 +181,7 @@ class ToolFlow {
     );
 
     // Get results to include in tool call if configured
-    final includedResults = step.stepConfig.hasResultInclusion 
-        ? _getIncludedResults(step: step)
-        : <ToolResult<ToolOutput>>[];
+    final includedResults = _getIncludedResults(step: step);
 
     // Execute using the injected OpenAI service with included results
     final response = await openAiService.executeToolCall(
