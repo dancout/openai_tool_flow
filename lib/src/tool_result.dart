@@ -28,47 +28,6 @@ class ToolResult<T extends ToolOutput> {
     this.issues = const [],
   });
 
-  /// Creates a ToolResult from a JSON map
-  factory ToolResult.fromJson(Map<String, dynamic> json) {
-    final toolName = json['toolName'] as String;
-    final inputMap = Map<String, dynamic>.from(json['input'] as Map);
-    final outputMap = Map<String, dynamic>.from(json['output'] as Map);
-
-    // Create typed input from map data
-    final typedInput = ToolInput.fromMap(inputMap);
-
-    if (!ToolOutputRegistry.hasTypedOutput(toolName)) {
-      throw Exception('No typed output registered for tool "$toolName".');
-    }
-
-    // Extract round from output map (ToolOutput stores it as _round)
-    final round = outputMap['_round'] as int? ?? typedInput.round;
-
-    // Try to create typed output if registry has a creator for this tool
-    final typedOutput = ToolOutputRegistry.create(
-      toolName: toolName,
-      data: outputMap,
-      round: round,
-    );
-
-    // TODO: We need a better constructor here, because what if the extended <T> has other parameters that aren't included in the base ToolResult?
-    return ToolResult<ToolOutput>(
-          toolName: toolName,
-          input: typedInput,
-          output: typedOutput,
-          issues:
-              (json['issues'] as List?)
-                  ?.map(
-                    (issueJson) =>
-                        Issue.fromJson(issueJson as Map<String, dynamic>),
-                  )
-                  .toList() ??
-              [],
-        )
-        // TODO: Related to above, should this be as ToolResult<T>, or just as ToolResult<ToolOutput>? Can it be a <T> without knowing all its params?
-        as ToolResult<T>;
-  }
-
   /// Converts this ToolResult to a JSON map
   ///
   /// Subclasses should override this method to include their additional fields

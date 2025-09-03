@@ -203,7 +203,7 @@ void main() {
       expect(result.hasIssues, isFalse);
     });
 
-    test('should serialize to and from JSON', () {
+    test('should serialize to JSON', () {
       final issue = Issue(
         id: 'test-issue',
         severity: IssueSeverity.low,
@@ -223,19 +223,14 @@ void main() {
       );
 
       final json = result.toJson();
-      final restored = ToolResult.fromJson(json);
-
-      expect(restored.toolName, equals(result.toolName));
-      expect(
-        restored.input.toMap().toString(),
-        equals(result.input.toMap().toString()),
-      );
-      expect(
-        restored.output.toMap().toString(),
-        equals(result.output.toMap().toString()),
-      );
-      expect(restored.issues.length, equals(1));
-      expect(restored.hasIssues, isTrue);
+      expect(json['toolName'], equals('test_tool'));
+      expect(json['input']['param'], equals('value'));
+      expect(json['output']['result'], equals('success'));
+      expect(json['issues'], isA<List>());
+      expect(json['issues'].length, equals(1));
+      expect(json['issues'][0]['id'], equals('test-issue'));
+      expect(json['issues'][0]['severity'], equals('low'));
+      expect(json['issues'][0]['description'], equals('Test description'));
     });
   });
 
