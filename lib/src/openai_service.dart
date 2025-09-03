@@ -11,10 +11,14 @@ abstract class OpenAiToolService {
   /// Executes a tool call with the given step and input parameters.
   ///
   /// Returns the raw tool output as a Map that will be used to create ToolResult.
+  /// 
+  /// [includedResults] contains previous results and their filtered issues to include
+  /// in the system message for context about previous attempts and problems.
   Future<Map<String, dynamic>> executeToolCall(
     ToolCallStep step,
-    ToolInput input,
-  );
+    ToolInput input, {
+    List<ToolResult> includedResults = const [],
+  });
 }
 
 /// Structured request for OpenAI API calls.
@@ -144,7 +148,7 @@ class SystemMessageInput {
   /// Current step information
   final String stepDescription;
 
-  /// Previous step results relevant to this step
+  /// Previous step results with filtered issues relevant to this step
   final List<ToolResult> previousResults;
 
   /// Additional context data

@@ -26,8 +26,9 @@ class MockOpenAiToolService implements OpenAiToolService {
   @override
   Future<Map<String, dynamic>> executeToolCall(
     ToolCallStep step,
-    ToolInput input,
-  ) async {
+    ToolInput input, {
+    List<ToolResult> includedResults = const [],
+  }) async {
     final response = responses[step.toolName];
     if (response == null) {
       throw Exception('No mock response for ${step.toolName}');

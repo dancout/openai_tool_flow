@@ -25,28 +25,16 @@ class StepConfig {
   /// Defaults to true for backward compatibility
   final bool stopOnFailure;
 
-  /// Simple list of steps to include outputs from.
-  /// Can be int (step index) or String (tool name).
+  /// Minimum severity level for issues to include when using includeResultsInToolcall.
+  /// Issues at this level and higher will be included in the system message.
+  /// Defaults to IssueSeverity.high to include high and critical issues only.
   ///
-  /// **Usage Examples:**
-  /// ```dart
-  /// // Include outputs from step 0 and any step with tool name 'extract_palette'
-  /// includeOutputsFrom: [0, 'extract_palette']
-  ///
-  /// // Include outputs from steps 1 and 2
-  /// includeOutputsFrom: [1, 2]
-  ///
-  /// // Include outputs from 'refine_colors' tool (most recent if duplicates)
-  /// includeOutputsFrom: ['refine_colors']
-  /// ```
-  ///
-  /// **How it works:**
-  /// - int values: References step by index (0-based)
-  /// - String values: References step by tool name (most recent if duplicates)
-  /// - All matching outputs are merged into input with `toolName_key` prefix
-  /// - For example, if 'extract_palette' outputs `{'colors': [...]}`,
-  ///   it becomes `{'extract_palette_colors': [...]}` in the receiving step
-  final List<dynamic> includeOutputsFrom;
+  /// **Examples:**
+  /// - `IssueSeverity.low`: Includes low, medium, high, and critical issues
+  /// - `IssueSeverity.medium`: Includes medium, high, and critical issues
+  /// - `IssueSeverity.high`: Includes high and critical issues (default)
+  /// - `IssueSeverity.critical`: Includes only critical issues
+  final IssueSeverity issuesSeverityFilter;
 
   /// Function to sanitize or transform the input before executing the step.
   ///
@@ -103,18 +91,13 @@ class StepConfig {
     this.customPassCriteria,
     this.customFailureReason,
     this.stopOnFailure = true,
-    this.includeOutputsFrom = const [],
+    this.issuesSeverityFilter = IssueSeverity.high,
     this.inputSanitizer,
     this.outputSanitizer,
   });
 
   /// Returns true if this step has any audits configured
   bool get hasAudits => audits.isNotEmpty;
-
-  /// Returns true if this step should include outputs from previous steps
-  bool
-  // TODO: Does this belong on the ToolCallStep directly?
-  get hasOutputInclusion => includeOutputsFrom.isNotEmpty;
 
   /// Returns true if this step has input sanitization configured
   bool get hasInputSanitizer => inputSanitizer != null;

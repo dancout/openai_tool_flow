@@ -46,6 +46,28 @@ class ToolCallStep {
   /// Or, we'd need like a Lookup tool to get the Type of expected TypedOutput for that step, and assign it that way
   final List<Object> buildInputsFrom;
 
+  /// List of steps results to include ToolOutputs and their associated issues from in the OpenAI tool call.
+  /// Can be int (step index) or String (tool name).
+  ///
+  /// **Usage Examples:**
+  /// ```dart
+  /// // Include results from step 0 and any step with tool name 'extract_palette'
+  /// includeResultsInToolcall: [0, 'extract_palette']
+  ///
+  /// // Include results from steps 1 and 2
+  /// includeResultsInToolcall: [1, 2]
+  ///
+  /// // Include results from 'refine_colors' tool (most recent if duplicates)
+  /// includeResultsInToolcall: ['refine_colors']
+  /// ```
+  ///
+  /// **How it works:**
+  /// - int values: References step by index (0-based)
+  /// - String values: References step by tool name (most recent if duplicates)
+  /// - Results and their associated issues (filtered by severity) are included in the system message
+  /// - Provides context like "here's what you did previously and why it was wrong"
+  final List<dynamic> includeResultsInToolcall;
+
   /// Issues that have been identified in previous attempts
   /// Helps provide context for retry attempts
   final List<Issue> issues;
@@ -92,6 +114,7 @@ class ToolCallStep {
     // }
     // TODO: Related to above, it might be nice to even split out the ToolInput class so that there is a base class with just the data necessary for this input, and then we can have a separate extended class that includes the previous results & issues if the user wants it, and we can parse all that out under the hood so the user doesn't have to.
     required this.inputBuilder,
+    this.includeResultsInToolcall = const [],
     this.buildInputsFrom = const [],
     this.issues = const [],
     required this.stepConfig,
@@ -109,6 +132,7 @@ class ToolCallStep {
     List<Object> buildInputsFrom = const [],
     List<Issue> issues = const [],
     StepConfig? stepConfig,
+    List<String> includeResultsInToolcall = const [],
   }) {
     // Auto-register the step definition
     ToolOutputRegistry.registerStepDefinition(stepDefinition);
@@ -121,6 +145,7 @@ class ToolCallStep {
       issues: issues,
       outputSchema: stepDefinition.outputSchema,
       stepConfig: stepConfig ?? StepConfig(),
+      includeResultsInToolcall: includeResultsInToolcall,
     );
   }
 
