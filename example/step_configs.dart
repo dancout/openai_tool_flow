@@ -151,6 +151,7 @@ Map<String, ToolCallStep> createColorThemeWorkflow() {
 
         return input;
       },
+      // TODO: Should we consider just pulling ALL previous results forward and remove the need for buildInputsFrom?
       buildInputsFrom: [paletteStep.stepName],
       includeResultsInToolcall: [paletteStep.stepName],
       stepConfig: StepConfig(

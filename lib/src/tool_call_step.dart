@@ -83,6 +83,7 @@ class ToolCallStep {
   @visibleForTesting
   const ToolCallStep({
     required this.toolName,
+    // TODO: This model should not be required, as we can fall back on the .env configuration default model.
     required this.model,
     required this.inputBuilder,
     this.includeResultsInToolcall = const [],
