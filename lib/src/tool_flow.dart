@@ -15,7 +15,8 @@ class ToolFlow {
   final OpenAIConfig config;
 
   /// Ordered list of tool call steps to execute
-  final List<ToolCallStep> steps;
+  /// Each step can have a different output type, so we use dynamic to allow heterogeneous types
+  final List<ToolCallStep<dynamic>> steps;
 
   /// OpenAI service for making tool calls (can be injected for testing)
   final OpenAiToolService openAiService;
@@ -170,7 +171,7 @@ class ToolFlow {
 
   /// Executes a single step
   Future<TypedToolResult> _executeStep({
-    required ToolCallStep step,
+    required ToolCallStep<dynamic> step,
     required int stepIndex,
     required int round,
   }) async {
@@ -300,7 +301,7 @@ class ToolFlow {
 
   /// Builds input for a step based on inputBuilder and step configuration
   ToolInput _buildStepInput({
-    required ToolCallStep step,
+    required ToolCallStep<dynamic> step,
     required int stepIndex,
     required int round,
   }) {
@@ -343,7 +344,7 @@ class ToolFlow {
   // TODO: (SKIP) This logic seems really similar to how we get the includeResultsInToolcall list.
   /// // Consider consolidating the logic to a reusable helper function.
   List<ToolResult<ToolOutput>> _getInputBuilderResults({
-    required ToolCallStep step,
+    required ToolCallStep<dynamic> step,
   }) {
     final inputResults = <ToolResult<ToolOutput>>[];
 
@@ -369,7 +370,7 @@ class ToolFlow {
 
   /// Gets the list of results to include in tool call system messages with filtered issues
   List<ToolResult<ToolOutput>> _getIncludedResults({
-    required ToolCallStep step,
+    required ToolCallStep<dynamic> step,
   }) {
     final includedResults = <ToolResult<ToolOutput>>[];
     final stepConfig = step.stepConfig;

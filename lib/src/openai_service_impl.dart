@@ -21,7 +21,7 @@ class DefaultOpenAiToolService implements OpenAiToolService {
 
   @override
   Future<Map<String, dynamic>> executeToolCall(
-    ToolCallStep step,
+    ToolCallStep<dynamic> step,
     ToolInput input, {
     List<ToolResult> includedResults = const [],
   }) async {
@@ -64,7 +64,7 @@ class DefaultOpenAiToolService implements OpenAiToolService {
 
   /// Builds the OpenAI request from step and input
   OpenAiRequest _buildOpenAiRequest({
-    required ToolCallStep step,
+    required ToolCallStep<dynamic> step,
     required ToolInput input,
     List<ToolResult> includedResults = const [],
   }) {
@@ -106,7 +106,7 @@ class DefaultOpenAiToolService implements OpenAiToolService {
 
   /// Builds tool definition for OpenAI
   Map<String, dynamic> _buildToolDefinition({
-    required ToolCallStep step,
+    required ToolCallStep<dynamic> step,
     required ToolInput input,
   }) {
     return {
@@ -262,7 +262,7 @@ class MockOpenAiToolService implements OpenAiToolService {
 
   @override
   Future<Map<String, dynamic>> executeToolCall(
-    ToolCallStep step,
+    ToolCallStep<dynamic> step,
     ToolInput input, {
     List<ToolResult> includedResults = const [],
   }) async {

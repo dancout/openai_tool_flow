@@ -25,7 +25,7 @@ class MockOpenAiToolService implements OpenAiToolService {
 
   @override
   Future<Map<String, dynamic>> executeToolCall(
-    ToolCallStep step,
+    ToolCallStep<dynamic> step,
     ToolInput input, {
     List<ToolResult> includedResults = const [],
   }) async {

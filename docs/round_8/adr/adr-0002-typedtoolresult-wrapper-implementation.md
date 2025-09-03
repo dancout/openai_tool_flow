@@ -7,7 +7,7 @@ tags: ["architecture", "decision", "generics", "type-safety", "audit-execution",
 supersedes: ""
 superseded_by: ""
 adr_references: ["ADR-0001"]
-used_as_resource_in: []
+used_as_resource_in: ["ADR-0003"]
 ---
 
 # ADR-0002: TypedToolResult Wrapper Implementation for Per-Step Generic Typing
