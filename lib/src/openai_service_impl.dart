@@ -30,7 +30,7 @@ class DefaultOpenAiToolService implements OpenAiToolService {
     try {
       // Build the OpenAI request with included results
       final request = _buildOpenAiRequest(
-        step: step, 
+        step: step,
         input: input,
         includedResults: includedResults,
       );
@@ -138,6 +138,7 @@ class DefaultOpenAiToolService implements OpenAiToolService {
       for (int i = 0; i < input.previousResults.length; i++) {
         final result = input.previousResults[i];
         buffer.writeln(
+          // TODO: We should include more than just the keys!
           '  Step: ${result.toolName} -> Output keys: ${result.output.toMap().keys.join(', ')}',
         );
 

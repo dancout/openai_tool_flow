@@ -185,7 +185,7 @@ class ToolFlow {
 
     // Execute using the injected OpenAI service with included results
     final response = await openAiService.executeToolCall(
-      step, 
+      step,
       stepInput,
       includedResults: includedResults,
     );
@@ -377,7 +377,7 @@ class ToolFlow {
     for (final reference in stepConfig.includeResultsInToolcall) {
       TypedToolResult? sourceTypedResult;
 
-      // Find the source result by index or tool name  
+      // Find the source result by index or tool name
       if (reference is int) {
         if (reference >= 0 && reference < _results.length) {
           sourceTypedResult = _results[reference];
@@ -389,10 +389,12 @@ class ToolFlow {
       if (sourceTypedResult != null) {
         // Filter issues by severity level
         final filteredIssues = sourceTypedResult.issues
-            .where((issue) => _isIssueSeverityIncluded(
-                  issue.severity, 
-                  stepConfig.issuesSeverityFilter,
-                ))
+            .where(
+              (issue) => _isIssueSeverityIncluded(
+                issue.severity,
+                stepConfig.issuesSeverityFilter,
+              ),
+            )
             .toList();
 
         // Only include result if it has issues matching the filter
@@ -410,17 +412,20 @@ class ToolFlow {
   }
 
   /// Checks if an issue severity should be included based on the filter level
-  bool _isIssueSeverityIncluded(IssueSeverity issueSeverity, IssueSeverity filterLevel) {
+  bool _isIssueSeverityIncluded(
+    IssueSeverity issueSeverity,
+    IssueSeverity filterLevel,
+  ) {
     final severityLevels = [
       IssueSeverity.low,
-      IssueSeverity.medium, 
+      IssueSeverity.medium,
       IssueSeverity.high,
       IssueSeverity.critical,
     ];
-    
+
     final issueIndex = severityLevels.indexOf(issueSeverity);
     final filterIndex = severityLevels.indexOf(filterLevel);
-    
+
     return issueIndex >= filterIndex;
   }
 

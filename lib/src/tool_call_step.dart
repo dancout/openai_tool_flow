@@ -46,6 +46,8 @@ class ToolCallStep {
   /// Or, we'd need like a Lookup tool to get the Type of expected TypedOutput for that step, and assign it that way
   final List<Object> buildInputsFrom;
 
+  // TODO: Does it make sense for includeResultsInToolcall to go here since buildInputsFrom is also here? Those things are related.
+
   /// Issues that have been identified in previous attempts
   /// Helps provide context for retry attempts
   final List<Issue> issues;
