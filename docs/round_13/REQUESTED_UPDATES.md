@@ -35,7 +35,7 @@ I need your help with the following content.
 - [ ] What should be done for the user is that the tool's output and associated issues should be neatly & consistently parsed and placed into the system message going into the open ai tool call.
     - There was existing code on this, but was removed, and you can see the below code snippet for context:
 ```dart
- // TODO: I wonder if we should have a convenience function that can convert the issues from previous results to be easily used in the future. The context here is that if we are doing a tool call that is adjusting the values of a TypedOutput then we may be interested in the previous issues as to not regress and recreate them.
+ // I wonder if we should have a convenience function that can convert the issues from previous results to be easily used in the future. The context here is that if we are doing a tool call that is adjusting the values of a TypedOutput then we may be interested in the previous issues as to not regress and recreate them.
     /// So, it might be nice to be able to simply say "include the previous results and issues from these steps" and the user doesn't have to parse everything themselves. Either through like an overridable method, or a getter, or even just passing in a list to a parameter that says "include these bad boys".
     /// The removed code from the _buildSystemMessage was:
      if (input.previousResults.isNotEmpty) {
