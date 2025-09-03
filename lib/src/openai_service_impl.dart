@@ -137,10 +137,8 @@ class DefaultOpenAiToolService implements OpenAiToolService {
       buffer.writeln('Previous step results and associated issues:');
       for (int i = 0; i < input.previousResults.length; i++) {
         final result = input.previousResults[i];
-        buffer.writeln(
-          // TODO: We should include more than just the keys!
-          '  Step: ${result.toolName} -> Output keys: ${result.output.toMap().keys.join(', ')}',
-        );
+        buffer.writeln('  Step: ${result.toolName}');
+        buffer.writeln('    Output: ${jsonEncode(result.output.toMap())}');
 
         // Include issues associated with this specific result
         if (result.issues.isNotEmpty) {
