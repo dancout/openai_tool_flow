@@ -31,7 +31,7 @@ class PaletteExtractionInput extends ToolInput {
     );
   }
 
-  // TODO: Consider changing all toMap to toJson.
+  // TODO: (SKIP) Consider changing all toMap to toJson.
   // - [ ] Consolidate usages of `toJson` and `toMap` to all be named identically, since these are doing the same thing.
   //   - Uniformity is nice. Let's go with toJson.
   @override
@@ -288,39 +288,42 @@ class ThemeGenerationOutput extends ToolOutput {
 /// Step definitions that encapsulate tool metadata and functionality
 
 /// Step definition for palette extraction
-class PaletteExtractionStepDefinition extends StepDefinition<PaletteExtractionOutput> {
+class PaletteExtractionStepDefinition
+    extends StepDefinition<PaletteExtractionOutput> {
   @override
   String get stepName => PaletteExtractionOutput.stepName;
-  
+
   @override
   OutputSchema get outputSchema => PaletteExtractionOutput.getOutputSchema();
-  
+
   @override
   PaletteExtractionOutput fromMap(Map<String, dynamic> data, int round) =>
       PaletteExtractionOutput.fromMap(data, round);
 }
 
 /// Step definition for color refinement
-class ColorRefinementStepDefinition extends StepDefinition<ColorRefinementOutput> {
+class ColorRefinementStepDefinition
+    extends StepDefinition<ColorRefinementOutput> {
   @override
   String get stepName => ColorRefinementOutput.stepName;
-  
+
   @override
   OutputSchema get outputSchema => ColorRefinementOutput.getOutputSchema();
-  
+
   @override
   ColorRefinementOutput fromMap(Map<String, dynamic> data, int round) =>
       ColorRefinementOutput.fromMap(data, round);
 }
 
 /// Step definition for theme generation
-class ThemeGenerationStepDefinition extends StepDefinition<ThemeGenerationOutput> {
+class ThemeGenerationStepDefinition
+    extends StepDefinition<ThemeGenerationOutput> {
   @override
   String get stepName => ThemeGenerationOutput.stepName;
-  
+
   @override
   OutputSchema get outputSchema => ThemeGenerationOutput.getOutputSchema();
-  
+
   @override
   ThemeGenerationOutput fromMap(Map<String, dynamic> data, int round) =>
       ThemeGenerationOutput.fromMap(data, round);

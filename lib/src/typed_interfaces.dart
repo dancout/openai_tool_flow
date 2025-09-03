@@ -93,7 +93,7 @@ class ToolInput {
 /// Provides type safety for tool results while maintaining
 /// backward compatibility with Map-based interface.
 /// Can be extended for custom tool outputs or used directly for simple cases.
-// TODO: Consider making ToolOutput abstract and then you can have the other classes be typed, and force them to implement things like toMap and fromMap.
+// TODO: (SKIP) Consider making ToolOutput abstract and then you can have the other classes be typed, and force them to implement things like toMap and fromMap.
 class ToolOutput {
   /// Current retry round (0 for first attempt)
   final int round;
@@ -139,7 +139,6 @@ class ToolOutput {
 ///
 /// Encapsulates step name, output schema, and factory method to eliminate
 /// error-prone string usage and enable automatic registration.
-// TODO: But is this actually easier to understand as opposed to needing to register the tools yourself?
 abstract class StepDefinition<T extends ToolOutput> {
   /// The unique name identifier for this tool step
   String get stepName;
