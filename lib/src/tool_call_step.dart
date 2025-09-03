@@ -5,10 +5,10 @@ import 'package:openai_toolflow/openai_toolflow.dart';
 ///
 /// Contains the tool name, OpenAI model to use, dynamic input builder function,
 /// and configuration for issues and retries.
-// TODO: Read ALT-003 and ALT-004 from adr-0002-typedtoolresult-wrapper-implementation.md
-/// It goes over how we totally could have made everything type safe. It still thinks
-/// we need to prevent breaking changes...
-class ToolCallStep {
+///
+/// This class is now generic to provide compile-time type safety for the tool's output type.
+/// The type parameter T extends ToolOutput and represents the expected output type for this step.
+class ToolCallStep<T extends ToolOutput> {
   /// Name of the tool to call
   final String toolName;
 
@@ -33,7 +33,7 @@ class ToolCallStep {
   ///   };
   /// }
   /// ```
-  final Map<String, dynamic> Function(List<ToolResult>) inputBuilder;
+  final Map<String, dynamic> Function(List<ToolResult<ToolOutput>>) inputBuilder;
 
   /// Specifies which previous step results to pass to inputBuilder
   ///
@@ -41,9 +41,9 @@ class ToolCallStep {
   /// - int values: References step by index (0-based)
   /// - String values: References step by tool name (most recent if duplicates)
   /// - Empty list: inputBuilder receives empty list (for static input steps)
-  // TODO: Would it be possible for us to extrapolate the types of the entities as the input to inputBuilder, instead of List<ToolResult>, could we have them strongly typed to the exact types that are found when you look for the outputs you're pulling forward?
-  /// We'd have to update how the buildInputsFrom works, because instead of just specifying string, it'd have to specify types
-  /// Or, we'd need like a Lookup tool to get the Type of expected TypedOutput for that step, and assign it that way
+  /// 
+  /// The inputBuilder receives strongly-typed `ToolResult<ToolOutput>` objects
+  /// that maintain their specific output types at runtime for type-safe access.
   final List<Object> buildInputsFrom;
 
   /// List of steps results to include ToolOutputs and their associated issues from in the OpenAI tool call.
@@ -96,10 +96,10 @@ class ToolCallStep {
   ///
   /// This automatically registers the step definition in the ToolOutputRegistry
   /// and creates a StepConfig with the appropriate output schema.
-  static ToolCallStep fromStepDefinition<T extends ToolOutput>(
+  static ToolCallStep<T> fromStepDefinition<T extends ToolOutput>(
     StepDefinition<T> stepDefinition, {
     required String model,
-    required Map<String, dynamic> Function(List<ToolResult>) inputBuilder,
+    required Map<String, dynamic> Function(List<ToolResult<ToolOutput>>) inputBuilder,
     List<Object> buildInputsFrom = const [],
     List<Issue> issues = const [],
     StepConfig? stepConfig,
@@ -108,7 +108,7 @@ class ToolCallStep {
     // Auto-register the step definition
     ToolOutputRegistry.registerStepDefinition(stepDefinition);
 
-    return ToolCallStep(
+    return ToolCallStep<T>(
       toolName: stepDefinition.stepName,
       model: model,
       inputBuilder: inputBuilder,
@@ -121,17 +121,17 @@ class ToolCallStep {
   }
 
   /// Creates a copy of this ToolCallStep with updated parameters
-  ToolCallStep copyWith({
+  ToolCallStep<T> copyWith({
     String? toolName,
     String? model,
-    Map<String, dynamic> Function(List<ToolResult>)? inputBuilder,
+    Map<String, dynamic> Function(List<ToolResult<ToolOutput>>)? inputBuilder,
     List<Object>? buildInputsFrom,
     List<Issue>? issues,
     int? maxRetries,
     StepConfig? stepConfig,
     OutputSchema? outputSchema,
   }) {
-    return ToolCallStep(
+    return ToolCallStep<T>(
       toolName: toolName ?? this.toolName,
       model: model ?? this.model,
       inputBuilder: inputBuilder ?? this.inputBuilder,
@@ -150,7 +150,7 @@ class ToolCallStep {
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
-    return other is ToolCallStep &&
+    return other is ToolCallStep<T> &&
         other.toolName == toolName &&
         other.model == model &&
         other.buildInputsFrom.toString() == buildInputsFrom.toString();

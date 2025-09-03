@@ -7,7 +7,7 @@ tags: ["architecture", "toolflow", "generics", "audit", "type-safety"]
 supersedes: ""
 superseded_by: ""
 adr_references: []
-used_as_resource_in: ["ADR-0002"]
+used_as_resource_in: ["ADR-0002", "ADR-0003"]
 ---
 
 # ADR-0001: Refactor ToolFlow Orchestration for Per-Step Generic Typing

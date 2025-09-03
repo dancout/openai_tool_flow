@@ -15,7 +15,7 @@ abstract class OpenAiToolService {
   /// [includedResults] contains previous results and their filtered issues to include
   /// in the system message for context about previous attempts and problems.
   Future<Map<String, dynamic>> executeToolCall(
-    ToolCallStep step,
+    ToolCallStep<dynamic> step,
     ToolInput input, {
     List<ToolResult> includedResults = const [],
   });
