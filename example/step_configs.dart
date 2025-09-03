@@ -157,11 +157,7 @@ Map<String, ToolCallStep> createColorThemeWorkflow() {
       stepConfig: StepConfig(
         audits: [colorFormatAudit],
         maxRetries: 5,
-        // TODO: Related to how we can easily pull previous outputs/issues forward automatically for the user so they don't have to parse it.
-        // This could be a tuple or new object with a bool that represents if we should include that step's issues in the final tool call.
-        // That way, the user doesn't have to worry about how to parse it.
-        // Or they could even have the option to override the issue parser for that step if they'd like.
-        includeOutputsFrom: [paletteStep.stepName],
+        includeResultsInToolcall: [paletteStep.stepName],
         // TODO: We could also include a "severity level" or similar name that specifies to include issues above a certain severity.
         /// That way, if there are a ton of low priority issues but 1 or 2 criticals, we may only be interested in the criticals and don't want token bloat.
         inputSanitizer: ExampleSanitizers.paletteToRefinementInputSanitizer,
@@ -208,7 +204,7 @@ Map<String, ToolCallStep> createColorThemeWorkflow() {
       stepConfig: StepConfig(
         audits: [],
         stopOnFailure: false,
-        includeOutputsFrom: [refinementStep.stepName],
+        includeResultsInToolcall: [refinementStep.stepName],
         inputSanitizer: ExampleSanitizers.refinementToThemeInputSanitizer,
       ),
     ),

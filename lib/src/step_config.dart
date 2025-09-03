@@ -25,7 +25,7 @@ class StepConfig {
   /// Defaults to true for backward compatibility
   final bool stopOnFailure;
 
-  /// List of steps to include results and their associated issues from in the OpenAI tool call.
+  /// List of steps results to include ToolOutputs and their associated issues from in the OpenAI tool call.
   /// Can be int (step index) or String (tool name).
   ///
   /// **Usage Examples:**
@@ -53,7 +53,7 @@ class StepConfig {
   ///
   /// **Examples:**
   /// - `IssueSeverity.low`: Includes low, medium, high, and critical issues
-  /// - `IssueSeverity.medium`: Includes medium, high, and critical issues  
+  /// - `IssueSeverity.medium`: Includes medium, high, and critical issues
   /// - `IssueSeverity.high`: Includes high and critical issues (default)
   /// - `IssueSeverity.critical`: Includes only critical issues
   final IssueSeverity issuesSeverityFilter;
