@@ -25,28 +25,6 @@ class StepConfig {
   /// Defaults to true for backward compatibility
   final bool stopOnFailure;
 
-  /// List of steps results to include ToolOutputs and their associated issues from in the OpenAI tool call.
-  /// Can be int (step index) or String (tool name).
-  ///
-  /// **Usage Examples:**
-  /// ```dart
-  /// // Include results from step 0 and any step with tool name 'extract_palette'
-  /// includeResultsInToolcall: [0, 'extract_palette']
-  ///
-  /// // Include results from steps 1 and 2
-  /// includeResultsInToolcall: [1, 2]
-  ///
-  /// // Include results from 'refine_colors' tool (most recent if duplicates)
-  /// includeResultsInToolcall: ['refine_colors']
-  /// ```
-  ///
-  /// **How it works:**
-  /// - int values: References step by index (0-based)
-  /// - String values: References step by tool name (most recent if duplicates)
-  /// - Results and their associated issues (filtered by severity) are included in the system message
-  /// - Provides context like "here's what you did previously and why it was wrong"
-  final List<dynamic> includeResultsInToolcall;
-
   /// Minimum severity level for issues to include when using includeResultsInToolcall.
   /// Issues at this level and higher will be included in the system message.
   /// Defaults to IssueSeverity.high to include high and critical issues only.
@@ -113,7 +91,6 @@ class StepConfig {
     this.customPassCriteria,
     this.customFailureReason,
     this.stopOnFailure = true,
-    this.includeResultsInToolcall = const [],
     this.issuesSeverityFilter = IssueSeverity.high,
     this.inputSanitizer,
     this.outputSanitizer,

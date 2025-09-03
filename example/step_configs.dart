@@ -154,10 +154,10 @@ Map<String, ToolCallStep> createColorThemeWorkflow() {
 
         return input;
       },
+      includeResultsInToolcall: [paletteStep.stepName],
       stepConfig: StepConfig(
         audits: [colorFormatAudit],
         maxRetries: 5,
-        includeResultsInToolcall: [paletteStep.stepName],
         // TODO: We could also include a "severity level" or similar name that specifies to include issues above a certain severity.
         /// That way, if there are a ton of low priority issues but 1 or 2 criticals, we may only be interested in the criticals and don't want token bloat.
         inputSanitizer: ExampleSanitizers.paletteToRefinementInputSanitizer,
@@ -201,10 +201,10 @@ Map<String, ToolCallStep> createColorThemeWorkflow() {
           if (baseColors.isNotEmpty) 'primary_color': baseColors.first,
         };
       },
+      includeResultsInToolcall: [refinementStep.stepName],
       stepConfig: StepConfig(
         audits: [],
         stopOnFailure: false,
-        includeResultsInToolcall: [refinementStep.stepName],
         inputSanitizer: ExampleSanitizers.refinementToThemeInputSanitizer,
       ),
     ),

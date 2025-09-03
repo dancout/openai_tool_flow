@@ -554,7 +554,8 @@ void main() {
               properties: [PropertyEntry.string(name: 'result')],
               required: ['result'],
             ),
-            stepConfig: StepConfig(includeResultsInToolcall: [0]),
+            includeResultsInToolcall: [0],
+            stepConfig: StepConfig(),
           ),
         ],
         openAiService: mockService,
@@ -802,9 +803,8 @@ void main() {
               properties: [PropertyEntry.string(name: 'result')],
               required: ['result'],
             ),
-            stepConfig: StepConfig(
-              includeResultsInToolcall: ['step1_tool'], // Only include step1
-            ),
+            includeResultsInToolcall: ['step1_tool'], // Only include step1
+            stepConfig: StepConfig(),
           ),
         ],
         openAiService: mockService,
@@ -926,8 +926,8 @@ void main() {
                   properties: [PropertyEntry.string(name: 'result')],
                   required: ['result'],
                 ),
+                includeResultsInToolcall: [0], // Include step 0
                 stepConfig: StepConfig(
-                  includeResultsInToolcall: [0], // Include step 0
                   issuesSeverityFilter:
                       IssueSeverity.high, // Only high+ severity
                 ),
@@ -1005,8 +1005,8 @@ void main() {
                   properties: [PropertyEntry.string(name: 'result')],
                   required: ['result'],
                 ),
+                includeResultsInToolcall: [0], // Include step 0
                 stepConfig: StepConfig(
-                  includeResultsInToolcall: [0], // Include step 0
                   issuesSeverityFilter:
                       IssueSeverity.critical, // Only critical severity
                 ),
@@ -1079,10 +1079,10 @@ void main() {
                   properties: [PropertyEntry.boolean(name: 'valid')],
                   required: ['valid'],
                 ),
+                includeResultsInToolcall: [
+                  'extract_colors',
+                ], // Include by tool name
                 stepConfig: StepConfig(
-                  includeResultsInToolcall: [
-                    'extract_colors',
-                  ], // Include by tool name
                   issuesSeverityFilter: IssueSeverity.medium,
                 ),
               ),
@@ -1112,14 +1112,6 @@ void main() {
       test('should allow custom severity filter', () {
         const stepConfig = StepConfig(issuesSeverityFilter: IssueSeverity.low);
         expect(stepConfig.issuesSeverityFilter, equals(IssueSeverity.low));
-      });
-
-      test('hasResultInclusion should work correctly', () {
-        const stepConfigEmpty = StepConfig();
-        expect(stepConfigEmpty.includeResultsInToolcall, isEmpty);
-
-        const stepConfigWithResults = StepConfig(includeResultsInToolcall: [0]);
-        expect(stepConfigWithResults.includeResultsInToolcall, isNotEmpty);
       });
     });
   });

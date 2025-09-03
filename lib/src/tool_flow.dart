@@ -374,7 +374,7 @@ class ToolFlow {
     final includedResults = <ToolResult<ToolOutput>>[];
     final stepConfig = step.stepConfig;
 
-    for (final reference in stepConfig.includeResultsInToolcall) {
+    for (final reference in step.includeResultsInToolcall) {
       TypedToolResult? sourceTypedResult;
 
       // Find the source result by index or tool name
