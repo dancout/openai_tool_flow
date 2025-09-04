@@ -1,16 +1,15 @@
-/// Comprehensive usage example for the openai_toolflow package.
+/// Professional color theme generation workflow example.
 ///
-/// This example demonstrates how to create a realistic color theme generation pipeline
-/// that generates seed colors, expands to design system colors, and creates a complete
-/// color suite. Features strongly-typed interfaces, per-step audits, retry logic, and
+/// This example demonstrates the complete 3-step professional color generation
+/// pipeline with expert guidance, comprehensive output, and proper retry configuration.
+///
+/// Professional workflow:
+/// - Step 1: Generate 3 seed colors with expert color theory guidance (maxRetries=3)
+/// - Step 2: Generate 6 design system colors with UX design expertise (maxRetries=3)
+/// - Step 3: Generate 30 comprehensive color suite with design systems expertise (maxRetries=3)
+///
+/// Features strongly-typed interfaces, per-step audits, retry logic, and
 /// advanced workflow patterns including tool name-based retrieval and output forwarding.
-///
-/// Updated for Round 15:
-/// - Step 1: Generate 3 seed colors with expert color theory guidance
-/// - Step 2: Generate 6 design system colors (primary, secondary, surface, text, warning, error)
-/// - Step 3: Generate 30 comprehensive color suite for full design system
-/// - Expert-focused system messages for each step
-/// - Explicit maxRetries=3 for all steps
 library;
 
 import 'package:openai_toolflow/openai_toolflow.dart';
@@ -172,8 +171,8 @@ void main() async {
     },
   );
 
-  // Use the new enhanced workflow from step_configs.dart
-  final workflow = createImprovedColorThemeWorkflow();
+  // Use the professional workflow from step_configs.dart
+  final workflow = createProfessionalColorWorkflow();
   final steps = workflow.values.toList();
 
   // Create the tool flow with service injection
@@ -245,9 +244,9 @@ void _displayExecutionSummary(ToolFlowResult result) {
   );
 }
 
-/// Demonstrate tool name-based result retrieval for new workflow
+/// Demonstrate tool name-based result retrieval for professional workflow
 void _demonstrateToolNameRetrieval(ToolFlowResult result) {
-  print('🔍 Tool Name-Based Retrieval (New Workflow):');
+  print('🔍 Tool Name-Based Retrieval (Professional Workflow):');
 
   // Single tool retrieval - seed colors
   final seedResult = result.getResultByToolName(
@@ -269,7 +268,7 @@ void _demonstrateToolNameRetrieval(ToolFlowResult result) {
     );
   }
 
-  // Multiple tool retrieval for new workflow
+  // Multiple tool retrieval for professional workflow
   final multipleResults = result.getResultsByToolNames([
     SeedColorGenerationOutput.stepName,
     DesignSystemColorOutput.stepName,
@@ -324,9 +323,9 @@ void _displayStepResultsWithForwarding(ToolFlowResult result) {
   }
 }
 
-/// Display new workflow output usage examples
+/// Display professional workflow output usage examples
 void _displayNewWorkflowOutputUsage(ToolFlowResult result) {
-  print('🔧 New Professional Workflow Output Usage:');
+  print('🔧 Professional Workflow Output Usage:');
 
   // Display seed colors
   final seedResult = result.getResultByToolName(
@@ -428,28 +427,7 @@ void _displayNewWorkflowOutputUsage(ToolFlowResult result) {
   }
 }
 
-/// Legacy display function maintained for backward compatibility
-void _displayTypedOutputUsage(ToolFlowResult result) {
-  print('🔧 Typed Output Usage:');
 
-  final lastResult = result.results.last;
-  // Use the typed output from typed_interfaces.dart
-  final outputMap = lastResult.output.toMap();
-  if (outputMap.containsKey('theme')) {
-    print('  Theme Output:');
-    final theme = outputMap['theme'] as Map<String, dynamic>?;
-    if (theme != null) {
-      theme.forEach((key, value) {
-        print('    $key: $value');
-      });
-    }
-    final metadata = outputMap['metadata'] as Map<String, dynamic>?;
-    if (metadata != null && metadata.containsKey('generated_at')) {
-      print('    Generated at: ${metadata['generated_at']}');
-    }
-  }
-  print('');
-}
 
 /// Display issues analysis by round and forwarding
 void _displayIssuesAnalysis(ToolFlowResult result) {
@@ -496,7 +474,7 @@ void _displayIssuesAnalysis(ToolFlowResult result) {
   print('');
 }
 
-/// Export enhanced results with new workflow features
+/// Export enhanced results with professional workflow features
 void _exportEnhancedResults(ToolFlowResult result) {
   print('📄 Professional Color Suite Export:');
 
@@ -525,7 +503,7 @@ void _exportEnhancedResults(ToolFlowResult result) {
     print('');
   }
 
-  // Summary statistics for new workflow
+  // Summary statistics for professional workflow
   final stats = {
     'total_steps': result.results.length,
     'successful_steps': result.results.where((r) => r.issues.isEmpty).length,
@@ -544,7 +522,7 @@ void _exportEnhancedResults(ToolFlowResult result) {
   print('');
 
   // Tool name mapping for easy reference
-  print('🗂️ New Workflow Tool Mapping:');
+  print('🗂️ Professional Workflow Tool Mapping:');
   result.resultsByToolName.forEach((toolName, toolResult) {
     final typedResult = result.getTypedResultByToolName(toolName);
     final stepIndex = typedResult != null

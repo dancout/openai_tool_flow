@@ -7,8 +7,8 @@ import '../example/typed_interfaces.dart';
 
 void main() {
   group('Round 15 Workflow Tests', () {
-    test('improved workflow has 3 steps with correct step names', () {
-      final workflow = createImprovedColorThemeWorkflow();
+    test('professional workflow has 3 steps with correct step names', () {
+      final workflow = createProfessionalColorWorkflow();
       
       expect(workflow.length, equals(3));
       expect(workflow.keys, contains('generate_seed_colors'));
@@ -17,7 +17,7 @@ void main() {
     });
 
     test('all steps have maxRetries set to 3', () {
-      final workflow = createImprovedColorThemeWorkflow();
+      final workflow = createProfessionalColorWorkflow();
       
       for (final step in workflow.values) {
         expect(step.stepConfig.maxRetries, equals(3), 
@@ -25,14 +25,7 @@ void main() {
       }
     });
 
-    test('legacy workflow also has maxRetries set to 3', () {
-      final workflow = createColorThemeWorkflow();
-      
-      for (final step in workflow.values) {
-        expect(step.stepConfig.maxRetries, equals(3), 
-               reason: 'Legacy step ${step.toolName} should have maxRetries=3');
-      }
-    });
+
 
     test('new output classes can be instantiated correctly', () {
       // Test SeedColorGenerationOutput
@@ -166,7 +159,7 @@ void main() {
         DesignSystemColorOutput,
       );
 
-      final workflow = createImprovedColorThemeWorkflow();
+      final workflow = createProfessionalColorWorkflow();
       
       // Test design system input building
       final designSystemStep = workflow['generate_design_system_colors']!;
