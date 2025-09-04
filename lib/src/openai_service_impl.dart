@@ -85,11 +85,8 @@ class DefaultOpenAiToolService implements OpenAiToolService {
       },
     );
 
-    // Build user message
-    final userMessageInput = UserMessageInput(toolInput: input);
-
     final systemMessage = _buildSystemMessage(systemMessageInput);
-    final userMessage = _buildUserMessage(userMessageInput);
+    final userMessage = _buildUserMessage(input);
 
     return OpenAiRequest.forModel(
       model: step.model,
@@ -184,18 +181,10 @@ class DefaultOpenAiToolService implements OpenAiToolService {
   }
 
   /// Builds user message from structured input
-  String _buildUserMessage(UserMessageInput input) {
+  String _buildUserMessage(ToolInput input) {
     final buffer = StringBuffer();
 
     buffer.writeln(jsonEncode(input.getCleanToolInput()));
-
-    if (input.constraints.isNotEmpty) {
-      buffer.writeln();
-      buffer.writeln('Constraints:');
-      for (final constraint in input.constraints) {
-        buffer.writeln('  - $constraint');
-      }
-    }
 
     return buffer.toString();
   }

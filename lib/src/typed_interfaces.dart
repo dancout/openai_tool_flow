@@ -43,6 +43,16 @@ class ToolInput {
     };
   }
 
+  /// Gets a cleaned version of the tool input with sensitive data removed
+  Map<String, dynamic> getCleanToolInput() {
+    final cleanInput = Map<String, dynamic>.from(toMap());
+
+    // Remove internal fields that shouldn't be passed to the model
+    cleanInput.removeWhere((key, value) => key.startsWith('_'));
+
+    return cleanInput;
+  }
+
   /// Creates a ToolInput from a Map
   factory ToolInput.fromMap(Map<String, dynamic> map) {
     final customData = Map<String, dynamic>.from(map);

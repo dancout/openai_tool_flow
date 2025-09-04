@@ -161,21 +161,6 @@ class SystemMessageInput {
     this.additionalContext = const {},
   });
 
-  /// Validates the input and returns any validation errors
-  List<String> validate() {
-    final errors = <String>[];
-
-    if (toolFlowContext.trim().isEmpty) {
-      errors.add('toolFlowContext cannot be empty');
-    }
-
-    if (stepDescription.trim().isEmpty) {
-      errors.add('stepDescription cannot be empty');
-    }
-
-    return errors;
-  }
-
   /// Converts to a clean map for serialization
   Map<String, dynamic> toMap() {
     return {
@@ -186,46 +171,5 @@ class SystemMessageInput {
           .toList(),
       'additionalContext': additionalContext,
     };
-  }
-}
-
-/// Strongly-typed input for user message building
-class UserMessageInput {
-  /// The actual input data for the tool
-  final ToolInput toolInput;
-
-  // TODO: I removed instructions and outputFormat. If I end up removing constraints, too, is this UserMessageInput wrapper class necessary anymore, or can we just use ToolIInput?
-  /// Any constraints or requirements
-  final List<String> constraints;
-
-  const UserMessageInput({
-    required this.toolInput,
-    this.constraints = const [],
-  });
-
-  /// Validates the input and returns any validation errors
-  List<String> validate() {
-    final errors = <String>[];
-
-    if (toolInput.toMap().isEmpty) {
-      errors.add('toolInput cannot be empty');
-    }
-
-    return errors;
-  }
-
-  /// Converts to a clean map for serialization
-  Map<String, dynamic> toMap() {
-    return {'toolInput': toolInput, 'constraints': constraints};
-  }
-
-  /// Gets a cleaned version of the tool input with sensitive data removed
-  Map<String, dynamic> getCleanToolInput() {
-    final cleanInput = Map<String, dynamic>.from(toolInput.toMap());
-
-    // Remove internal fields that shouldn't be passed to the model
-    cleanInput.removeWhere((key, value) => key.startsWith('_'));
-
-    return cleanInput;
   }
 }
