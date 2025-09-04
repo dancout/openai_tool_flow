@@ -184,10 +184,14 @@ class OutputSchema {
   /// List of required property names
   final List<String> required;
 
+  /// Template for system message when using this schema (optional)
+  final String? systemMessageTemplate;
+
   const OutputSchema({
     this.type = PropertyType.object,
     required this.properties,
     this.required = const [],
+    this.systemMessageTemplate,
   });
 
   /// Converts this schema to a JSON schema-compatible map
@@ -206,12 +210,13 @@ class OutputSchema {
     final listEq = const ListEquality();
     return type == other.type &&
         listEq.equals(properties, other.properties) &&
-        listEq.equals(required, other.required);
+        listEq.equals(required, other.required) &&
+        systemMessageTemplate == other.systemMessageTemplate;
   }
 
   @override
   int get hashCode {
     final listEq = const ListEquality();
-    return Object.hash(type, listEq.hash(properties), listEq.hash(required));
+    return Object.hash(type, listEq.hash(properties), listEq.hash(required), systemMessageTemplate);
   }
 }

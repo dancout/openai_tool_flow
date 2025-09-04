@@ -77,7 +77,11 @@ class DefaultOpenAiToolService implements OpenAiToolService {
       toolFlowContext: 'Executing tool call in a structured workflow',
       stepDescription: 'Tool: ${step.toolName}, Model: ${step.model}',
       previousResults: includedResults,
-      additionalContext: {'step_tool': step.toolName, 'step_model': step.model},
+      additionalContext: {
+        'step_tool': step.toolName, 
+        'step_model': step.model,
+        'system_message_template': step.outputSchema.systemMessageTemplate,
+      },
     );
 
     // Build user message
@@ -110,21 +114,8 @@ class DefaultOpenAiToolService implements OpenAiToolService {
     required ToolCallStep step,
     required ToolInput input,
   }) {
-    // Create more descriptive tool descriptions based on the tool name
-    String description;
-    switch (step.toolName) {
-      case 'generate_seed_colors':
-        description = 'Generate foundational seed colors using expert color theory principles, considering design style, mood, and psychological impact to create a harmonious base palette';
-        break;
-      case 'generate_design_system_colors':
-        description = 'Expand seed colors into a comprehensive design system palette with semantic roles (primary, secondary, surface, text, warning, error) ensuring accessibility and proper contrast ratios';
-        break;
-      case 'generate_full_color_suite':
-        description = 'Create a complete professional color suite with granular tokens for all interface states (text variants, backgrounds, interactive elements, status indicators) following design system best practices';
-        break;
-      default:
-        description = 'Execute ${step.toolName} tool with provided parameters';
-    }
+    // Use tool description from step if available, otherwise fallback to generic description
+    final description = step.toolDescription ?? 'Execute ${step.toolName} tool with provided parameters';
 
     return {
       'type': 'function',
@@ -141,45 +132,11 @@ class DefaultOpenAiToolService implements OpenAiToolService {
   String _buildSystemMessage(SystemMessageInput input) {
     final buffer = StringBuffer();
 
-    // Extract tool name from additional context to provide expert guidance
-    final toolName = input.additionalContext['step_tool'] as String?;
+    // Use system message template from additional context if available
+    final systemMessageTemplate = input.additionalContext['system_message_template'] as String?;
     
-    // Provide expert-focused introduction based on the tool being used
-    if (toolName != null) {
-      switch (toolName) {
-        case 'generate_seed_colors':
-          buffer.writeln(
-            'You are an expert color theorist and UX designer with deep knowledge of color psychology, design principles, and brand identity. You specialize in creating foundational color palettes that serve as the basis for comprehensive design systems.',
-          );
-          buffer.writeln();
-          buffer.writeln(
-            'Your expertise includes understanding color harmony (complementary, triadic, analogous), psychological impact of colors, accessibility considerations, and how colors convey brand personality and user emotions.',
-          );
-          break;
-        case 'generate_design_system_colors':
-          buffer.writeln(
-            'You are an expert UX designer with extensive experience in design system architecture and color theory. You specialize in expanding foundational color palettes into systematic, purposeful color sets that serve specific functional roles in user interfaces.',
-          );
-          buffer.writeln();
-          buffer.writeln(
-            'Your expertise includes creating accessible color combinations, understanding semantic color usage (primary, secondary, error, warning), ensuring proper contrast ratios, and establishing clear color hierarchies for optimal user experience.',
-          );
-          break;
-        case 'generate_full_color_suite':
-          buffer.writeln(
-            'You are a senior design systems architect with expertise in comprehensive color specification for enterprise-grade applications. You specialize in creating complete, scalable color suites that cover all possible interface states and use cases.',
-          );
-          buffer.writeln();
-          buffer.writeln(
-            'Your expertise includes defining granular color tokens (text variants, background layers, interactive states), creating cohesive color families, establishing usage guidelines, and ensuring consistency across complex application ecosystems.',
-          );
-          break;
-        default:
-          // Legacy behavior for backward compatibility
-          buffer.writeln(
-            'You are an AI assistant executing tool calls in a structured workflow.',
-          );
-      }
+    if (systemMessageTemplate != null) {
+      buffer.writeln(systemMessageTemplate);
     } else {
       // Fallback to original behavior
       buffer.writeln(

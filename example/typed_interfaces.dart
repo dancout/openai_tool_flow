@@ -16,20 +16,38 @@ class SeedColorGenerationInput extends ToolInput {
   final Map<String, dynamic> userPreferences;
 
   const SeedColorGenerationInput({
-    this.designStyle = 'modern',
-    this.mood = 'professional',
-    this.colorCount = 3,
-    this.userPreferences = const {},
+    required this.designStyle,
+    required this.mood,
+    required this.colorCount,
+    required this.userPreferences,
   });
 
   factory SeedColorGenerationInput.fromMap(Map<String, dynamic> map) {
+    final designStyle = map['design_style'];
+    if (designStyle == null) {
+      throw ArgumentError('Missing required field: design_style');
+    }
+    
+    final mood = map['mood'];
+    if (mood == null) {
+      throw ArgumentError('Missing required field: mood');
+    }
+    
+    final colorCount = map['color_count'];
+    if (colorCount == null) {
+      throw ArgumentError('Missing required field: color_count');
+    }
+    
+    final userPreferences = map['user_preferences'];
+    if (userPreferences == null) {
+      throw ArgumentError('Missing required field: user_preferences');
+    }
+    
     return SeedColorGenerationInput(
-      designStyle: map['design_style'] as String? ?? 'modern',
-      mood: map['mood'] as String? ?? 'professional',
-      colorCount: map['color_count'] as int? ?? 3,
-      userPreferences: Map<String, dynamic>.from(
-        map['user_preferences'] as Map? ?? {},
-      ),
+      designStyle: designStyle as String,
+      mood: mood as String,
+      colorCount: colorCount as int,
+      userPreferences: Map<String, dynamic>.from(userPreferences as Map),
     );
   }
 
@@ -64,39 +82,41 @@ class SeedColorGenerationInput extends ToolInput {
   }
 }
 
-
-
 /// Input for generating main design system colors (Step 2)
 class DesignSystemColorInput extends ToolInput {
   final List<String> seedColors;
   final String targetAccessibility;
-  final int systemColorCount;
   final List<String> colorCategories;
 
   const DesignSystemColorInput({
     required this.seedColors,
-    this.targetAccessibility = 'AA',
-    this.systemColorCount = 6,
-    this.colorCategories = const [
-      'primary',
-      'secondary', 
-      'surface',
-      'text',
-      'warning',
-      'error'
-    ],
+    required this.targetAccessibility,
+    required this.colorCategories,
   });
 
+  /// Number of system colors derived from colorCategories length
+  int get systemColorCount => colorCategories.length;
+
   factory DesignSystemColorInput.fromMap(Map<String, dynamic> map) {
+    final seedColors = map['seed_colors'];
+    if (seedColors == null) {
+      throw ArgumentError('Missing required field: seed_colors');
+    }
+    
+    final targetAccessibility = map['target_accessibility'];
+    if (targetAccessibility == null) {
+      throw ArgumentError('Missing required field: target_accessibility');
+    }
+    
+    final colorCategories = map['color_categories'];
+    if (colorCategories == null) {
+      throw ArgumentError('Missing required field: color_categories');
+    }
+    
     return DesignSystemColorInput(
-      seedColors: List<String>.from(map['seed_colors'] as List),
-      targetAccessibility: map['target_accessibility'] as String? ?? 'AA',
-      systemColorCount: map['system_color_count'] as int? ?? 6,
-      colorCategories: List<String>.from(
-        map['color_categories'] as List? ?? [
-          'primary', 'secondary', 'surface', 'text', 'warning', 'error'
-        ],
-      ),
+      seedColors: List<String>.from(seedColors as List),
+      targetAccessibility: targetAccessibility as String,
+      colorCategories: List<String>.from(colorCategories as List),
     );
   }
 
@@ -118,8 +138,12 @@ class DesignSystemColorInput extends ToolInput {
       issues.add('seed_colors cannot be empty');
     }
 
-    if (systemColorCount <= 0 || systemColorCount > 20) {
-      issues.add('system_color_count must be between 1 and 20');
+    if (colorCategories.isEmpty) {
+      issues.add('color_categories cannot be empty');
+    }
+
+    if (systemColorCount > 20) {
+      issues.add('system_color_count (derived from color_categories) must not exceed 20');
     }
 
     for (final color in seedColors) {
@@ -139,44 +163,38 @@ class DesignSystemColorInput extends ToolInput {
 /// Input for generating full color suite (Step 3)
 class FullColorSuiteInput extends ToolInput {
   final Map<String, String> systemColors;
-  final int suiteColorCount;
   final List<String> colorVariants;
   final String brandPersonality;
 
   const FullColorSuiteInput({
     required this.systemColors,
-    this.suiteColorCount = 30,
-    this.colorVariants = const [
-      'primaryText',
-      'secondaryText',
-      'interactiveText',
-      'mutedText',
-      'primaryBackground',
-      'secondaryBackground',
-      'surfaceBackground',
-      'cardBackground',
-      'overlayBackground',
-      'errorBackground',
-      'warningBackground',
-      'successBackground',
-      'infoBackground'
-    ],
-    this.brandPersonality = 'professional',
+    required this.colorVariants,
+    required this.brandPersonality,
   });
 
+  /// Number of suite colors derived from colorVariants length
+  int get suiteColorCount => colorVariants.length;
+
   factory FullColorSuiteInput.fromMap(Map<String, dynamic> map) {
+    final systemColors = map['system_colors'];
+    if (systemColors == null) {
+      throw ArgumentError('Missing required field: system_colors');
+    }
+    
+    final colorVariants = map['color_variants'];
+    if (colorVariants == null) {
+      throw ArgumentError('Missing required field: color_variants');
+    }
+    
+    final brandPersonality = map['brand_personality'];
+    if (brandPersonality == null) {
+      throw ArgumentError('Missing required field: brand_personality');
+    }
+    
     return FullColorSuiteInput(
-      systemColors: Map<String, String>.from(map['system_colors'] as Map),
-      suiteColorCount: map['suite_color_count'] as int? ?? 30,
-      colorVariants: List<String>.from(
-        map['color_variants'] as List? ?? [
-          'primaryText', 'secondaryText', 'interactiveText', 'mutedText',
-          'primaryBackground', 'secondaryBackground', 'surfaceBackground', 
-          'cardBackground', 'overlayBackground', 'errorBackground',
-          'warningBackground', 'successBackground', 'infoBackground'
-        ],
-      ),
-      brandPersonality: map['brand_personality'] as String? ?? 'professional',
+      systemColors: Map<String, String>.from(systemColors as Map),
+      colorVariants: List<String>.from(colorVariants as List),
+      brandPersonality: brandPersonality as String,
     );
   }
 
@@ -198,8 +216,12 @@ class FullColorSuiteInput extends ToolInput {
       issues.add('system_colors cannot be empty');
     }
 
-    if (suiteColorCount <= 0 || suiteColorCount > 100) {
-      issues.add('suite_color_count must be between 1 and 100');
+    if (colorVariants.isEmpty) {
+      issues.add('color_variants cannot be empty');
+    }
+
+    if (suiteColorCount > 100) {
+      issues.add('suite_color_count (derived from color_variants) must not exceed 100');
     }
 
     for (final entry in systemColors.entries) {
@@ -281,6 +303,7 @@ class SeedColorGenerationOutput extends ToolOutput {
         ),
       ],
       required: ['seed_colors', 'design_style', 'mood', 'confidence'],
+      systemMessageTemplate: 'You are an expert color theorist and UX designer with deep knowledge of color psychology, design principles, and brand identity. You specialize in creating foundational color palettes that serve as the basis for comprehensive design systems.\n\nYour expertise includes understanding color harmony (complementary, triadic, analogous), psychological impact of colors, accessibility considerations, and how colors convey brand personality and user emotions.',
     );
   }
 }
@@ -348,6 +371,7 @@ class DesignSystemColorOutput extends ToolOutput {
         ),
       ],
       required: ['system_colors'],
+      systemMessageTemplate: 'You are an expert UX designer with extensive experience in design system architecture and color theory. You specialize in expanding foundational color palettes into systematic, purposeful color sets that serve specific functional roles in user interfaces.\n\nYour expertise includes creating accessible color combinations, understanding semantic color usage (primary, secondary, error, warning), ensuring proper contrast ratios, and establishing clear color hierarchies for optimal user experience.',
     );
   }
 }
@@ -420,6 +444,7 @@ class FullColorSuiteOutput extends ToolOutput {
         ),
       ],
       required: ['color_suite'],
+      systemMessageTemplate: 'You are a senior design systems architect with expertise in comprehensive color specification for enterprise-grade applications. You specialize in creating complete, scalable color suites that cover all possible interface states and use cases.\n\nYour expertise includes defining granular color tokens (text variants, background layers, interactive states), creating cohesive color families, establishing usage guidelines, and ensuring consistency across complex application ecosystems.',
     );
   }
 }

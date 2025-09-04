@@ -86,6 +86,7 @@ Map<String, ToolCallStep> createProfessionalColorWorkflow() {
     seedStep.stepName: ToolCallStep.fromStepDefinition(
       seedStep,
       model: 'gpt-4',
+      toolDescription: 'Generate foundational seed colors using expert color theory principles, considering design style, mood, and psychological impact to create a harmonious base palette',
       inputBuilder: (previousResults) {
         final input = SeedColorGenerationInput(
           designStyle: 'modern',
@@ -104,6 +105,7 @@ Map<String, ToolCallStep> createProfessionalColorWorkflow() {
     designSystemStep.stepName: ToolCallStep.fromStepDefinition(
       designSystemStep,
       model: 'gpt-4',
+      toolDescription: 'Expand seed colors into a comprehensive design system palette with semantic roles (primary, secondary, surface, text, warning, error) ensuring accessibility and proper contrast ratios',
       inputBuilder: (previousResults) {
         // Extract seed colors from previous step
         final seedResult = previousResults
@@ -114,7 +116,6 @@ Map<String, ToolCallStep> createProfessionalColorWorkflow() {
         final input = DesignSystemColorInput(
           seedColors: seedResult.output.seedColors,
           targetAccessibility: 'AA',
-          systemColorCount: 6,
           colorCategories: [
             'primary',
             'secondary', 
@@ -140,6 +141,7 @@ Map<String, ToolCallStep> createProfessionalColorWorkflow() {
     fullSuiteStep.stepName: ToolCallStep.fromStepDefinition(
       fullSuiteStep,
       model: 'gpt-4',
+      toolDescription: 'Create a complete professional color suite with granular tokens for all interface states (text variants, backgrounds, interactive elements, status indicators) following design system best practices',
       inputBuilder: (previousResults) {
         // Extract system colors from previous step
         final designSystemResult = previousResults
@@ -149,7 +151,6 @@ Map<String, ToolCallStep> createProfessionalColorWorkflow() {
 
         final input = FullColorSuiteInput(
           systemColors: designSystemResult.output.systemColors,
-          suiteColorCount: 30,
           colorVariants: [
             'primaryText',
             'secondaryText',
