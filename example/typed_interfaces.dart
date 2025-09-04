@@ -1,8 +1,8 @@
 /// Concrete implementations of typed tool interfaces for professional color workflow.
 ///
-/// This file implements strongly-typed input and output classes for the 3-step 
+/// This file implements strongly-typed input and output classes for the 3-step
 /// professional color generation workflow, providing better type safety and IDE support.
-/// 
+///
 /// Professional workflow: seed colors → design system colors → full color suite
 library;
 
@@ -27,22 +27,22 @@ class SeedColorGenerationInput extends ToolInput {
     if (designStyle == null) {
       throw ArgumentError('Missing required field: design_style');
     }
-    
+
     final mood = map['mood'];
     if (mood == null) {
       throw ArgumentError('Missing required field: mood');
     }
-    
+
     final colorCount = map['color_count'];
     if (colorCount == null) {
       throw ArgumentError('Missing required field: color_count');
     }
-    
+
     final userPreferences = map['user_preferences'];
     if (userPreferences == null) {
       throw ArgumentError('Missing required field: user_preferences');
     }
-    
+
     return SeedColorGenerationInput(
       designStyle: designStyle as String,
       mood: mood as String,
@@ -102,17 +102,17 @@ class DesignSystemColorInput extends ToolInput {
     if (seedColors == null) {
       throw ArgumentError('Missing required field: seed_colors');
     }
-    
+
     final targetAccessibility = map['target_accessibility'];
     if (targetAccessibility == null) {
       throw ArgumentError('Missing required field: target_accessibility');
     }
-    
+
     final colorCategories = map['color_categories'];
     if (colorCategories == null) {
       throw ArgumentError('Missing required field: color_categories');
     }
-    
+
     return DesignSystemColorInput(
       seedColors: List<String>.from(seedColors as List),
       targetAccessibility: targetAccessibility as String,
@@ -143,7 +143,9 @@ class DesignSystemColorInput extends ToolInput {
     }
 
     if (systemColorCount > 20) {
-      issues.add('system_color_count (derived from color_categories) must not exceed 20');
+      issues.add(
+        'system_color_count (derived from color_categories) must not exceed 20',
+      );
     }
 
     for (final color in seedColors) {
@@ -180,17 +182,17 @@ class FullColorSuiteInput extends ToolInput {
     if (systemColors == null) {
       throw ArgumentError('Missing required field: system_colors');
     }
-    
+
     final colorVariants = map['color_variants'];
     if (colorVariants == null) {
       throw ArgumentError('Missing required field: color_variants');
     }
-    
+
     final brandPersonality = map['brand_personality'];
     if (brandPersonality == null) {
       throw ArgumentError('Missing required field: brand_personality');
     }
-    
+
     return FullColorSuiteInput(
       systemColors: Map<String, String>.from(systemColors as Map),
       colorVariants: List<String>.from(colorVariants as List),
@@ -221,12 +223,16 @@ class FullColorSuiteInput extends ToolInput {
     }
 
     if (suiteColorCount > 100) {
-      issues.add('suite_color_count (derived from color_variants) must not exceed 100');
+      issues.add(
+        'suite_color_count (derived from color_variants) must not exceed 100',
+      );
     }
 
     for (final entry in systemColors.entries) {
       if (!RegExp(r'^#[0-9A-Fa-f]{6}$').hasMatch(entry.value)) {
-        issues.add('Invalid system color format for ${entry.key}: ${entry.value} (expected #RRGGBB)');
+        issues.add(
+          'Invalid system color format for ${entry.key}: ${entry.value} (expected #RRGGBB)',
+        );
       }
     }
 
@@ -253,7 +259,10 @@ class SeedColorGenerationOutput extends ToolOutput {
     required super.round,
   }) : super.subclass();
 
-  factory SeedColorGenerationOutput.fromMap(Map<String, dynamic> map, int round) {
+  factory SeedColorGenerationOutput.fromMap(
+    Map<String, dynamic> map,
+    int round,
+  ) {
     return SeedColorGenerationOutput(
       seedColors: List<String>.from(map['seed_colors'] as List),
       designStyle: map['design_style'] as String,
@@ -303,7 +312,8 @@ class SeedColorGenerationOutput extends ToolOutput {
         ),
       ],
       required: ['seed_colors', 'design_style', 'mood', 'confidence'],
-      systemMessageTemplate: 'You are an expert color theorist and UX designer with deep knowledge of color psychology, design principles, and brand identity. You specialize in creating foundational color palettes that serve as the basis for comprehensive design systems.\n\nYour expertise includes understanding color harmony (complementary, triadic, analogous), psychological impact of colors, accessibility considerations, and how colors convey brand personality and user emotions.',
+      systemMessageTemplate:
+          'You are an expert color theorist and UX designer with deep knowledge of color psychology, design principles, and brand identity. You specialize in creating foundational color palettes that serve as the basis for comprehensive design systems.\n\nYour expertise includes understanding color harmony (complementary, triadic, analogous), psychological impact of colors, accessibility considerations, and how colors convey brand personality and user emotions.',
     );
   }
 }
@@ -358,7 +368,8 @@ class DesignSystemColorOutput extends ToolOutput {
         ),
         PropertyEntry.object(
           name: 'accessibility_scores',
-          description: 'Accessibility scores for each system color',
+          description:
+              'Accessibility scores for each system color against the base background or primary text',
         ),
         PropertyEntry.array(
           name: 'color_harmonies',
@@ -371,7 +382,8 @@ class DesignSystemColorOutput extends ToolOutput {
         ),
       ],
       required: ['system_colors'],
-      systemMessageTemplate: 'You are an expert UX designer with extensive experience in design system architecture and color theory. You specialize in expanding foundational color palettes into systematic, purposeful color sets that serve specific functional roles in user interfaces.\n\nYour expertise includes creating accessible color combinations, understanding semantic color usage (primary, secondary, error, warning), ensuring proper contrast ratios, and establishing clear color hierarchies for optimal user experience.',
+      systemMessageTemplate:
+          'You are an expert UX designer with extensive experience in design system architecture and color theory. You specialize in expanding foundational color palettes into systematic, purposeful color sets that serve specific functional roles in user interfaces.\n\nYour expertise includes creating accessible color combinations, understanding semantic color usage (primary, secondary, error, warning), ensuring proper contrast ratios, and establishing clear color hierarchies for optimal user experience.',
     );
   }
 }
@@ -444,14 +456,11 @@ class FullColorSuiteOutput extends ToolOutput {
         ),
       ],
       required: ['color_suite'],
-      systemMessageTemplate: 'You are a senior design systems architect with expertise in comprehensive color specification for enterprise-grade applications. You specialize in creating complete, scalable color suites that cover all possible interface states and use cases.\n\nYour expertise includes defining granular color tokens (text variants, background layers, interactive states), creating cohesive color families, establishing usage guidelines, and ensuring consistency across complex application ecosystems.',
+      systemMessageTemplate:
+          'You are a senior design systems architect with expertise in comprehensive color specification for enterprise-grade applications. You specialize in creating complete, scalable color suites that cover all possible interface states and use cases.\n\nYour expertise includes defining granular color tokens (text variants, background layers, interactive states), creating cohesive color families, establishing usage guidelines, and ensuring consistency across complex application ecosystems.',
     );
   }
 }
-
-
-
-
 
 /// Step definitions that encapsulate tool metadata and functionality
 
@@ -496,5 +505,3 @@ class FullColorSuiteStepDefinition
   FullColorSuiteOutput fromMap(Map<String, dynamic> data, int round) =>
       FullColorSuiteOutput.fromMap(data, round);
 }
-
-
