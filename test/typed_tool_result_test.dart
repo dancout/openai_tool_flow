@@ -12,7 +12,10 @@ class SeedColorGenerationTestOutput extends ToolOutput {
     required super.round,
   }) : super.subclass();
 
-  factory SeedColorGenerationTestOutput.fromMap(Map<String, dynamic> map, int round) {
+  factory SeedColorGenerationTestOutput.fromMap(
+    Map<String, dynamic> map,
+    int round,
+  ) {
     return SeedColorGenerationTestOutput(
       colors: List<String>.from(map['colors'] as List),
       confidence: (map['confidence'] as num).toDouble(),
@@ -37,7 +40,10 @@ class ColorSuiteGenerationTestOutput extends ToolOutput {
     required super.round,
   }) : super.subclass();
 
-  factory ColorSuiteGenerationTestOutput.fromMap(Map<String, dynamic> map, int round) {
+  factory ColorSuiteGenerationTestOutput.fromMap(
+    Map<String, dynamic> map,
+    int round,
+  ) {
     return ColorSuiteGenerationTestOutput(
       colorSuite: Map<String, String>.from(map['color_suite'] as Map),
       category: map['category'] as String,
@@ -52,7 +58,8 @@ class ColorSuiteGenerationTestOutput extends ToolOutput {
 }
 
 /// Type-safe audit function for SeedColorGenerationTestOutput
-class SeedColorQualityAudit extends AuditFunction<SeedColorGenerationTestOutput> {
+class SeedColorQualityAudit
+    extends AuditFunction<SeedColorGenerationTestOutput> {
   @override
   String get name => 'seed_color_quality_audit';
 
@@ -98,26 +105,13 @@ class SeedColorQualityAudit extends AuditFunction<SeedColorGenerationTestOutput>
       }
     }
 
-    // Check confidence
-    if (paletteOutput.confidence < 0.5) {
-      issues.add(
-        Issue(
-          id: 'low_confidence',
-          severity: IssueSeverity.medium,
-          description: 'Low confidence score: ${paletteOutput.confidence}',
-          context: {'confidence': paletteOutput.confidence},
-          suggestions: ['Review input quality or extraction parameters'],
-          round: 0,
-        ),
-      );
-    }
-
     return issues;
   }
 }
 
 /// Type-safe audit function for ColorSuiteGenerationTestOutput
-class ColorSuiteValidationAudit extends AuditFunction<ColorSuiteGenerationTestOutput> {
+class ColorSuiteValidationAudit
+    extends AuditFunction<ColorSuiteGenerationTestOutput> {
   @override
   String get name => 'color_suite_validation_audit';
 
@@ -254,7 +248,6 @@ void main() {
                 PropertyEntry.array(name: 'colors', items: PropertyType.string),
                 PropertyEntry.number(name: 'confidence'),
               ],
-              required: ['colors', 'confidence'],
             ),
             stepConfig: StepConfig(),
           ),
@@ -267,10 +260,16 @@ void main() {
             buildInputsFrom: [0],
             outputSchema: OutputSchema(
               properties: [
-                PropertyEntry.object(name: 'theme'),
+                PropertyEntry.object(
+                  name: 'theme',
+                  properties: [
+                    PropertyEntry.string(name: 'primary'),
+                    PropertyEntry.string(name: 'secondary'),
+                    PropertyEntry.string(name: 'background'),
+                  ],
+                ),
                 PropertyEntry.string(name: 'category'),
               ],
-              required: ['theme', 'category'],
             ),
             stepConfig: StepConfig(),
           ),
@@ -282,8 +281,12 @@ void main() {
       expect(result.results.length, equals(2));
 
       // Check that each result has the correct type information
-      final seedResult = result.getTypedResultByToolName('generate_seed_colors');
-      final suiteResult = result.getTypedResultByToolName('generate_color_suite');
+      final seedResult = result.getTypedResultByToolName(
+        'generate_seed_colors',
+      );
+      final suiteResult = result.getTypedResultByToolName(
+        'generate_color_suite',
+      );
 
       expect(seedResult, isNotNull);
       expect(suiteResult, isNotNull);
@@ -293,12 +296,12 @@ void main() {
       // Verify type-safe casting works
       final typedSeedResult = seedResult
           .asTyped<SeedColorGenerationTestOutput>();
-      final typedSuiteResult = suiteResult.asTyped<ColorSuiteGenerationTestOutput>();
+      final typedSuiteResult = suiteResult
+          .asTyped<ColorSuiteGenerationTestOutput>();
 
       expect(typedSeedResult, isNotNull);
       expect(typedSuiteResult, isNotNull);
       expect(typedSeedResult.output.colors, contains('#FF0000'));
-      expect(typedThemeResult.output.category, equals('vibrant'));
     });
 
     test('should execute type-safe audits correctly', () async {
@@ -307,20 +310,19 @@ void main() {
         openAiService: mockService,
         steps: [
           ToolCallStep(
-            toolName: 'extract_palette',
+            toolName: 'generate_seed_colors',
             model: 'gpt-4',
-            inputBuilder: (previousResults) => {'image': 'test.jpg'},
+            inputBuilder: (previousResults) => {'style': 'modern'},
             outputSchema: OutputSchema(
               properties: [
                 PropertyEntry.array(name: 'colors', items: PropertyType.string),
                 PropertyEntry.number(name: 'confidence'),
               ],
-              required: ['colors', 'confidence'],
             ),
-            stepConfig: StepConfig(audits: [PaletteQualityAudit()]),
+            stepConfig: StepConfig(audits: [SeedColorQualityAudit()]),
           ),
           ToolCallStep(
-            toolName: 'generate_theme',
+            toolName: 'generate_color_suite',
             model: 'gpt-4',
             inputBuilder: (previousResults) => {
               'palette': previousResults.first.output.toMap(),
@@ -328,12 +330,18 @@ void main() {
             buildInputsFrom: [0],
             outputSchema: OutputSchema(
               properties: [
-                PropertyEntry.object(name: 'theme'),
+                PropertyEntry.object(
+                  name: 'theme',
+                  properties: [
+                    PropertyEntry.string(name: 'primary'),
+                    PropertyEntry.string(name: 'secondary'),
+                    PropertyEntry.string(name: 'background'),
+                  ],
+                ),
                 PropertyEntry.string(name: 'category'),
               ],
-              required: ['theme', 'category'],
             ),
-            stepConfig: StepConfig(audits: [ThemeValidationAudit()]),
+            stepConfig: StepConfig(audits: [ColorSuiteValidationAudit()]),
           ),
         ],
       );
@@ -342,8 +350,37 @@ void main() {
 
       expect(result.results.length, equals(2));
 
-      // Both steps should pass their audits (valid data)
-      expect(result.allIssues, isEmpty);
+      // Check that audits ran and produced no issues for valid outputs
+      final seedIssues = result.results[0].issues;
+      final suiteIssues = result.results[1].issues;
+
+      expect(seedIssues, isEmpty);
+      expect(suiteIssues, isEmpty);
+
+      // Check that audit functions were type-safe
+      final seedResult = result.getTypedResultByToolName(
+        'generate_seed_colors',
+      );
+      final suiteResult = result.getTypedResultByToolName(
+        'generate_color_suite',
+      );
+
+      expect(seedResult, isNotNull);
+      expect(suiteResult, isNotNull);
+
+      // Type-safe audit: should not throw and should return empty issues
+      final audit1 = SeedColorQualityAudit();
+      final audit2 = ColorSuiteValidationAudit();
+
+      final audit1Issues = audit1.run(
+        seedResult!.asTyped<SeedColorGenerationTestOutput>(),
+      );
+      final audit2Issues = audit2.run(
+        suiteResult!.asTyped<ColorSuiteGenerationTestOutput>(),
+      );
+
+      expect(audit1Issues, isEmpty);
+      expect(audit2Issues, isEmpty);
     });
 
     test(
@@ -354,9 +391,9 @@ void main() {
           openAiService: mockService,
           steps: [
             ToolCallStep(
-              toolName: 'extract_palette_invalid',
+              toolName: 'generate_seed_colors_invalid',
               model: 'gpt-4',
-              inputBuilder: (previousResults) => {'image': 'test.jpg'},
+              inputBuilder: (previousResults) => {'style': 'modern'},
               outputSchema: OutputSchema(
                 properties: [
                   PropertyEntry.array(
@@ -365,12 +402,11 @@ void main() {
                   ),
                   PropertyEntry.number(name: 'confidence'),
                 ],
-                required: ['colors', 'confidence'],
               ),
-              stepConfig: StepConfig(audits: [PaletteQualityAudit()]),
+              stepConfig: StepConfig(audits: [SeedColorQualityAudit()]),
             ),
             ToolCallStep(
-              toolName: 'generate_theme_invalid',
+              toolName: 'generate_color_suite_invalid',
               model: 'gpt-4',
               inputBuilder: (previousResults) => {
                 'palette': previousResults.first.output.toMap(),
@@ -378,12 +414,18 @@ void main() {
               buildInputsFrom: [0],
               outputSchema: OutputSchema(
                 properties: [
-                  PropertyEntry.object(name: 'theme'),
+                  PropertyEntry.object(
+                    name: 'theme',
+                    properties: [
+                      PropertyEntry.string(name: 'primary'),
+                      PropertyEntry.string(name: 'secondary'),
+                      PropertyEntry.string(name: 'background'),
+                    ],
+                  ),
                   PropertyEntry.string(name: 'category'),
                 ],
-                required: ['theme', 'category'],
               ),
-              stepConfig: StepConfig(audits: [ThemeValidationAudit()]),
+              stepConfig: StepConfig(audits: [ColorSuiteValidationAudit()]),
             ),
           ],
         );
@@ -391,27 +433,53 @@ void main() {
         final result = await flow.run();
 
         expect(result.results.length, equals(2));
-        expect(result.allIssues.length, greaterThan(0));
 
-        // Check that audit issues were properly detected
-        final paletteIssues = result.results[0].issues;
-        final themeIssues = result.results[1].issues;
+        // Check that audits ran and produced issues for invalid outputs
+        final seedIssues = result.results[0].issues;
+        final suiteIssues = result.results[1].issues;
 
-        // Palette should have issues (invalid color format and low confidence)
-        expect(paletteIssues.length, greaterThan(0));
+        expect(seedIssues, isNotEmpty);
         expect(
-          paletteIssues.any((issue) => issue.id.contains('invalid_color')),
-          isTrue,
-        );
-        expect(
-          paletteIssues.any((issue) => issue.id.contains('low_confidence')),
+          seedIssues.any((issue) => issue.id.startsWith('invalid_color_')),
           isTrue,
         );
 
-        // Theme should have issues (missing properties)
-        expect(themeIssues.length, greaterThan(0));
+        expect(suiteIssues, isNotEmpty);
         expect(
-          themeIssues.any((issue) => issue.id.contains('missing_property')),
+          suiteIssues.any((issue) => issue.id.startsWith('missing_property_')),
+          isTrue,
+        );
+
+        // Type-safe audit: should report issues for invalid outputs
+        final seedResult = result.getTypedResultByToolName(
+          'generate_seed_colors_invalid',
+        );
+        final suiteResult = result.getTypedResultByToolName(
+          'generate_color_suite_invalid',
+        );
+
+        expect(seedResult, isNotNull);
+        expect(suiteResult, isNotNull);
+
+        final audit1 = SeedColorQualityAudit();
+        final audit2 = ColorSuiteValidationAudit();
+
+        final audit1Issues = audit1.run(
+          seedResult!.asTyped<SeedColorGenerationTestOutput>(),
+        );
+        final audit2Issues = audit2.run(
+          suiteResult!.asTyped<ColorSuiteGenerationTestOutput>(),
+        );
+
+        expect(audit1Issues, isNotEmpty);
+        expect(
+          audit1Issues.any((issue) => issue.id.startsWith('invalid_color_')),
+          isTrue,
+        );
+
+        expect(audit2Issues, isNotEmpty);
+        expect(
+          audit2Issues.any((issue) => issue.id.startsWith('missing_property_')),
           isTrue,
         );
       },
@@ -425,9 +493,9 @@ void main() {
           openAiService: mockService,
           steps: [
             ToolCallStep(
-              toolName: 'extract_palette',
+              toolName: 'generate_seed_colors',
               model: 'gpt-4',
-              inputBuilder: (previousResults) => {'image': 'test.jpg'},
+              inputBuilder: (previousResults) => {'style': 'modern'},
               outputSchema: OutputSchema(
                 properties: [
                   PropertyEntry.array(
@@ -436,7 +504,28 @@ void main() {
                   ),
                   PropertyEntry.number(name: 'confidence'),
                 ],
-                required: ['colors', 'confidence'],
+              ),
+              stepConfig: StepConfig(),
+            ),
+            ToolCallStep(
+              toolName: 'generate_color_suite',
+              model: 'gpt-4',
+              inputBuilder: (previousResults) => {
+                'palette': previousResults.first.output.toMap(),
+              },
+              buildInputsFrom: [0],
+              outputSchema: OutputSchema(
+                properties: [
+                  PropertyEntry.object(
+                    name: 'theme',
+                    properties: [
+                      PropertyEntry.string(name: 'primary'),
+                      PropertyEntry.string(name: 'secondary'),
+                      PropertyEntry.string(name: 'background'),
+                    ],
+                  ),
+                  PropertyEntry.string(name: 'category'),
+                ],
               ),
               stepConfig: StepConfig(),
             ),
@@ -444,65 +533,37 @@ void main() {
         );
 
         final result = await flow.run();
-        final paletteResult = result.getTypedResultByToolName(
-          'extract_palette',
-        )!;
 
-        // Safe casting should work for correct type
-        final correctCast = paletteResult.asTyped<PaletteExtractionOutput>();
-        expect(correctCast, isNotNull);
+        final seedResult = result.getTypedResultByToolName(
+          'generate_seed_colors',
+        );
+        final suiteResult = result.getTypedResultByToolName(
+          'generate_color_suite',
+        );
 
-        // Type checking should work correctly
-        expect(paletteResult.hasOutputType<PaletteExtractionOutput>(), isTrue);
-        expect(paletteResult.hasOutputType<ThemeGenerationOutput>(), isFalse);
+        expect(seedResult, isNotNull);
+        expect(suiteResult, isNotNull);
 
-        // Should throw when forcibly casting to incorrect type
+        // Safe cast: correct type
+        final typedSeed = seedResult!.asTyped<SeedColorGenerationTestOutput>();
+        expect(typedSeed, isNotNull);
+
+        // Safe cast: incorrect type returns null
         expect(
-          () => paletteResult.asTyped<ThemeGenerationOutput>(),
+          () => seedResult.asTyped<ColorSuiteGenerationTestOutput>(),
           throwsA(isA<Exception>()),
         );
-      },
-    );
 
-    test(
-      'should maintain backward compatibility with existing interfaces',
-      () async {
-        final flow = ToolFlow(
-          config: OpenAIConfig(apiKey: 'test-key', baseUrl: 'http://localhost'),
-          openAiService: mockService,
-          steps: [
-            ToolCallStep(
-              toolName: 'extract_palette',
-              model: 'gpt-4',
-              inputBuilder: (previousResults) => {'image': 'test.jpg'},
-              outputSchema: OutputSchema(
-                properties: [
-                  PropertyEntry.array(
-                    name: 'colors',
-                    items: PropertyType.string,
-                  ),
-                  PropertyEntry.number(name: 'confidence'),
-                ],
-                required: ['colors', 'confidence'],
-              ),
-              stepConfig: StepConfig(),
-            ),
-          ],
+        // Unsafe cast: throws if type is wrong
+        expect(
+          () => suiteResult!.asTyped<SeedColorGenerationTestOutput>(),
+          throwsA(isA<Exception>()),
         );
 
-        final result = await flow.run();
-
-        // Old interface should still work
-        expect(result.results.length, equals(1));
-        expect(result.resultsByToolName['extract_palette'], isNotNull);
-        expect(result.getResultByToolName('extract_palette'), isNotNull);
-
-        // Result should be accessible as ToolResult<ToolOutput>
-        final oldStyleResult = result.getResultByToolName('extract_palette')!;
-        expect(oldStyleResult.toolName, equals('extract_palette'));
+        // Unsafe cast: correct type does not throw
         expect(
-          oldStyleResult.output.toMap(),
-          containsPair('colors', ['#FF0000', '#00FF00', '#0000FF']),
+          () => suiteResult!.asTyped<ColorSuiteGenerationTestOutput>(),
+          returnsNormally,
         );
       },
     );

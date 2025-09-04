@@ -24,7 +24,6 @@ class TestStepOutput extends ToolOutput {
       properties: [
         PropertyEntry.string(name: 'message', description: 'A test message'),
       ],
-      required: ['message'],
     );
   }
 }

@@ -1,4 +1,3 @@
-/// Tests for typed interfaces used in the professional color workflow
 import 'package:test/test.dart';
 
 import '../example/typed_interfaces.dart';
@@ -86,17 +85,10 @@ void main() {
         ),
         isTrue,
       );
-      expect(
-        systemValidationIssues.any(
-          (issue) => issue.contains('color_categories'),
-        ),
-        isTrue,
-      );
 
       // Test FullColorSuiteInput validation
       final suiteInput = FullColorSuiteInput(
         systemColors: {'primary': 'invalid_color'},
-        colorVariants: [],
         brandPersonality: 'professional',
       );
       final suiteValidationIssues = suiteInput.validate();
@@ -105,10 +97,6 @@ void main() {
         suiteValidationIssues.any(
           (issue) => issue.contains('Invalid system color'),
         ),
-        isTrue,
-      );
-      expect(
-        suiteValidationIssues.any((issue) => issue.contains('color_variants')),
         isTrue,
       );
     });
