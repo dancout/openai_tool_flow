@@ -77,8 +77,9 @@ class DefaultOpenAiToolService implements OpenAiToolService {
       toolFlowContext: 'Executing tool call in a structured workflow',
       stepDescription: 'Tool: ${step.toolName}, Model: ${step.model}',
       previousResults: includedResults,
+      // TODO: Should additionalContext be a structured object?
       additionalContext: {
-        'step_tool': step.toolName, 
+        'step_tool': step.toolName,
         'step_model': step.model,
         'system_message_template': step.outputSchema.systemMessageTemplate,
       },
@@ -115,7 +116,9 @@ class DefaultOpenAiToolService implements OpenAiToolService {
     required ToolInput input,
   }) {
     // Use tool description from step if available, otherwise fallback to generic description
-    final description = step.toolDescription ?? 'Execute ${step.toolName} tool with provided parameters';
+    final description =
+        step.toolDescription ??
+        'Execute ${step.toolName} tool with provided parameters';
 
     return {
       'type': 'function',
@@ -133,8 +136,10 @@ class DefaultOpenAiToolService implements OpenAiToolService {
     final buffer = StringBuffer();
 
     // Use system message template from additional context if available
-    final systemMessageTemplate = input.additionalContext['system_message_template'] as String?;
-    
+    final systemMessageTemplate =
+        // TODO: Should the systemMessage exist directly on the ToolCallStep, just like the toolDescription?
+        input.additionalContext['system_message_template'] as String?;
+
     if (systemMessageTemplate != null) {
       buffer.writeln(systemMessageTemplate);
     } else {
@@ -143,7 +148,7 @@ class DefaultOpenAiToolService implements OpenAiToolService {
         'You are an AI assistant executing tool calls in a structured workflow.',
       );
     }
-    
+
     buffer.writeln();
     buffer.writeln('Context: ${input.toolFlowContext}');
     buffer.writeln('Current Step: ${input.stepDescription}');
