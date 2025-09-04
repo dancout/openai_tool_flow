@@ -4,7 +4,7 @@
 /// that generates seed colors, expands to design system colors, and creates a complete
 /// color suite. Features strongly-typed interfaces, per-step audits, retry logic, and
 /// advanced workflow patterns including tool name-based retrieval and output forwarding.
-/// 
+///
 /// Updated for Round 15:
 /// - Step 1: Generate 3 seed colors with expert color theory guidance
 /// - Step 2: Generate 6 design system colors (primary, secondary, surface, text, warning, error)
@@ -32,24 +32,28 @@ void main() async {
   final mockService = MockOpenAiToolService(
     responses: {
       SeedColorGenerationOutput.stepName: {
-        'seed_colors': ['#2563EB', '#7C3AED', '#059669'], // Professional blue, purple, green
+        'seed_colors': [
+          '#2563EB',
+          '#7C3AED',
+          '#059669',
+        ], // Professional blue, purple, green
         'design_style': 'modern',
         'mood': 'professional',
         'color_theory': {
           'harmony_type': 'triadic',
           'principles': ['contrast', 'balance', 'accessibility'],
-          'psychological_impact': 'trustworthy and innovative'
+          'psychological_impact': 'trustworthy and innovative',
         },
         'confidence': 0.92,
       },
       DesignSystemColorOutput.stepName: {
         'system_colors': {
-          'primary': '#2563EB',    // Professional blue
-          'secondary': '#7C3AED',  // Accent purple  
-          'surface': '#F8FAFC',    // Light surface
-          'text': '#1E293B',       // Dark text
-          'warning': '#F59E0B',    // Amber warning
-          'error': '#EF4444',      // Red error
+          'primary': '#2563EB', // Professional blue
+          'secondary': '#7C3AED', // Accent purple
+          'surface': '#F8FAFC', // Light surface
+          'text': '#1E293B', // Dark text
+          'warning': '#F59E0B', // Amber warning
+          'error': '#EF4444', // Red error
         },
         'accessibility_scores': {
           'primary': 7.2,
@@ -63,7 +67,7 @@ void main() async {
         'design_principles': {
           'contrast_ratio': 'AAA compliant',
           'color_psychology': 'trust and innovation focused',
-          'brand_alignment': 'professional services'
+          'brand_alignment': 'professional services',
         },
       },
       FullColorSuiteOutput.stepName: {
@@ -74,7 +78,7 @@ void main() async {
           'interactiveText': '#2563EB',
           'mutedText': '#94A3B8',
           'disabledText': '#CBD5E1',
-          
+
           // Background colors
           'primaryBackground': '#FFFFFF',
           'secondaryBackground': '#F8FAFC',
@@ -82,27 +86,27 @@ void main() async {
           'cardBackground': '#FFFFFF',
           'overlayBackground': '#1E293B80',
           'hoverBackground': '#F1F5F9',
-          
+
           // Status backgrounds
           'errorBackground': '#FEF2F2',
           'warningBackground': '#FFFBEB',
           'successBackground': '#F0FDF4',
           'infoBackground': '#EFF6FF',
-          
+
           // Border colors
           'primaryBorder': '#E2E8F0',
           'secondaryBorder': '#F1F5F9',
           'focusBorder': '#2563EB',
           'errorBorder': '#EF4444',
           'warningBorder': '#F59E0B',
-          
+
           // Interactive colors
           'primaryButton': '#2563EB',
           'secondaryButton': '#7C3AED',
           'disabledButton': '#94A3B8',
           'primaryLink': '#2563EB',
           'visitedLink': '#7C3AED',
-          
+
           // Icon colors
           'primaryIcon': '#1E293B',
           'secondaryIcon': '#475569',
@@ -111,21 +115,58 @@ void main() async {
           'successIcon': '#059669',
         },
         'color_families': {
-          'blues': ['#EFF6FF', '#DBEAFE', '#BFDBFE', '#93C5FD', '#60A5FA', '#3B82F6', '#2563EB', '#1D4ED8', '#1E40AF'],
-          'purples': ['#FAF5FF', '#F3E8FF', '#E9D5FF', '#D8B4FE', '#C084FC', '#A855F7', '#9333EA', '#7C3AED', '#6D28D9'],
-          'neutrals': ['#FFFFFF', '#F8FAFC', '#F1F5F9', '#E2E8F0', '#CBD5E1', '#94A3B8', '#64748B', '#475569', '#334155', '#1E293B'],
+          'blues': [
+            '#EFF6FF',
+            '#DBEAFE',
+            '#BFDBFE',
+            '#93C5FD',
+            '#60A5FA',
+            '#3B82F6',
+            '#2563EB',
+            '#1D4ED8',
+            '#1E40AF',
+          ],
+          'purples': [
+            '#FAF5FF',
+            '#F3E8FF',
+            '#E9D5FF',
+            '#D8B4FE',
+            '#C084FC',
+            '#A855F7',
+            '#9333EA',
+            '#7C3AED',
+            '#6D28D9',
+          ],
+          'neutrals': [
+            '#FFFFFF',
+            '#F8FAFC',
+            '#F1F5F9',
+            '#E2E8F0',
+            '#CBD5E1',
+            '#94A3B8',
+            '#64748B',
+            '#475569',
+            '#334155',
+            '#1E293B',
+          ],
         },
         'brand_guidelines': {
           'primary_usage': 'Call-to-action buttons, links, key highlights',
-          'secondary_usage': 'Accent elements, secondary actions, decorative elements',
-          'text_hierarchy': 'Primary text for headings, secondary for body, muted for captions',
-          'background_strategy': 'Layered approach with subtle elevation through background variations'
+          'secondary_usage':
+              'Accent elements, secondary actions, decorative elements',
+          'text_hierarchy':
+              'Primary text for headings, secondary for body, muted for captions',
+          'background_strategy':
+              'Layered approach with subtle elevation through background variations',
         },
         'usage_recommendations': {
           'accessibility': 'All color combinations meet WCAG AA standards',
-          'contrast_ratios': 'Text colors provide minimum 4.5:1 ratio against backgrounds',
-          'interactive_states': 'Hover and focus states use darker variants for clear feedback',
-          'error_handling': 'Error colors reserved for validation and critical alerts only'
+          'contrast_ratios':
+              'Text colors provide minimum 4.5:1 ratio against backgrounds',
+          'interactive_states':
+              'Hover and focus states use darker variants for clear feedback',
+          'error_handling':
+              'Error colors reserved for validation and critical alerts only',
         },
       },
     },
@@ -139,8 +180,8 @@ void main() async {
   final flow = ToolFlow(
     config: config,
     steps: steps,
-    // openAiService: mockService, // Inject mock service for testing
-    openAiService: DefaultOpenAiToolService(config: config),
+    openAiService: mockService, // Inject mock service for testing
+    // openAiService: DefaultOpenAiToolService(config: config),
   );
 
   // Execute the flow
@@ -288,7 +329,9 @@ void _displayNewWorkflowOutputUsage(ToolFlowResult result) {
   print('🔧 New Professional Workflow Output Usage:');
 
   // Display seed colors
-  final seedResult = result.getResultByToolName(SeedColorGenerationOutput.stepName);
+  final seedResult = result.getResultByToolName(
+    SeedColorGenerationOutput.stepName,
+  );
   if (seedResult != null) {
     final seedOutputMap = seedResult.output.toMap();
     print('  💎 Seed Colors Generated:');
@@ -305,17 +348,21 @@ void _displayNewWorkflowOutputUsage(ToolFlowResult result) {
   }
 
   // Display design system colors
-  final designSystemResult = result.getResultByToolName(DesignSystemColorOutput.stepName);
+  final designSystemResult = result.getResultByToolName(
+    DesignSystemColorOutput.stepName,
+  );
   if (designSystemResult != null) {
     final designOutputMap = designSystemResult.output.toMap();
     print('  🎨 Design System Colors:');
-    final systemColors = designOutputMap['system_colors'] as Map<String, dynamic>?;
+    final systemColors =
+        designOutputMap['system_colors'] as Map<String, dynamic>?;
     if (systemColors != null) {
       systemColors.forEach((key, value) {
         print('    $key: $value');
       });
     }
-    final accessibilityScores = designOutputMap['accessibility_scores'] as Map<String, dynamic>?;
+    final accessibilityScores =
+        designOutputMap['accessibility_scores'] as Map<String, dynamic>?;
     if (accessibilityScores != null && accessibilityScores.isNotEmpty) {
       print('  📊 Accessibility Scores:');
       accessibilityScores.forEach((key, value) {
@@ -326,7 +373,9 @@ void _displayNewWorkflowOutputUsage(ToolFlowResult result) {
   }
 
   // Display full color suite
-  final fullSuiteResult = result.getResultByToolName(FullColorSuiteOutput.stepName);
+  final fullSuiteResult = result.getResultByToolName(
+    FullColorSuiteOutput.stepName,
+  );
   if (fullSuiteResult != null) {
     final suiteOutputMap = fullSuiteResult.output.toMap();
     print('  🌈 Complete Color Suite (30 colors):');
@@ -343,27 +392,32 @@ void _displayNewWorkflowOutputUsage(ToolFlowResult result) {
           textColors[key] = value as String;
         } else if (key.contains('Background')) {
           backgroundColors[key] = value as String;
-        } else if (key.contains('Button') || key.contains('Link') || key.contains('Border')) {
+        } else if (key.contains('Button') ||
+            key.contains('Link') ||
+            key.contains('Border')) {
           interactiveColors[key] = value as String;
-        } else if (key.contains('error') || key.contains('warning') || key.contains('success')) {
+        } else if (key.contains('error') ||
+            key.contains('warning') ||
+            key.contains('success')) {
           statusColors[key] = value as String;
         }
       });
 
       print('    📝 Text Colors:');
       textColors.forEach((key, value) => print('      $key: $value'));
-      
+
       print('    🏢 Background Colors:');
       backgroundColors.forEach((key, value) => print('      $key: $value'));
-      
+
       print('    🔗 Interactive Colors:');
       interactiveColors.forEach((key, value) => print('      $key: $value'));
-      
+
       print('    ⚠️ Status Colors:');
       statusColors.forEach((key, value) => print('      $key: $value'));
     }
 
-    final brandGuidelines = suiteOutputMap['brand_guidelines'] as Map<String, dynamic>?;
+    final brandGuidelines =
+        suiteOutputMap['brand_guidelines'] as Map<String, dynamic>?;
     if (brandGuidelines != null && brandGuidelines.isNotEmpty) {
       print('  📋 Brand Guidelines:');
       brandGuidelines.forEach((key, value) {
@@ -451,7 +505,7 @@ void _exportEnhancedResults(ToolFlowResult result) {
   if (finalOutput != null && finalOutput.containsKey('color_suite')) {
     print('🎨 Generated Professional Color Suite:');
     final colorSuite = finalOutput['color_suite'] as Map<String, dynamic>;
-    
+
     // Display most important colors for quick reference
     final importantColors = {
       'primaryText': colorSuite['primaryText'],
@@ -461,12 +515,12 @@ void _exportEnhancedResults(ToolFlowResult result) {
       'warningBackground': colorSuite['warningBackground'],
       'successBackground': colorSuite['successBackground'],
     };
-    
+
     print('  🔑 Key Colors:');
     importantColors.forEach((key, value) {
       if (value != null) print('    $key: $value');
     });
-    
+
     print('  📊 Total colors in suite: ${colorSuite.length}');
     print('');
   }
@@ -496,7 +550,7 @@ void _exportEnhancedResults(ToolFlowResult result) {
     final stepIndex = typedResult != null
         ? result.results.indexOf(typedResult)
         : -1;
-    
+
     String workflowStep = '';
     switch (toolName) {
       case 'generate_seed_colors':
@@ -509,13 +563,17 @@ void _exportEnhancedResults(ToolFlowResult result) {
         workflowStep = ' (Step 3: Complete Suite)';
         break;
     }
-    
+
     print('  $toolName -> Step ${stepIndex + 1}$workflowStep');
   });
   print('');
 
-  print('✅ Professional color theme generation with expert guidance completed!');
-  print('🎯 Generated: 3 seed colors → 6 system colors → 30 complete color suite');
+  print(
+    '✅ Professional color theme generation with expert guidance completed!',
+  );
+  print(
+    '🎯 Generated: 3 seed colors → 6 system colors → 30 complete color suite',
+  );
   print('📏 All steps used maxRetries=3 as specified');
   print('🎨 Ready for production use in professional applications');
 }
