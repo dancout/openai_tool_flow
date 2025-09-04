@@ -142,6 +142,8 @@ class ToolFlow {
             .putIfAbsent(stepResult.toolName, () => [])
             .add(stepResult);
 
+        // TODO: It would be kinda cool to add how many tokens were consumed form that step into the state, both input and output tokens
+
         // Update state with step results
         _state['step_${i}_result'] = stepResult.toJson();
         _state.addAll(stepResult.output.toMap());
