@@ -84,15 +84,6 @@ class TestToolOutput extends ToolOutput {
     ...Map<String, dynamic>.from(data),
   };
 
-  static OutputSchema getOutputSchema() {
-    return OutputSchema(
-      properties: [
-        PropertyEntry.object(name: 'data', description: 'Test output data'),
-      ],
-      required: [],
-    );
-  }
-
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
@@ -274,7 +265,6 @@ void main() {
               description: 'Extracted color hex codes',
             ),
           ],
-          required: ['colors'],
         ),
         stepConfig: StepConfig(),
       );
@@ -346,7 +336,6 @@ void main() {
                   description: 'Extracted color hex codes',
                 ),
               ],
-              required: ['colors'],
             ),
             stepConfig: StepConfig(),
           ),
@@ -407,7 +396,6 @@ void main() {
                   description: 'Extracted color hex codes',
                 ),
               ],
-              required: ['colors'],
             ),
             stepConfig: StepConfig(audits: [audit]),
           ),
@@ -455,7 +443,6 @@ void main() {
                   description: 'Extracted color hex codes',
                 ),
               ],
-              required: ['colors'],
             ),
             stepConfig: StepConfig(),
           ),
@@ -471,7 +458,6 @@ void main() {
                   description: 'Refined color hex codes',
                 ),
               ],
-              required: ['refined_colors'],
             ),
             stepConfig: StepConfig(),
           ),
@@ -552,7 +538,6 @@ void main() {
                   description: 'Extracted color hex codes',
                 ),
               ],
-              required: ['colors'],
             ),
             stepConfig: StepConfig(audits: [audit]),
           ),
@@ -571,7 +556,6 @@ void main() {
             buildInputsFrom: [0],
             outputSchema: OutputSchema(
               properties: [PropertyEntry.string(name: 'result')],
-              required: ['result'],
             ),
             includeResultsInToolcall: [0],
             stepConfig: StepConfig(),
@@ -627,7 +611,6 @@ void main() {
                   description: 'Refined color hex codes',
                 ),
               ],
-              required: ['refined_colors'],
             ),
             stepConfig: StepConfig(),
           ),
@@ -643,7 +626,6 @@ void main() {
                   description: 'Refined color hex codes',
                 ),
               ],
-              required: ['refined_colors'],
             ),
             stepConfig: StepConfig(),
           ),
@@ -808,7 +790,6 @@ void main() {
             inputBuilder: (previousResults) => {},
             outputSchema: OutputSchema(
               properties: [PropertyEntry.string(name: 'result')],
-              required: ['result'],
             ),
             stepConfig: StepConfig(),
           ),
@@ -818,7 +799,6 @@ void main() {
             inputBuilder: (previousResults) => {},
             outputSchema: OutputSchema(
               properties: [PropertyEntry.string(name: 'result')],
-              required: ['result'],
             ),
             stepConfig: StepConfig(),
           ),
@@ -828,7 +808,6 @@ void main() {
             inputBuilder: (previousResults) => {},
             outputSchema: OutputSchema(
               properties: [PropertyEntry.string(name: 'result')],
-              required: ['result'],
             ),
             includeResultsInToolcall: ['step1_tool'], // Only include step1
             stepConfig: StepConfig(),
@@ -868,7 +847,7 @@ void main() {
             toolName: 'integration_tool_e2e',
             model: 'gpt-4',
             inputBuilder: (previousResults) => {'input': 'integration'},
-            outputSchema: OutputSchema(properties: [], required: []),
+            outputSchema: OutputSchema(properties: []),
             stepConfig: StepConfig(),
           ),
         ],
@@ -920,7 +899,6 @@ void main() {
                 inputBuilder: (previousResults) => {'input': 'step1'},
                 outputSchema: OutputSchema(
                   properties: [PropertyEntry.string(name: 'result')],
-                  required: ['result'],
                 ),
                 stepConfig: StepConfig(
                   audits: [
@@ -952,7 +930,6 @@ void main() {
                 inputBuilder: (previousResults) => {'input': 'step2'},
                 outputSchema: OutputSchema(
                   properties: [PropertyEntry.string(name: 'result')],
-                  required: ['result'],
                 ),
                 includeResultsInToolcall: [0], // Include step 0
                 stepConfig: StepConfig(
@@ -1007,7 +984,6 @@ void main() {
                 inputBuilder: (previousResults) => {'input': 'step1'},
                 outputSchema: OutputSchema(
                   properties: [PropertyEntry.string(name: 'result')],
-                  required: ['result'],
                 ),
                 stepConfig: StepConfig(
                   audits: [
@@ -1032,7 +1008,6 @@ void main() {
                 inputBuilder: (previousResults) => {'input': 'step2'},
                 outputSchema: OutputSchema(
                   properties: [PropertyEntry.string(name: 'result')],
-                  required: ['result'],
                 ),
                 includeResultsInToolcall: [0], // Include step 0
                 stepConfig: StepConfig(
@@ -1082,7 +1057,6 @@ void main() {
                       items: PropertyType.string,
                     ),
                   ],
-                  required: ['colors'],
                 ),
                 stepConfig: StepConfig(
                   audits: [
@@ -1107,7 +1081,6 @@ void main() {
                 inputBuilder: (previousResults) => {'input': 'validate'},
                 outputSchema: OutputSchema(
                   properties: [PropertyEntry.boolean(name: 'valid')],
-                  required: ['valid'],
                 ),
                 includeResultsInToolcall: [
                   'extract_colors',

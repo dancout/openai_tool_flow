@@ -11,7 +11,7 @@ abstract class OpenAiToolService {
   /// Executes a tool call with the given step and input parameters.
   ///
   /// Returns the raw tool output as a Map that will be used to create ToolResult.
-  /// 
+  ///
   /// [includedResults] contains previous results and their filtered issues to include
   /// in the system message for context about previous attempts and problems.
   Future<Map<String, dynamic>> executeToolCall(
@@ -194,19 +194,12 @@ class UserMessageInput {
   /// The actual input data for the tool
   final ToolInput toolInput;
 
-  /// Instructions for the tool execution
-  final String instructions;
-
-  /// Format requirements for the output
-  final String outputFormat;
-
+  // TODO: I removed instructions and outputFormat. If I end up removing constraints, too, is this UserMessageInput wrapper class necessary anymore, or can we just use ToolIInput?
   /// Any constraints or requirements
   final List<String> constraints;
 
   const UserMessageInput({
     required this.toolInput,
-    this.instructions = '',
-    this.outputFormat = '',
     this.constraints = const [],
   });
 
@@ -223,12 +216,7 @@ class UserMessageInput {
 
   /// Converts to a clean map for serialization
   Map<String, dynamic> toMap() {
-    return {
-      'toolInput': toolInput,
-      'instructions': instructions,
-      'outputFormat': outputFormat,
-      'constraints': constraints,
-    };
+    return {'toolInput': toolInput, 'constraints': constraints};
   }
 
   /// Gets a cleaned version of the tool input with sensitive data removed

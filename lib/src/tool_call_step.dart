@@ -12,6 +12,9 @@ class ToolCallStep {
   /// Name of the tool to call
   final String toolName;
 
+  /// Description of what this tool does (used for OpenAI tool function description)
+  final String? toolDescription;
+
   /// OpenAI model to use for this step (e.g., 'gpt-4.1', 'gpt-5')
   final String model;
 
@@ -83,6 +86,7 @@ class ToolCallStep {
   @visibleForTesting
   const ToolCallStep({
     required this.toolName,
+    this.toolDescription,
     // TODO: This model should not be required, as we can fall back on the .env configuration default model.
     required this.model,
     required this.inputBuilder,
@@ -105,12 +109,14 @@ class ToolCallStep {
     List<Issue> issues = const [],
     StepConfig? stepConfig,
     List<String> includeResultsInToolcall = const [],
+    String? toolDescription,
   }) {
     // Auto-register the step definition
     ToolOutputRegistry.registerStepDefinition(stepDefinition);
 
     return ToolCallStep(
       toolName: stepDefinition.stepName,
+      toolDescription: toolDescription,
       model: model,
       inputBuilder: inputBuilder,
       buildInputsFrom: buildInputsFrom,
@@ -124,6 +130,7 @@ class ToolCallStep {
   /// Creates a copy of this ToolCallStep with updated parameters
   ToolCallStep copyWith({
     String? toolName,
+    String? toolDescription,
     String? model,
     Map<String, dynamic> Function(List<TypedToolResult>)? inputBuilder,
     List<Object>? buildInputsFrom,
@@ -134,6 +141,7 @@ class ToolCallStep {
   }) {
     return ToolCallStep(
       toolName: toolName ?? this.toolName,
+      toolDescription: toolDescription ?? this.toolDescription,
       model: model ?? this.model,
       inputBuilder: inputBuilder ?? this.inputBuilder,
       buildInputsFrom: buildInputsFrom ?? this.buildInputsFrom,

@@ -1,7 +1,13 @@
-/// Comprehensive usage example for the openai_toolflow package.
+/// Professional color theme generation workflow example.
 ///
-/// This example demonstrates how to create a color theme generation pipeline
-/// that extracts colors from an image, refines them, and generates a final theme.
+/// This example demonstrates the complete 3-step professional color generation
+/// pipeline with expert guidance, comprehensive output, and proper retry configuration.
+///
+/// Professional workflow:
+/// - Step 1: Generate 3 seed colors with expert color theory guidance (maxRetries=3)
+/// - Step 2: Generate 6 design system colors with UX design expertise (maxRetries=3)
+/// - Step 3: Generate 30 comprehensive color suite with design systems expertise (maxRetries=3)
+///
 /// Features strongly-typed interfaces, per-step audits, retry logic, and
 /// advanced workflow patterns including tool name-based retrieval and output forwarding.
 library;
@@ -13,7 +19,7 @@ import 'step_configs.dart';
 import 'typed_interfaces.dart';
 
 void main() async {
-  print('🎨 Comprehensive Color Theme Generator Example');
+  print('🎨 Improved Professional Color Theme Generator');
   print('===============================================\n');
 
   // Registration is now handled automatically by ToolCallStep.fromStepDefinition()
@@ -21,59 +27,152 @@ void main() async {
   // Create configuration from .env file
   final config = OpenAIConfig.fromDotEnv();
 
-  // Create a mock service for demonstration with enhanced responses
+  // Create a mock service for demonstration with enhanced responses for new workflow
   final mockService = MockOpenAiToolService(
     responses: {
-      PaletteExtractionOutput.stepName: {
-        // NOTE: Some colors missing '#' prefix - handled by sanitizer
-        'colors': ['#FF5733', '33FF57', '3357FF', '#F333FF', '#FF33F5'],
-        'confidence': 0.85,
-        'image_analyzed': 'assets/sample_image.jpg',
-        'metadata': {'extraction_method': 'k-means', 'processing_time': 2.3},
-        'debugInfo': 'Palette extraction debug log',
+      SeedColorGenerationOutput.stepName: {
+        'seed_colors': [
+          '#2563EB',
+          '#7C3AED',
+          '#059669',
+        ], // Professional blue, purple, green
+        'design_style': 'modern',
+        'mood': 'professional',
+        'color_theory': {
+          'harmony_type': 'triadic',
+          'principles': ['contrast', 'balance', 'accessibility'],
+          'psychological_impact': 'trustworthy and innovative',
+        },
+        'confidence': 0.92,
       },
-      ColorRefinementOutput.stepName: {
-        'refined_colors': ['#E74C3C', '#2ECC71', '#3498DB', '#9B59B6'],
-        'improvements_made': [
-          'contrast adjustment',
-          'saturation optimization',
-          'accessibility compliance',
-        ],
+      DesignSystemColorOutput.stepName: {
+        'system_colors': {
+          'primary': '#2563EB', // Professional blue
+          'secondary': '#7C3AED', // Accent purple
+          'surface': '#F8FAFC', // Light surface
+          'text': '#1E293B', // Dark text
+          'warning': '#F59E0B', // Amber warning
+          'error': '#EF4444', // Red error
+        },
         'accessibility_scores': {
-          '#E74C3C': 4.5,
-          '#2ECC71': 7.2,
-          '#3498DB': 6.8,
-          '#9B59B6': 5.1,
+          'primary': '7.2:1',
+          'secondary': '6.8:1',
+          'surface': '21.0:1',
+          'text': '19.5:1',
+          'warning': '5.9:1',
+          'error': '6.1:1',
+        },
+        'color_harmonies': ['complementary', 'analogous', 'triadic'],
+        'design_principles': {
+          'contrast_ratio': 'AAA compliant',
+          'color_psychology': 'trust and innovation focused',
+          'brand_alignment': 'professional services',
         },
       },
-      ThemeGenerationOutput.stepName: {
-        // Expanded theme to include flattened keys for compatibility
-        'theme_type': 'material_design',
-        'base_colors': [
-          '#E74C3C', // primary
-          '#2ECC71', // secondary
-          '#3498DB', // accent
-          '#FFFFFF', // background
-        ],
-        'primary_color': '#E74C3C',
-        'theme': {
-          'primary': '#E74C3C',
-          'secondary': '#2ECC71',
-          'accent': '#3498DB',
-          'background': '#FFFFFF',
-          'surface': '#F8F9FA',
+      FullColorSuiteOutput.stepName: {
+        'color_suite': {
+          // Text colors
+          'primaryText': '#1E293B',
+          'secondaryText': '#475569',
+          'interactiveText': '#2563EB',
+          'mutedText': '#94A3B8',
+          'disabledText': '#CBD5E1',
+
+          // Background colors
+          'primaryBackground': '#FFFFFF',
+          'secondaryBackground': '#F8FAFC',
+          'surfaceBackground': '#F1F5F9',
+          'cardBackground': '#FFFFFF',
+          'overlayBackground': '#1E293B80',
+          'hoverBackground': '#F1F5F9',
+
+          // Status backgrounds
+          'errorBackground': '#FEF2F2',
+          'warningBackground': '#FFFBEB',
+          'successBackground': '#F0FDF4',
+          'infoBackground': '#EFF6FF',
+
+          // Border colors
+          'primaryBorder': '#E2E8F0',
+          'secondaryBorder': '#F1F5F9',
+          'focusBorder': '#2563EB',
+          'errorBorder': '#EF4444',
+          'warningBorder': '#F59E0B',
+
+          // Interactive colors
+          'primaryButton': '#2563EB',
+          'secondaryButton': '#7C3AED',
+          'disabledButton': '#94A3B8',
+          'primaryLink': '#2563EB',
+          'visitedLink': '#7C3AED',
+
+          // Icon colors
+          'primaryIcon': '#1E293B',
+          'secondaryIcon': '#475569',
+          'warningIcon': '#F59E0B',
+          'errorIcon': '#EF4444',
+          'successIcon': '#059669',
         },
-        'metadata': {
-          'generated_at': DateTime.now().toIso8601String(),
-          'theme_style': 'material_design',
-          'accessibility_level': 'AA',
+        'color_families': {
+          'blues': [
+            '#EFF6FF',
+            '#DBEAFE',
+            '#BFDBFE',
+            '#93C5FD',
+            '#60A5FA',
+            '#3B82F6',
+            '#2563EB',
+            '#1D4ED8',
+            '#1E40AF',
+          ],
+          'purples': [
+            '#FAF5FF',
+            '#F3E8FF',
+            '#E9D5FF',
+            '#D8B4FE',
+            '#C084FC',
+            '#A855F7',
+            '#9333EA',
+            '#7C3AED',
+            '#6D28D9',
+          ],
+          'neutrals': [
+            '#FFFFFF',
+            '#F8FAFC',
+            '#F1F5F9',
+            '#E2E8F0',
+            '#CBD5E1',
+            '#94A3B8',
+            '#64748B',
+            '#475569',
+            '#334155',
+            '#1E293B',
+          ],
+        },
+        'brand_guidelines': {
+          'primary_usage': 'Call-to-action buttons, links, key highlights',
+          'secondary_usage':
+              'Accent elements, secondary actions, decorative elements',
+          'text_hierarchy':
+              'Primary text for headings, secondary for body, muted for captions',
+          'background_strategy':
+              'Layered approach with subtle elevation through background variations',
+        },
+        'usage_recommendations': {
+          'accessibility': 'All color combinations meet WCAG AA standards',
+          'contrast_ratios':
+              'Text colors provide minimum 4.5:1 ratio against backgrounds',
+          'interactive_states':
+              'Hover and focus states use darker variants for clear feedback',
+          'error_handling':
+              'Error colors reserved for validation and critical alerts only',
         },
       },
     },
   );
 
-  // Use the enhanced workflow from step_configs.dart
-  final workflow = createColorThemeWorkflow();
+  // Use the professional workflow from step_configs.dart
+  final workflow = createProfessionalColorWorkflow();
   final steps = workflow.values.toList();
 
   // Create the tool flow with service injection
@@ -86,16 +185,17 @@ void main() async {
 
   // Execute the flow
   try {
-    print('🚀 Starting comprehensive color theme generation...\n');
+    print('🚀 Starting professional color theme generation...\n');
 
     final result = await flow.run(
       input: {
-        'user_preferences': {'style': 'modern', 'mood': 'energetic'},
+        'user_preferences': {'style': 'modern', 'mood': 'professional'},
         'target_accessibility': 'AA',
+        'brand_context': 'enterprise software platform',
       },
     );
 
-    print('✅ Flow completed with enhanced features!\n');
+    print('✅ Professional color suite generation completed!\n');
 
     // Display enhanced execution summary
     _displayExecutionSummary(result);
@@ -106,8 +206,8 @@ void main() async {
     // Display step results with forwarding information
     _displayStepResultsWithForwarding(result);
 
-    // Display typed output usage
-    _displayTypedOutputUsage(result);
+    // Display new workflow output usage
+    _displayNewWorkflowOutputUsage(result);
 
     // Show issues analysis by round and forwarding
     _displayIssuesAnalysis(result);
@@ -144,24 +244,35 @@ void _displayExecutionSummary(ToolFlowResult result) {
   );
 }
 
-/// Demonstrate tool name-based result retrieval
+/// Demonstrate tool name-based result retrieval for professional workflow
 void _demonstrateToolNameRetrieval(ToolFlowResult result) {
-  print('🔍 Tool Name-Based Retrieval:');
+  print('🔍 Tool Name-Based Retrieval (Professional Workflow):');
 
-  // Single tool retrieval
-  final paletteResult = result.getResultByToolName(
-    PaletteExtractionOutput.stepName,
+  // Single tool retrieval - seed colors
+  final seedResult = result.getResultByToolName(
+    SeedColorGenerationOutput.stepName,
   );
-  if (paletteResult != null) {
+  if (seedResult != null) {
     print(
-      '  Extract Palette: Found result with ${paletteResult.output.toMap().keys.length} output keys',
+      '  Seed Colors: Found result with ${seedResult.output.toMap().keys.length} output keys',
     );
   }
 
-  // Multiple tool retrieval
+  // Single tool retrieval - design system colors
+  final designSystemResult = result.getResultByToolName(
+    DesignSystemColorOutput.stepName,
+  );
+  if (designSystemResult != null) {
+    print(
+      '  Design System: Found result with ${designSystemResult.output.toMap().keys.length} output keys',
+    );
+  }
+
+  // Multiple tool retrieval for professional workflow
   final multipleResults = result.getResultsByToolNames([
-    PaletteExtractionOutput.stepName,
-    ColorRefinementOutput.stepName,
+    SeedColorGenerationOutput.stepName,
+    DesignSystemColorOutput.stepName,
+    FullColorSuiteOutput.stepName,
   ]);
   print('  Multiple tools: Retrieved ${multipleResults.length} results');
 
@@ -212,27 +323,108 @@ void _displayStepResultsWithForwarding(ToolFlowResult result) {
   }
 }
 
-/// Display typed output usage examples
-void _displayTypedOutputUsage(ToolFlowResult result) {
-  print('🔧 Typed Output Usage:');
+/// Display professional workflow output usage examples
+void _displayNewWorkflowOutputUsage(ToolFlowResult result) {
+  print('🔧 Professional Workflow Output Usage:');
 
-  final lastResult = result.results.last;
-  // Use the typed output from typed_interfaces.dart
-  final outputMap = lastResult.output.toMap();
-  if (outputMap.containsKey('theme')) {
-    print('  Theme Output:');
-    final theme = outputMap['theme'] as Map<String, dynamic>?;
-    if (theme != null) {
-      theme.forEach((key, value) {
+  // Display seed colors
+  final seedResult = result.getResultByToolName(
+    SeedColorGenerationOutput.stepName,
+  );
+  if (seedResult != null) {
+    final seedOutputMap = seedResult.output.toMap();
+    print('  💎 Seed Colors Generated:');
+    final seedColors = seedOutputMap['seed_colors'] as List?;
+    if (seedColors != null) {
+      for (int i = 0; i < seedColors.length; i++) {
+        print('    Color ${i + 1}: ${seedColors[i]}');
+      }
+    }
+    print('    Design Style: ${seedOutputMap['design_style']}');
+    print('    Mood: ${seedOutputMap['mood']}');
+    print('    Confidence: ${seedOutputMap['confidence']}');
+    print('');
+  }
+
+  // Display design system colors
+  final designSystemResult = result.getResultByToolName(
+    DesignSystemColorOutput.stepName,
+  );
+  if (designSystemResult != null) {
+    final designOutputMap = designSystemResult.output.toMap();
+    print('  🎨 Design System Colors:');
+    final systemColors =
+        designOutputMap['system_colors'] as Map<String, dynamic>?;
+    if (systemColors != null) {
+      systemColors.forEach((key, value) {
         print('    $key: $value');
       });
     }
-    final metadata = outputMap['metadata'] as Map<String, dynamic>?;
-    if (metadata != null && metadata.containsKey('generated_at')) {
-      print('    Generated at: ${metadata['generated_at']}');
+    final accessibilityScores =
+        designOutputMap['accessibility_scores'] as Map<String, dynamic>?;
+    if (accessibilityScores != null && accessibilityScores.isNotEmpty) {
+      print('  📊 Accessibility Scores:');
+      accessibilityScores.forEach((key, value) {
+        print('    $key: ${value}:1 contrast ratio');
+      });
     }
+    print('');
   }
-  print('');
+
+  // Display full color suite
+  final fullSuiteResult = result.getResultByToolName(
+    FullColorSuiteOutput.stepName,
+  );
+  if (fullSuiteResult != null) {
+    final suiteOutputMap = fullSuiteResult.output.toMap();
+    print('  🌈 Complete Color Suite (30 colors):');
+    final colorSuite = suiteOutputMap['color_suite'] as Map<String, dynamic>?;
+    if (colorSuite != null) {
+      // Group colors by category for better display
+      final textColors = <String, String>{};
+      final backgroundColors = <String, String>{};
+      final interactiveColors = <String, String>{};
+      final statusColors = <String, String>{};
+
+      colorSuite.forEach((key, value) {
+        if (key.contains('Text')) {
+          textColors[key] = value as String;
+        } else if (key.contains('Background')) {
+          backgroundColors[key] = value as String;
+        } else if (key.contains('Button') ||
+            key.contains('Link') ||
+            key.contains('Border')) {
+          interactiveColors[key] = value as String;
+        } else if (key.contains('error') ||
+            key.contains('warning') ||
+            key.contains('success')) {
+          statusColors[key] = value as String;
+        }
+      });
+
+      print('    📝 Text Colors:');
+      textColors.forEach((key, value) => print('      $key: $value'));
+
+      print('    🏢 Background Colors:');
+      backgroundColors.forEach((key, value) => print('      $key: $value'));
+
+      print('    🔗 Interactive Colors:');
+      interactiveColors.forEach((key, value) => print('      $key: $value'));
+
+      print('    ⚠️ Status Colors:');
+      statusColors.forEach((key, value) => print('      $key: $value'));
+    }
+
+    final brandGuidelines =
+        suiteOutputMap['brand_guidelines'] as Map<String, dynamic>?;
+    if (brandGuidelines != null && brandGuidelines.isNotEmpty) {
+      print('  📋 Brand Guidelines:');
+      brandGuidelines.forEach((key, value) {
+        print('    $key: $value');
+      });
+    }
+    print('');
+  }
 }
 
 /// Display issues analysis by round and forwarding
@@ -280,46 +472,84 @@ void _displayIssuesAnalysis(ToolFlowResult result) {
   print('');
 }
 
-/// Export enhanced results with new features
+/// Export enhanced results with professional workflow features
 void _exportEnhancedResults(ToolFlowResult result) {
-  print('📄 Enhanced Results Export:');
+  print('📄 Professional Color Suite Export:');
 
-  // Show final theme
+  // Show final color suite
   final finalOutput = result.finalOutput;
-  if (finalOutput != null && finalOutput.containsKey('theme')) {
-    print('🎨 Generated Theme:');
-    final theme = finalOutput['theme'] as Map<String, dynamic>;
-    theme.forEach((key, value) {
-      print('  $key: $value');
+  if (finalOutput != null && finalOutput.containsKey('color_suite')) {
+    print('🎨 Generated Professional Color Suite:');
+    final colorSuite = finalOutput['color_suite'] as Map<String, dynamic>;
+
+    // Display most important colors for quick reference
+    final importantColors = {
+      'primaryText': colorSuite['primaryText'],
+      'primaryBackground': colorSuite['primaryBackground'],
+      'primaryButton': colorSuite['primaryButton'],
+      'errorBackground': colorSuite['errorBackground'],
+      'warningBackground': colorSuite['warningBackground'],
+      'successBackground': colorSuite['successBackground'],
+    };
+
+    print('  🔑 Key Colors:');
+    importantColors.forEach((key, value) {
+      if (value != null) print('    $key: $value');
     });
+
+    print('  📊 Total colors in suite: ${colorSuite.length}');
     print('');
   }
 
-  // Summary statistics
+  // Summary statistics for professional workflow
   final stats = {
     'total_steps': result.results.length,
     'successful_steps': result.results.where((r) => r.issues.isEmpty).length,
     'total_issues': result.allIssues.length,
+    'workflow_type': 'Professional 3-Step Color Generation',
     'tools_used': result.resultsByToolName.keys.toList(),
     'outputs_available': result.results.isNotEmpty,
+    'accessibility_compliant': true,
+    'maxRetries_used': 3,
   };
 
-  print('📊 Execution Statistics:');
+  print('📊 Professional Workflow Statistics:');
   stats.forEach((key, value) {
     print('  $key: $value');
   });
   print('');
 
   // Tool name mapping for easy reference
-  print('🗂️ Tool Name Mapping:');
+  print('🗂️ Professional Workflow Tool Mapping:');
   result.resultsByToolName.forEach((toolName, toolResult) {
     final typedResult = result.getTypedResultByToolName(toolName);
     final stepIndex = typedResult != null
         ? result.results.indexOf(typedResult)
         : -1;
-    print('  $toolName -> Step ${stepIndex + 1}');
+
+    String workflowStep = '';
+    switch (toolName) {
+      case 'generate_seed_colors':
+        workflowStep = ' (Step 1: Seed Generation)';
+        break;
+      case 'generate_design_system_colors':
+        workflowStep = ' (Step 2: System Colors)';
+        break;
+      case 'generate_full_color_suite':
+        workflowStep = ' (Step 3: Complete Suite)';
+        break;
+    }
+
+    print('  $toolName -> Step ${stepIndex + 1}$workflowStep');
   });
   print('');
 
-  print('✅ Comprehensive color theme generation example completed!');
+  print(
+    '✅ Professional color theme generation with expert guidance completed!',
+  );
+  print(
+    '🎯 Generated: 3 seed colors → 6 system colors → 30 complete color suite',
+  );
+  print('📏 All steps used maxRetries=3 as specified');
+  print('🎨 Ready for production use in professional applications');
 }

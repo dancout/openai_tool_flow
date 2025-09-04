@@ -77,16 +77,16 @@ class DefaultOpenAiToolService implements OpenAiToolService {
       toolFlowContext: 'Executing tool call in a structured workflow',
       stepDescription: 'Tool: ${step.toolName}, Model: ${step.model}',
       previousResults: includedResults,
-      additionalContext: {'step_tool': step.toolName, 'step_model': step.model},
+      // TODO: Should additionalContext be a structured object?
+      additionalContext: {
+        'step_tool': step.toolName,
+        'step_model': step.model,
+        'system_message_template': step.outputSchema.systemMessageTemplate,
+      },
     );
 
     // Build user message
-    final userMessageInput = UserMessageInput(
-      toolInput: input,
-      instructions:
-          'Execute the ${step.toolName} tool with the provided parameters.',
-      outputFormat: 'Return structured JSON output matching the tool schema.',
-    );
+    final userMessageInput = UserMessageInput(toolInput: input);
 
     final systemMessage = _buildSystemMessage(systemMessageInput);
     final userMessage = _buildUserMessage(userMessageInput);
@@ -101,6 +101,7 @@ class DefaultOpenAiToolService implements OpenAiToolService {
         'function': {'name': step.toolName},
       },
       temperature: config.defaultTemperature,
+      // TODO: It would be nice to specify maxTokens per step!
       maxTokens: config.defaultMaxTokens,
     );
   }
@@ -110,14 +111,19 @@ class DefaultOpenAiToolService implements OpenAiToolService {
     required ToolCallStep step,
     required ToolInput input,
   }) {
+    // Use tool description from step if available, otherwise fallback to generic description
+    final description =
+        step.toolDescription ??
+        'Execute ${step.toolName} tool with provided parameters';
+
     return {
       'type': 'function',
       'function': {
         'name': step.toolName,
-        'description': 'Execute ${step.toolName} tool with provided parameters',
+        'description': description,
         'parameters': step.outputSchema.toMap(),
+        "strict": true,
       },
-      "strict": true,
     };
   }
 
@@ -125,9 +131,20 @@ class DefaultOpenAiToolService implements OpenAiToolService {
   String _buildSystemMessage(SystemMessageInput input) {
     final buffer = StringBuffer();
 
-    buffer.writeln(
-      'You are an AI assistant executing tool calls in a structured workflow.',
-    );
+    // Use system message template from additional context if available
+    final systemMessageTemplate =
+        // TODO: Should the systemMessage exist directly on the ToolCallStep, just like the toolDescription?
+        input.additionalContext['system_message_template'] as String?;
+
+    if (systemMessageTemplate != null) {
+      buffer.writeln(systemMessageTemplate);
+    } else {
+      // Fallback to original behavior
+      buffer.writeln(
+        'You are an AI assistant executing tool calls in a structured workflow.',
+      );
+    }
+
     buffer.writeln();
     buffer.writeln('Context: ${input.toolFlowContext}');
     buffer.writeln('Current Step: ${input.stepDescription}');
@@ -170,19 +187,7 @@ class DefaultOpenAiToolService implements OpenAiToolService {
   String _buildUserMessage(UserMessageInput input) {
     final buffer = StringBuffer();
 
-    buffer.writeln('Please execute the tool with the following parameters:');
-    buffer.writeln();
     buffer.writeln(jsonEncode(input.getCleanToolInput()));
-
-    if (input.instructions.isNotEmpty) {
-      buffer.writeln();
-      buffer.writeln('Instructions: ${input.instructions}');
-    }
-
-    if (input.outputFormat.isNotEmpty) {
-      buffer.writeln();
-      buffer.writeln('Output format: ${input.outputFormat}');
-    }
 
     if (input.constraints.isNotEmpty) {
       buffer.writeln();

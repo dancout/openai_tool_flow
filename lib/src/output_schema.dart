@@ -47,6 +47,9 @@ class PropertyEntry {
   /// For object types, defines which nested properties are required
   final List<String>? requiredProperties;
 
+  /// Represents whether arbitrary properties are allowed
+  final bool additionalProperties;
+
   const PropertyEntry({
     required this.name,
     required this.type,
@@ -56,6 +59,7 @@ class PropertyEntry {
     this.maximum,
     this.properties,
     this.requiredProperties,
+    required this.additionalProperties,
   });
 
   @override
@@ -70,7 +74,8 @@ class PropertyEntry {
         minimum == other.minimum &&
         maximum == other.maximum &&
         listEq.equals(properties, other.properties) &&
-        listEq.equals(requiredProperties, other.requiredProperties);
+        listEq.equals(requiredProperties, other.requiredProperties) &&
+        additionalProperties == other.additionalProperties;
   }
 
   @override
@@ -85,6 +90,7 @@ class PropertyEntry {
       maximum,
       listEq.hash(properties),
       listEq.hash(requiredProperties),
+      additionalProperties,
     );
   }
 
@@ -94,6 +100,7 @@ class PropertyEntry {
       name: name,
       type: PropertyType.string,
       description: description,
+      additionalProperties: false,
     );
   }
 
@@ -110,6 +117,7 @@ class PropertyEntry {
       description: description,
       minimum: minimum,
       maximum: maximum,
+      additionalProperties: false,
     );
   }
 
@@ -119,6 +127,7 @@ class PropertyEntry {
       name: name,
       type: PropertyType.boolean,
       description: description,
+      additionalProperties: false,
     );
   }
 
@@ -133,6 +142,7 @@ class PropertyEntry {
       type: PropertyType.array,
       description: description,
       items: items,
+      additionalProperties: true,
     );
   }
 
@@ -140,21 +150,24 @@ class PropertyEntry {
   factory PropertyEntry.object({
     required String name,
     String? description,
-    List<PropertyEntry>? properties,
-    List<String>? requiredProperties,
+    required List<PropertyEntry> properties,
   }) {
     return PropertyEntry(
       name: name,
       type: PropertyType.object,
       description: description,
       properties: properties,
-      requiredProperties: requiredProperties,
+      requiredProperties: properties.map((prop) => prop.name).toList(),
+      additionalProperties: false,
     );
   }
 
   /// Converts this property entry to a JSON schema-compatible map
   Map<String, dynamic> toMap() {
     final map = <String, dynamic>{'type': type.value};
+
+    map['additionalProperties'] =
+        additionalProperties; // Required at the property level for API call
 
     if (description != null) map['description'] = description;
     if (minimum != null) map['minimum'] = minimum;
@@ -164,6 +177,8 @@ class PropertyEntry {
       map['properties'] = {
         for (final prop in properties!) prop.name: prop.toMap(),
       };
+    } else if (type == PropertyType.object) {
+      map['properties'] = {};
     }
     if (requiredProperties != null && requiredProperties!.isNotEmpty) {
       map['required'] = requiredProperties;
@@ -181,13 +196,13 @@ class OutputSchema {
   /// List of property definitions
   final List<PropertyEntry> properties;
 
-  /// List of required property names
-  final List<String> required;
+  /// Template for system message when using this schema (optional)
+  final String? systemMessageTemplate;
 
   const OutputSchema({
     this.type = PropertyType.object,
     required this.properties,
-    this.required = const [],
+    this.systemMessageTemplate,
   });
 
   /// Converts this schema to a JSON schema-compatible map
@@ -196,8 +211,11 @@ class OutputSchema {
       'type': type.value,
       'properties': {for (final prop in properties) prop.name: prop.toMap()},
       'required': required,
+      'additionalProperties': false, // Required at the step level for API call
     };
   }
+
+  List<String> get required => properties.map((p) => p.name).toList();
 
   @override
   bool operator ==(Object other) {
@@ -206,12 +224,18 @@ class OutputSchema {
     final listEq = const ListEquality();
     return type == other.type &&
         listEq.equals(properties, other.properties) &&
-        listEq.equals(required, other.required);
+        listEq.equals(required, other.required) &&
+        systemMessageTemplate == other.systemMessageTemplate;
   }
 
   @override
   int get hashCode {
     final listEq = const ListEquality();
-    return Object.hash(type, listEq.hash(properties), listEq.hash(required));
+    return Object.hash(
+      type,
+      listEq.hash(properties),
+      listEq.hash(required),
+      systemMessageTemplate,
+    );
   }
 }

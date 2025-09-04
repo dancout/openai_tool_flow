@@ -1,46 +1,63 @@
-/// Concrete implementations of typed tool interfaces.
+/// Concrete implementations of typed tool interfaces for professional color workflow.
 ///
-/// This file demonstrates how to create strongly-typed input and output classes
-/// for tool calls, providing better type safety and IDE support.
+/// This file implements strongly-typed input and output classes for the 3-step
+/// professional color generation workflow, providing better type safety and IDE support.
+///
+/// Professional workflow: seed colors → design system colors → full color suite
 library;
 
 import 'package:openai_toolflow/openai_toolflow.dart';
 
-/// Example concrete implementation for palette extraction input
-class PaletteExtractionInput extends ToolInput {
-  final String imagePath;
-  final int maxColors;
-  final double minSaturation;
+/// Input for generating initial seed colors (Step 1)
+class SeedColorGenerationInput extends ToolInput {
+  final String designStyle;
+  final String mood;
+  final int colorCount;
   final Map<String, dynamic> userPreferences;
 
-  const PaletteExtractionInput({
-    required this.imagePath,
-    this.maxColors = 8,
-    this.minSaturation = 0.3,
-    this.userPreferences = const {},
+  const SeedColorGenerationInput({
+    required this.designStyle,
+    required this.mood,
+    required this.colorCount,
+    required this.userPreferences,
   });
 
-  factory PaletteExtractionInput.fromMap(Map<String, dynamic> map) {
-    return PaletteExtractionInput(
-      imagePath: map['imagePath'] as String,
-      maxColors: map['maxColors'] as int? ?? 8,
-      minSaturation: map['minSaturation'] as double? ?? 0.3,
-      userPreferences: Map<String, dynamic>.from(
-        map['userPreferences'] as Map? ?? {},
-      ),
+  factory SeedColorGenerationInput.fromMap(Map<String, dynamic> map) {
+    final designStyle = map['design_style'];
+    if (designStyle == null) {
+      throw ArgumentError('Missing required field: design_style');
+    }
+
+    final mood = map['mood'];
+    if (mood == null) {
+      throw ArgumentError('Missing required field: mood');
+    }
+
+    final colorCount = map['color_count'];
+    if (colorCount == null) {
+      throw ArgumentError('Missing required field: color_count');
+    }
+
+    final userPreferences = map['user_preferences'];
+    if (userPreferences == null) {
+      throw ArgumentError('Missing required field: user_preferences');
+    }
+
+    return SeedColorGenerationInput(
+      designStyle: designStyle as String,
+      mood: mood as String,
+      colorCount: colorCount as int,
+      userPreferences: Map<String, dynamic>.from(userPreferences as Map),
     );
   }
 
-  // TODO: (SKIP) Consider changing all toMap to toJson.
-  // - [ ] Consolidate usages of `toJson` and `toMap` to all be named identically, since these are doing the same thing.
-  //   - Uniformity is nice. Let's go with toJson.
   @override
   Map<String, dynamic> toMap() {
     return {
-      'imagePath': imagePath,
-      'maxColors': maxColors,
-      'minSaturation': minSaturation,
-      'userPreferences': userPreferences,
+      'design_style': designStyle,
+      'mood': mood,
+      'color_count': colorCount,
+      'user_preferences': userPreferences,
       'metadata': {'generated_at': DateTime.now().toIso8601String()},
     };
   }
@@ -49,51 +66,53 @@ class PaletteExtractionInput extends ToolInput {
   List<String> validate() {
     final issues = <String>[];
 
-    if (imagePath.isEmpty) {
-      issues.add('imagePath cannot be empty');
+    if (designStyle.isEmpty) {
+      issues.add('design_style cannot be empty');
     }
 
-    if (maxColors <= 0) {
-      issues.add('maxColors must be positive');
+    if (mood.isEmpty) {
+      issues.add('mood cannot be empty');
     }
 
-    if (minSaturation < 0.0 || minSaturation > 1.0) {
-      issues.add('minSaturation must be between 0.0 and 1.0');
+    if (colorCount <= 0 || colorCount > 10) {
+      issues.add('color_count must be between 1 and 10');
     }
 
     return issues;
   }
 }
 
-/// Example concrete implementation for color refinement input
-class ColorRefinementInput extends ToolInput {
-  final List<String> colors;
-  final double confidence;
-  final bool enhanceContrast;
+/// Input for generating main design system colors (Step 2)
+class DesignSystemColorInput extends ToolInput {
+  final List<String> seedColors;
   final String targetAccessibility;
 
-  const ColorRefinementInput({
-    required this.colors,
-    required this.confidence,
-    this.enhanceContrast = true,
-    this.targetAccessibility = 'AA',
+  const DesignSystemColorInput({
+    required this.seedColors,
+    required this.targetAccessibility,
   });
 
-  factory ColorRefinementInput.fromMap(Map<String, dynamic> map) {
-    return ColorRefinementInput(
-      colors: List<String>.from(map['colors'] as List),
-      confidence: map['confidence'] as double,
-      enhanceContrast: map['enhance_contrast'] as bool? ?? true,
-      targetAccessibility: map['target_accessibility'] as String? ?? 'AA',
+  factory DesignSystemColorInput.fromMap(Map<String, dynamic> map) {
+    final seedColors = map['seed_colors'];
+    if (seedColors == null) {
+      throw ArgumentError('Missing required field: seed_colors');
+    }
+
+    final targetAccessibility = map['target_accessibility'];
+    if (targetAccessibility == null) {
+      throw ArgumentError('Missing required field: target_accessibility');
+    }
+
+    return DesignSystemColorInput(
+      seedColors: List<String>.from(seedColors as List),
+      targetAccessibility: targetAccessibility as String,
     );
   }
 
   @override
   Map<String, dynamic> toMap() {
     return {
-      'colors': colors,
-      'confidence': confidence,
-      'enhance_contrast': enhanceContrast,
+      'seed_colors': seedColors,
       'target_accessibility': targetAccessibility,
     };
   }
@@ -102,17 +121,13 @@ class ColorRefinementInput extends ToolInput {
   List<String> validate() {
     final issues = <String>[];
 
-    if (colors.isEmpty) {
-      issues.add('colors list cannot be empty');
+    if (seedColors.isEmpty) {
+      issues.add('seed_colors cannot be empty');
     }
 
-    if (confidence < 0.0 || confidence > 1.0) {
-      issues.add('confidence must be between 0.0 and 1.0');
-    }
-
-    for (final color in colors) {
+    for (final color in seedColors) {
       if (!RegExp(r'^#[0-9A-Fa-f]{6}$').hasMatch(color)) {
-        issues.add('Invalid color format: $color (expected #RRGGBB)');
+        issues.add('Invalid seed color format: $color (expected #RRGGBB)');
       }
     }
 
@@ -124,30 +139,90 @@ class ColorRefinementInput extends ToolInput {
   }
 }
 
-/// Example concrete implementation for palette extraction output
-class PaletteExtractionOutput extends ToolOutput {
-  /// Static step name for this tool output type
-  static const String stepName = 'extract_palette';
+/// Input for generating full color suite (Step 3)
+class FullColorSuiteInput extends ToolInput {
+  final Map<String, String> systemColors;
+  final String brandPersonality;
 
-  final List<String> colors;
+  const FullColorSuiteInput({
+    required this.systemColors,
+    required this.brandPersonality,
+  });
+
+  factory FullColorSuiteInput.fromMap(Map<String, dynamic> map) {
+    final systemColors = map['system_colors'];
+    if (systemColors == null) {
+      throw ArgumentError('Missing required field: system_colors');
+    }
+
+    final brandPersonality = map['brand_personality'];
+    if (brandPersonality == null) {
+      throw ArgumentError('Missing required field: brand_personality');
+    }
+
+    return FullColorSuiteInput(
+      systemColors: Map<String, String>.from(systemColors as Map),
+      brandPersonality: brandPersonality as String,
+    );
+  }
+
+  @override
+  Map<String, dynamic> toMap() {
+    return {
+      'system_colors': systemColors,
+      'brand_personality': brandPersonality,
+    };
+  }
+
+  @override
+  List<String> validate() {
+    final issues = <String>[];
+
+    if (systemColors.isEmpty) {
+      issues.add('system_colors cannot be empty');
+    }
+
+    for (final entry in systemColors.entries) {
+      if (!RegExp(r'^#[0-9A-Fa-f]{6}$').hasMatch(entry.value)) {
+        issues.add(
+          'Invalid system color format for ${entry.key}: ${entry.value} (expected #RRGGBB)',
+        );
+      }
+    }
+
+    return issues;
+  }
+}
+
+/// Output for seed color generation (Step 1)
+class SeedColorGenerationOutput extends ToolOutput {
+  static const String stepName = 'generate_seed_colors';
+
+  final List<String> seedColors;
+  final String designStyle;
+  final String mood;
+  final Map<String, dynamic> colorTheory;
   final double confidence;
-  final String imageAnalyzed;
-  final Map<String, dynamic> metadata;
 
-  const PaletteExtractionOutput({
-    required this.colors,
+  const SeedColorGenerationOutput({
+    required this.seedColors,
+    required this.designStyle,
+    required this.mood,
+    this.colorTheory = const {},
     required this.confidence,
-    required this.imageAnalyzed,
-    this.metadata = const {},
     required super.round,
   }) : super.subclass();
 
-  factory PaletteExtractionOutput.fromMap(Map<String, dynamic> map, int round) {
-    return PaletteExtractionOutput(
-      colors: List<String>.from(map['colors'] as List),
+  factory SeedColorGenerationOutput.fromMap(
+    Map<String, dynamic> map,
+    int round,
+  ) {
+    return SeedColorGenerationOutput(
+      seedColors: List<String>.from(map['seed_colors'] as List),
+      designStyle: map['design_style'] as String,
+      mood: map['mood'] as String,
+      colorTheory: Map<String, dynamic>.from(map['color_theory'] as Map? ?? {}),
       confidence: map['confidence'] as double,
-      imageAnalyzed: map['image_analyzed'] as String,
-      metadata: Map<String, dynamic>.from(map['metadata'] as Map? ?? {}),
       round: round,
     );
   }
@@ -155,10 +230,11 @@ class PaletteExtractionOutput extends ToolOutput {
   @override
   Map<String, dynamic> toMap() {
     return {
-      'colors': colors,
+      'seed_colors': seedColors,
+      'design_style': designStyle,
+      'mood': mood,
+      'color_theory': colorTheory,
       'confidence': confidence,
-      'image_analyzed': imageAnalyzed,
-      'metadata': metadata,
     };
   }
 
@@ -166,52 +242,78 @@ class PaletteExtractionOutput extends ToolOutput {
     return OutputSchema(
       properties: [
         PropertyEntry.array(
-          name: 'colors',
+          name: 'seed_colors',
           items: PropertyType.string,
-          description: 'Array of extracted color codes',
+          description: 'Array of generated seed color codes in hex format',
+        ),
+        PropertyEntry.string(
+          name: 'design_style',
+          description: 'Design style that influenced the color selection',
+        ),
+        PropertyEntry.string(
+          name: 'mood',
+          description: 'Mood that influenced the color palette',
+        ),
+        PropertyEntry.object(
+          name: 'color_theory',
+          description: 'Color theory principles used in generation',
+          properties: [
+            PropertyEntry.string(
+              name: 'harmony_type',
+              description:
+                  'Type of color harmony applied (e.g., complementary)',
+            ),
+            PropertyEntry.array(
+              name: 'principles',
+              items: PropertyType.string,
+              description: 'List of color theory principles applied',
+            ),
+            PropertyEntry.string(
+              name: 'psychological_impact',
+              description: 'Intended psychological impact of the colors',
+            ),
+          ],
         ),
         PropertyEntry.number(
           name: 'confidence',
           minimum: 0.0,
           maximum: 1.0,
-          description: 'Confidence score for the extraction',
-        ),
-        PropertyEntry.string(
-          name: 'image_analyzed',
-          description: 'Path of the analyzed image',
-        ),
-        PropertyEntry.object(
-          name: 'metadata',
-          description: 'Additional metadata about the extraction',
+          description: 'Confidence score for the generated seed colors',
         ),
       ],
-      required: ['colors', 'confidence', 'image_analyzed'],
+
+      systemMessageTemplate:
+          'You are an expert color theorist and UX designer with deep knowledge of color psychology, design principles, and brand identity. You specialize in creating foundational color palettes that serve as the basis for comprehensive design systems.\n\nYour expertise includes understanding color harmony (complementary, triadic, analogous), psychological impact of colors, accessibility considerations, and how colors convey brand personality and user emotions.',
     );
   }
 }
 
-/// Example concrete implementation for color refinement output
-class ColorRefinementOutput extends ToolOutput {
-  /// Static step name for this tool output type
-  static const String stepName = 'refine_colors';
+/// Output for design system colors (Step 2)
+class DesignSystemColorOutput extends ToolOutput {
+  static const String stepName = 'generate_design_system_colors';
 
-  final List<String> refinedColors;
-  final List<String> improvementsMade;
-  final Map<String, double> accessibilityScores;
+  final Map<String, String> systemColors;
+  final Map<String, String> accessibilityScores;
+  final List<String> colorHarmonies;
+  final Map<String, dynamic> designPrinciples;
 
-  const ColorRefinementOutput({
-    required this.refinedColors,
-    required this.improvementsMade,
+  const DesignSystemColorOutput({
+    required this.systemColors,
     this.accessibilityScores = const {},
+    this.colorHarmonies = const [],
+    this.designPrinciples = const {},
     required super.round,
   }) : super.subclass();
 
-  factory ColorRefinementOutput.fromMap(Map<String, dynamic> map, int round) {
-    return ColorRefinementOutput(
-      refinedColors: List<String>.from(map['refined_colors'] as List),
-      improvementsMade: List<String>.from(map['improvements_made'] as List),
-      accessibilityScores: Map<String, double>.from(
+  factory DesignSystemColorOutput.fromMap(Map<String, dynamic> map, int round) {
+    return DesignSystemColorOutput(
+      systemColors: Map<String, String>.from(map['system_colors'] as Map),
+      accessibilityScores: Map<String, String>.from(
         map['accessibility_scores'] as Map? ?? {},
+      ),
+      colorHarmonies: List<String>.from(map['color_harmonies'] as List? ?? []),
+      designPrinciples: Map<String, dynamic>.from(
+        map['design_principles'] as Map? ?? {},
       ),
       round: round,
     );
@@ -220,135 +322,413 @@ class ColorRefinementOutput extends ToolOutput {
   @override
   Map<String, dynamic> toMap() {
     return {
-      'refined_colors': refinedColors,
-      'improvements_made': improvementsMade,
+      'system_colors': systemColors,
       'accessibility_scores': accessibilityScores,
+      'color_harmonies': colorHarmonies,
+      'design_principles': designPrinciples,
     };
   }
 
   static OutputSchema getOutputSchema() {
     return OutputSchema(
       properties: [
-        PropertyEntry.array(
-          name: 'refined_colors',
-          items: PropertyType.string,
-          description: 'List of refined color codes',
-        ),
-        PropertyEntry.array(
-          name: 'improvements_made',
-          items: PropertyType.string,
-          description: 'List of improvements that were applied',
+        PropertyEntry.object(
+          name: 'system_colors',
+          description: 'Map of color category names to hex color codes',
+          properties: [
+            PropertyEntry.string(
+              name: 'primary',
+              description: 'Primary brand color',
+            ),
+            PropertyEntry.string(
+              name: 'secondary',
+              description: 'Secondary brand color',
+            ),
+            PropertyEntry.string(
+              name: 'surface',
+              description: 'Surface color for cards and backgrounds',
+            ),
+            PropertyEntry.string(
+              name: 'text',
+              description: 'Text color for primary content',
+            ),
+            PropertyEntry.string(
+              name: 'warning',
+              description: 'Warning color for alerts',
+            ),
+            PropertyEntry.string(
+              name: 'error',
+              description: 'Error color for error messages',
+            ),
+          ],
         ),
         PropertyEntry.object(
           name: 'accessibility_scores',
-          description: 'Accessibility scores for the refined colors',
+          description:
+              'Accessibility scores for each system color against the base background or primary text',
+          properties: [
+            PropertyEntry.string(
+              name: 'primary',
+              description: 'Contrast ratio for primary color (e.g., "4.5:1")',
+            ),
+            PropertyEntry.string(
+              name: 'secondary',
+              description: 'Contrast ratio for secondary color (e.g., "4.5:1")',
+            ),
+            PropertyEntry.string(
+              name: 'text',
+              description: 'Contrast ratio for text color (e.g., "7:1")',
+            ),
+            PropertyEntry.string(
+              name: 'warning',
+              description: 'Contrast ratio for warning color (e.g., "3:1")',
+            ),
+            PropertyEntry.string(
+              name: 'error',
+              description: 'Contrast ratio for error color (e.g., "3:1")',
+            ),
+          ],
+        ),
+        PropertyEntry.array(
+          name: 'color_harmonies',
+          items: PropertyType.string,
+          description: 'Color harmony techniques applied',
+        ),
+        PropertyEntry.object(
+          name: 'design_principles',
+          description: 'Design principles applied during color generation',
+          properties: [
+            PropertyEntry.string(
+              name: 'contrast_ratio',
+              description:
+                  'WCAG AAA compliant contrast ratio for optimal accessibility',
+            ),
+            PropertyEntry.string(
+              name: 'color_psychology',
+              description:
+                  'Psychological impact of the color choices, emphasizing trust and innovation',
+            ),
+            PropertyEntry.string(
+              name: 'brand_alignment',
+              description:
+                  'Alignment of color choices with professional services branding and identity',
+            ),
+          ],
         ),
       ],
-      required: ['refined_colors', 'improvements_made'],
+      systemMessageTemplate:
+          'You are an expert UX designer with extensive experience in design system architecture and color theory. You specialize in expanding foundational color palettes into systematic, purposeful color sets that serve specific functional roles in user interfaces.\n\nYour expertise includes creating accessible color combinations, understanding semantic color usage (primary, secondary, error, warning), ensuring proper contrast ratios, and establishing clear color hierarchies for optimal user experience.',
     );
   }
 }
 
-/// Example concrete implementation for theme generation output
-class ThemeGenerationOutput extends ToolOutput {
-  /// Static step name for this tool output type
-  static const String stepName = 'generate_theme';
+/// Output for full color suite (Step 3)
+class FullColorSuiteOutput extends ToolOutput {
+  static const String stepName = 'generate_full_color_suite';
 
-  final Map<String, String> theme;
-  final Map<String, dynamic> metadata;
+  final Map<String, String> colorSuite;
+  final Map<String, List<String>> colorFamilies;
+  final Map<String, dynamic> brandGuidelines;
+  final Map<String, dynamic> usageRecommendations;
 
-  const ThemeGenerationOutput({
-    required this.theme,
-    this.metadata = const {},
+  const FullColorSuiteOutput({
+    required this.colorSuite,
+    this.colorFamilies = const {},
+    this.brandGuidelines = const {},
+    this.usageRecommendations = const {},
     required super.round,
   }) : super.subclass();
 
-  factory ThemeGenerationOutput.fromMap(Map<String, dynamic> map, int round) {
-    Map<String, String> themeMap;
-
-    themeMap = {};
-    if (map.containsKey('theme_type')) {
-      themeMap['theme_type'] = map['theme_type'] as String;
-    }
-    if (map.containsKey('base_colors')) {
-      // Convert base_colors list to a comma-separated string for storage
-      final baseColors = map['base_colors'] as List?;
-      if (baseColors != null) {
-        themeMap['base_colors'] = baseColors.join(',');
-      }
-    }
-    if (map.containsKey('primary_color')) {
-      themeMap['primary_color'] = map['primary_color'] as String;
-    }
-    return ThemeGenerationOutput(
-      theme: themeMap,
-      metadata: Map<String, dynamic>.from(map['metadata'] as Map? ?? {}),
+  factory FullColorSuiteOutput.fromMap(Map<String, dynamic> map, int round) {
+    return FullColorSuiteOutput(
+      colorSuite: Map<String, String>.from(map['color_suite'] as Map),
+      colorFamilies: map['color_families'] != null
+          ? Map<String, List<String>>.from(
+              (map['color_families'] as Map).map(
+                (key, value) => MapEntry(key, List<String>.from(value as List)),
+              ),
+            )
+          : {},
+      brandGuidelines: Map<String, dynamic>.from(
+        map['brand_guidelines'] as Map? ?? {},
+      ),
+      usageRecommendations: Map<String, dynamic>.from(
+        map['usage_recommendations'] as Map? ?? {},
+      ),
       round: round,
     );
   }
 
   @override
   Map<String, dynamic> toMap() {
-    return {'theme': theme, 'metadata': metadata};
+    return {
+      'color_suite': colorSuite,
+      'color_families': colorFamilies,
+      'brand_guidelines': brandGuidelines,
+      'usage_recommendations': usageRecommendations,
+    };
   }
 
   static OutputSchema getOutputSchema() {
     return OutputSchema(
       properties: [
         PropertyEntry.object(
-          name: 'theme',
-          description: 'Generated theme configuration',
+          name: 'color_suite',
+          description: 'Complete suite of named colors with hex codes',
+          properties: [
+            // Text colors
+            PropertyEntry.string(
+              name: 'primaryText',
+              description: 'Primary text color',
+            ),
+            PropertyEntry.string(
+              name: 'secondaryText',
+              description: 'Secondary text color',
+            ),
+            PropertyEntry.string(
+              name: 'interactiveText',
+              description: 'Text color for interactive elements',
+            ),
+            PropertyEntry.string(
+              name: 'mutedText',
+              description: 'Muted/low emphasis text color',
+            ),
+            PropertyEntry.string(
+              name: 'disabledText',
+              description: 'Disabled text color',
+            ),
+
+            // Background colors
+            PropertyEntry.string(
+              name: 'primaryBackground',
+              description: 'Primary background color',
+            ),
+            PropertyEntry.string(
+              name: 'secondaryBackground',
+              description: 'Secondary background color',
+            ),
+            PropertyEntry.string(
+              name: 'surfaceBackground',
+              description: 'Surface background color (e.g., cards)',
+            ),
+            PropertyEntry.string(
+              name: 'cardBackground',
+              description: 'Card background color',
+            ),
+            PropertyEntry.string(
+              name: 'overlayBackground',
+              description: 'Overlay background color (with opacity)',
+            ),
+            PropertyEntry.string(
+              name: 'hoverBackground',
+              description: 'Background color for hover state',
+            ),
+
+            // Status backgrounds
+            PropertyEntry.string(
+              name: 'errorBackground',
+              description: 'Background color for error states',
+            ),
+            PropertyEntry.string(
+              name: 'warningBackground',
+              description: 'Background color for warning states',
+            ),
+            PropertyEntry.string(
+              name: 'successBackground',
+              description: 'Background color for success states',
+            ),
+            PropertyEntry.string(
+              name: 'infoBackground',
+              description: 'Background color for informational states',
+            ),
+
+            // Border colors
+            PropertyEntry.string(
+              name: 'primaryBorder',
+              description: 'Primary border color',
+            ),
+            PropertyEntry.string(
+              name: 'secondaryBorder',
+              description: 'Secondary border color',
+            ),
+            PropertyEntry.string(
+              name: 'focusBorder',
+              description: 'Border color for focus state',
+            ),
+            PropertyEntry.string(
+              name: 'errorBorder',
+              description: 'Border color for error state',
+            ),
+            PropertyEntry.string(
+              name: 'warningBorder',
+              description: 'Border color for warning state',
+            ),
+
+            // Interactive colors
+            PropertyEntry.string(
+              name: 'primaryButton',
+              description: 'Primary button color',
+            ),
+            PropertyEntry.string(
+              name: 'secondaryButton',
+              description: 'Secondary button color',
+            ),
+            PropertyEntry.string(
+              name: 'disabledButton',
+              description: 'Disabled button color',
+            ),
+            PropertyEntry.string(
+              name: 'primaryLink',
+              description: 'Primary link color',
+            ),
+            PropertyEntry.string(
+              name: 'visitedLink',
+              description: 'Visited link color',
+            ),
+
+            // Icon colors
+            PropertyEntry.string(
+              name: 'primaryIcon',
+              description: 'Primary icon color',
+            ),
+            PropertyEntry.string(
+              name: 'secondaryIcon',
+              description: 'Secondary icon color',
+            ),
+            PropertyEntry.string(
+              name: 'warningIcon',
+              description: 'Warning icon color',
+            ),
+            PropertyEntry.string(
+              name: 'errorIcon',
+              description: 'Error icon color',
+            ),
+            PropertyEntry.string(
+              name: 'successIcon',
+              description: 'Success icon color',
+            ),
+          ],
         ),
         PropertyEntry.object(
-          name: 'metadata',
-          description: 'Additional metadata about the theme generation',
+          name: 'color_families',
+          description: 'Grouping of colors by family or purpose',
+          properties: [
+            PropertyEntry.array(
+              name: 'blues',
+              items: PropertyType.string,
+              description: 'Array of blue color hex codes',
+            ),
+            PropertyEntry.array(
+              name: 'purples',
+              items: PropertyType.string,
+              description: 'Array of purple color hex codes',
+            ),
+            PropertyEntry.array(
+              name: 'neutrals',
+              items: PropertyType.string,
+              description: 'Array of neutral color hex codes',
+            ),
+          ],
+        ),
+        PropertyEntry.object(
+          name: 'brand_guidelines',
+          description: 'Brand-specific color usage guidelines',
+          properties: [
+            PropertyEntry.string(
+              name: 'primary_usage',
+              description:
+                  'Usage of primary brand color (e.g., call-to-action buttons, links, key highlights)',
+            ),
+            PropertyEntry.string(
+              name: 'secondary_usage',
+              description:
+                  'Usage of secondary brand color (e.g., accent elements, secondary actions, decorative elements)',
+            ),
+            PropertyEntry.string(
+              name: 'text_hierarchy',
+              description:
+                  'Text color hierarchy (e.g., primary for headings, secondary for body, muted for captions)',
+            ),
+            PropertyEntry.string(
+              name: 'background_strategy',
+              description:
+                  'Background color strategy (e.g., layered approach with subtle elevation through background variations)',
+            ),
+          ],
+        ),
+        PropertyEntry.object(
+          name: 'usage_recommendations',
+          description: 'Recommendations for using colors in different contexts',
+          properties: [
+            PropertyEntry.string(
+              name: 'accessibility',
+              description:
+                  'Accessibility compliance for color usage (e.g., WCAG AA standards)',
+            ),
+            PropertyEntry.string(
+              name: 'contrast_ratios',
+              description:
+                  'Contrast ratio recommendations for text and background colors (e.g., minimum 4.5:1)',
+            ),
+            PropertyEntry.string(
+              name: 'interactive_states',
+              description:
+                  'Guidance for interactive states (e.g., hover, focus) using color variants',
+            ),
+            PropertyEntry.string(
+              name: 'error_handling',
+              description:
+                  'Recommendations for error color usage (e.g., reserved for validation and critical alerts)',
+            ),
+          ],
         ),
       ],
-      required: ['theme'],
+      systemMessageTemplate:
+          'You are a senior design systems architect with expertise in comprehensive color specification for enterprise-grade applications. You specialize in creating complete, scalable color suites that cover all possible interface states and use cases.\n\nYour expertise includes defining granular color tokens (text variants, background layers, interactive states), creating cohesive color families, establishing usage guidelines, and ensuring consistency across complex application ecosystems.',
     );
   }
 }
 
 /// Step definitions that encapsulate tool metadata and functionality
 
-/// Step definition for palette extraction
-class PaletteExtractionStepDefinition
-    extends StepDefinition<PaletteExtractionOutput> {
+/// Step definition for seed color generation (New workflow Step 1)
+class SeedColorGenerationStepDefinition
+    extends StepDefinition<SeedColorGenerationOutput> {
   @override
-  String get stepName => PaletteExtractionOutput.stepName;
+  String get stepName => SeedColorGenerationOutput.stepName;
 
   @override
-  OutputSchema get outputSchema => PaletteExtractionOutput.getOutputSchema();
+  OutputSchema get outputSchema => SeedColorGenerationOutput.getOutputSchema();
 
   @override
-  PaletteExtractionOutput fromMap(Map<String, dynamic> data, int round) =>
-      PaletteExtractionOutput.fromMap(data, round);
+  SeedColorGenerationOutput fromMap(Map<String, dynamic> data, int round) =>
+      SeedColorGenerationOutput.fromMap(data, round);
 }
 
-/// Step definition for color refinement
-class ColorRefinementStepDefinition
-    extends StepDefinition<ColorRefinementOutput> {
+/// Step definition for design system color generation (New workflow Step 2)
+class DesignSystemColorStepDefinition
+    extends StepDefinition<DesignSystemColorOutput> {
   @override
-  String get stepName => ColorRefinementOutput.stepName;
+  String get stepName => DesignSystemColorOutput.stepName;
 
   @override
-  OutputSchema get outputSchema => ColorRefinementOutput.getOutputSchema();
+  OutputSchema get outputSchema => DesignSystemColorOutput.getOutputSchema();
 
   @override
-  ColorRefinementOutput fromMap(Map<String, dynamic> data, int round) =>
-      ColorRefinementOutput.fromMap(data, round);
+  DesignSystemColorOutput fromMap(Map<String, dynamic> data, int round) =>
+      DesignSystemColorOutput.fromMap(data, round);
 }
 
-/// Step definition for theme generation
-class ThemeGenerationStepDefinition
-    extends StepDefinition<ThemeGenerationOutput> {
+/// Step definition for full color suite generation (New workflow Step 3)
+class FullColorSuiteStepDefinition
+    extends StepDefinition<FullColorSuiteOutput> {
   @override
-  String get stepName => ThemeGenerationOutput.stepName;
+  String get stepName => FullColorSuiteOutput.stepName;
 
   @override
-  OutputSchema get outputSchema => ThemeGenerationOutput.getOutputSchema();
+  OutputSchema get outputSchema => FullColorSuiteOutput.getOutputSchema();
 
   @override
-  ThemeGenerationOutput fromMap(Map<String, dynamic> data, int round) =>
-      ThemeGenerationOutput.fromMap(data, round);
+  FullColorSuiteOutput fromMap(Map<String, dynamic> data, int round) =>
+      FullColorSuiteOutput.fromMap(data, round);
 }
