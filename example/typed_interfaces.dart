@@ -86,16 +86,11 @@ class SeedColorGenerationInput extends ToolInput {
 class DesignSystemColorInput extends ToolInput {
   final List<String> seedColors;
   final String targetAccessibility;
-  final List<String> colorCategories;
 
   const DesignSystemColorInput({
     required this.seedColors,
     required this.targetAccessibility,
-    required this.colorCategories,
   });
-
-  /// Number of system colors derived from colorCategories length
-  int get systemColorCount => colorCategories.length;
 
   factory DesignSystemColorInput.fromMap(Map<String, dynamic> map) {
     final seedColors = map['seed_colors'];
@@ -108,15 +103,9 @@ class DesignSystemColorInput extends ToolInput {
       throw ArgumentError('Missing required field: target_accessibility');
     }
 
-    final colorCategories = map['color_categories'];
-    if (colorCategories == null) {
-      throw ArgumentError('Missing required field: color_categories');
-    }
-
     return DesignSystemColorInput(
       seedColors: List<String>.from(seedColors as List),
       targetAccessibility: targetAccessibility as String,
-      colorCategories: List<String>.from(colorCategories as List),
     );
   }
 
@@ -125,8 +114,6 @@ class DesignSystemColorInput extends ToolInput {
     return {
       'seed_colors': seedColors,
       'target_accessibility': targetAccessibility,
-      'system_color_count': systemColorCount,
-      'color_categories': colorCategories,
     };
   }
 
@@ -136,16 +123,6 @@ class DesignSystemColorInput extends ToolInput {
 
     if (seedColors.isEmpty) {
       issues.add('seed_colors cannot be empty');
-    }
-
-    if (colorCategories.isEmpty) {
-      issues.add('color_categories cannot be empty');
-    }
-
-    if (systemColorCount > 20) {
-      issues.add(
-        'system_color_count (derived from color_categories) must not exceed 20',
-      );
     }
 
     for (final color in seedColors) {

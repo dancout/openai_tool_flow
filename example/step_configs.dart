@@ -120,16 +120,7 @@ Map<String, ToolCallStep> createProfessionalColorWorkflow() {
         final input = DesignSystemColorInput(
           seedColors: seedResult.output.seedColors,
           targetAccessibility: 'AA',
-          colorCategories: [
-            'primary',
-            'secondary',
-            'surface',
-            'text',
-            'warning',
-            'error',
-          ],
         ).toMap();
-
         return input;
       },
       buildInputsFrom: [seedStep.stepName],

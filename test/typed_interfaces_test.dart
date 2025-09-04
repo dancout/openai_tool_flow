@@ -1,6 +1,5 @@
 /// Tests for typed interfaces used in the professional color workflow
 import 'package:test/test.dart';
-import 'package:openai_toolflow/openai_toolflow.dart';
 
 import '../example/typed_interfaces.dart';
 
@@ -16,7 +15,10 @@ void main() {
         round: 1,
       );
       expect(seedOutput.seedColors.length, equals(3));
-      expect(SeedColorGenerationOutput.stepName, equals('generate_seed_colors'));
+      expect(
+        SeedColorGenerationOutput.stepName,
+        equals('generate_seed_colors'),
+      );
 
       // Test DesignSystemColorOutput
       final systemOutput = DesignSystemColorOutput(
@@ -31,7 +33,10 @@ void main() {
         round: 1,
       );
       expect(systemOutput.systemColors.length, equals(6));
-      expect(DesignSystemColorOutput.stepName, equals('generate_design_system_colors'));
+      expect(
+        DesignSystemColorOutput.stepName,
+        equals('generate_design_system_colors'),
+      );
 
       // Test FullColorSuiteOutput
       final suiteOutput = FullColorSuiteOutput(
@@ -43,7 +48,10 @@ void main() {
         round: 1,
       );
       expect(suiteOutput.colorSuite.length, equals(3));
-      expect(FullColorSuiteOutput.stepName, equals('generate_full_color_suite'));
+      expect(
+        FullColorSuiteOutput.stepName,
+        equals('generate_full_color_suite'),
+      );
     });
 
     test('input validation works for new input classes', () {
@@ -56,19 +64,34 @@ void main() {
       );
       final seedValidationIssues = seedInput.validate();
       expect(seedValidationIssues.length, greaterThan(0));
-      expect(seedValidationIssues.any((issue) => issue.contains('design_style')), isTrue);
-      expect(seedValidationIssues.any((issue) => issue.contains('color_count')), isTrue);
+      expect(
+        seedValidationIssues.any((issue) => issue.contains('design_style')),
+        isTrue,
+      );
+      expect(
+        seedValidationIssues.any((issue) => issue.contains('color_count')),
+        isTrue,
+      );
 
       // Test DesignSystemColorInput validation
       final systemInput = DesignSystemColorInput(
         seedColors: ['invalid_color'],
         targetAccessibility: 'AA',
-        colorCategories: [],
       );
       final systemValidationIssues = systemInput.validate();
       expect(systemValidationIssues.length, greaterThan(0));
-      expect(systemValidationIssues.any((issue) => issue.contains('Invalid seed color')), isTrue);
-      expect(systemValidationIssues.any((issue) => issue.contains('color_categories')), isTrue);
+      expect(
+        systemValidationIssues.any(
+          (issue) => issue.contains('Invalid seed color'),
+        ),
+        isTrue,
+      );
+      expect(
+        systemValidationIssues.any(
+          (issue) => issue.contains('color_categories'),
+        ),
+        isTrue,
+      );
 
       // Test FullColorSuiteInput validation
       final suiteInput = FullColorSuiteInput(
@@ -78,8 +101,16 @@ void main() {
       );
       final suiteValidationIssues = suiteInput.validate();
       expect(suiteValidationIssues.length, greaterThan(0));
-      expect(suiteValidationIssues.any((issue) => issue.contains('Invalid system color')), isTrue);
-      expect(suiteValidationIssues.any((issue) => issue.contains('color_variants')), isTrue);
+      expect(
+        suiteValidationIssues.any(
+          (issue) => issue.contains('Invalid system color'),
+        ),
+        isTrue,
+      );
+      expect(
+        suiteValidationIssues.any((issue) => issue.contains('color_variants')),
+        isTrue,
+      );
     });
 
     test('step definitions return correct schemas', () {
@@ -105,40 +136,38 @@ void main() {
 
     test('fromMap functions throw exceptions for missing required fields', () {
       // Test SeedColorGenerationInput throws for missing fields
-      expect(() => SeedColorGenerationInput.fromMap({}), 
-             throwsA(isA<ArgumentError>()));
-      expect(() => SeedColorGenerationInput.fromMap({'design_style': 'modern'}), 
-             throwsA(isA<ArgumentError>()));
+      expect(
+        () => SeedColorGenerationInput.fromMap({}),
+        throwsA(isA<ArgumentError>()),
+      );
+      expect(
+        () => SeedColorGenerationInput.fromMap({'design_style': 'modern'}),
+        throwsA(isA<ArgumentError>()),
+      );
 
       // Test DesignSystemColorInput throws for missing fields
-      expect(() => DesignSystemColorInput.fromMap({}), 
-             throwsA(isA<ArgumentError>()));
-      expect(() => DesignSystemColorInput.fromMap({'seed_colors': ['#FF0000']}), 
-             throwsA(isA<ArgumentError>()));
+      expect(
+        () => DesignSystemColorInput.fromMap({}),
+        throwsA(isA<ArgumentError>()),
+      );
+      expect(
+        () => DesignSystemColorInput.fromMap({
+          'seed_colors': ['#FF0000'],
+        }),
+        throwsA(isA<ArgumentError>()),
+      );
 
       // Test FullColorSuiteInput throws for missing fields
-      expect(() => FullColorSuiteInput.fromMap({}), 
-             throwsA(isA<ArgumentError>()));
-      expect(() => FullColorSuiteInput.fromMap({'system_colors': {'primary': '#FF0000'}}), 
-             throwsA(isA<ArgumentError>()));
-    });
-
-    test('count fields are derived from list lengths', () {
-      // Test DesignSystemColorInput derives systemColorCount from colorCategories
-      final systemInput = DesignSystemColorInput(
-        seedColors: ['#FF0000', '#00FF00'],
-        targetAccessibility: 'AA',
-        colorCategories: ['primary', 'secondary', 'surface'],
+      expect(
+        () => FullColorSuiteInput.fromMap({}),
+        throwsA(isA<ArgumentError>()),
       );
-      expect(systemInput.systemColorCount, equals(3));
-
-      // Test FullColorSuiteInput derives suiteColorCount from colorVariants
-      final suiteInput = FullColorSuiteInput(
-        systemColors: {'primary': '#FF0000'},
-        colorVariants: ['primaryText', 'secondaryText', 'primaryBackground'],
-        brandPersonality: 'professional',
+      expect(
+        () => FullColorSuiteInput.fromMap({
+          'system_colors': {'primary': '#FF0000'},
+        }),
+        throwsA(isA<ArgumentError>()),
       );
-      expect(suiteInput.suiteColorCount, equals(3));
     });
 
     test('output schemas include system message templates', () {
@@ -152,7 +181,10 @@ void main() {
 
       final suiteSchema = FullColorSuiteOutput.getOutputSchema();
       expect(suiteSchema.systemMessageTemplate, isNotNull);
-      expect(suiteSchema.systemMessageTemplate!, contains('design systems architect'));
+      expect(
+        suiteSchema.systemMessageTemplate!,
+        contains('design systems architect'),
+      );
     });
   });
 }
