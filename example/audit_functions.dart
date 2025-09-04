@@ -1,3 +1,8 @@
+/// Professional color workflow audit functions.
+///
+/// This file demonstrates audit functions for the 3-step professional color workflow:
+/// - ColorDiversityAuditFunction: Audits seed color generation (step 1)
+/// - ColorQualityAuditFunction: Audits design system colors (step 2)
 import 'package:openai_toolflow/openai_toolflow.dart';
 
 import 'typed_interfaces.dart';
@@ -47,37 +52,39 @@ class ColorQualityIssue extends Issue {
   }
 }
 
-/// Example of a comprehensive color audit function
-class ColorQualityAuditFunction extends AuditFunction<ColorRefinementOutput> {
+/// Example of a comprehensive color audit function for design system colors
+class ColorQualityAuditFunction extends AuditFunction<DesignSystemColorOutput> {
   @override
   String get name => 'color_quality_audit';
 
   @override
-  List<Issue> run(ToolResult<ColorRefinementOutput> result) {
+  List<Issue> run(ToolResult<DesignSystemColorOutput> result) {
     final issues = <Issue>[];
 
     // Now we can safely access the strongly-typed output
-    final colors = result.output.refinedColors;
-    for (int i = 0; i < colors.length; i++) {
-      final color = colors[i];
-      if (!RegExp(r'^#[0-9A-Fa-f]{6}$').hasMatch(color)) {
+    final systemColors = result.output.systemColors;
+    int colorIndex = 0;
+    
+    systemColors.forEach((colorName, colorValue) {
+      if (!RegExp(r'^#[0-9A-Fa-f]{6}$').hasMatch(colorValue)) {
         issues.add(
           ColorQualityIssue(
-            id: 'invalid_color_format_$i',
+            id: 'invalid_color_format_$colorIndex',
             severity: IssueSeverity.medium,
-            description: 'Color $color is not in valid hex format',
+            description: 'Color $colorName ($colorValue) is not in valid hex format',
             context: {
-              'color_index': i,
-              'color_value': color,
+              'color_name': colorName,
+              'color_value': colorValue,
               'expected_format': '#RRGGBB',
             },
             suggestions: ['Convert to valid hex format'],
-            problematicColor: color,
+            problematicColor: colorValue,
             qualityScore: 0.0,
           ),
         );
       }
-    }
+      colorIndex++;
+    });
 
     return issues;
   }
@@ -115,9 +122,9 @@ class ColorQualityAuditFunction extends AuditFunction<ColorRefinementOutput> {
   }
 }
 
-/// Example of a diversity audit function with weighted threshold
+/// Example of a diversity audit function with weighted threshold for seed colors
 class ColorDiversityAuditFunction
-    extends AuditFunction<PaletteExtractionOutput> {
+    extends AuditFunction<SeedColorGenerationOutput> {
   final int minimumColors;
   final double weightedThreshold;
 
@@ -130,24 +137,24 @@ class ColorDiversityAuditFunction
   String get name => 'color_diversity_audit';
 
   @override
-  List<Issue> run(ToolResult<PaletteExtractionOutput> result) {
+  List<Issue> run(ToolResult<SeedColorGenerationOutput> result) {
     final issues = <Issue>[];
 
     // Check if we have enough colors using strongly-typed access
-    final colors = result.output.colors;
+    final colors = result.output.seedColors;
     if (colors.length < minimumColors) {
       issues.add(
         Issue(
           id: 'insufficient_colors',
           severity: IssueSeverity.high,
-          description: 'Not enough colors extracted for a diverse palette',
+          description: 'Not enough seed colors generated for a diverse palette',
           context: {
             'colors_found': colors.length,
             'minimum_required': minimumColors,
           },
           suggestions: [
-            'Adjust extraction parameters',
-            'Try a different image with more color variety',
+            'Adjust generation parameters',
+            'Request more diverse color theory approaches',
           ],
         ),
       );

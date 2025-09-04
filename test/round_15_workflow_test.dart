@@ -1,4 +1,4 @@
-/// Test for Round 15 improvements: new workflow with maxRetries=3
+/// Test for the professional color workflow implementation
 import 'package:test/test.dart';
 import 'package:openai_toolflow/openai_toolflow.dart';
 
@@ -6,7 +6,7 @@ import '../example/step_configs.dart';
 import '../example/typed_interfaces.dart';
 
 void main() {
-  group('Round 15 Workflow Tests', () {
+  group('Professional Color Workflow Tests', () {
     test('professional workflow has 3 steps with correct step names', () {
       final workflow = createProfessionalColorWorkflow();
       
