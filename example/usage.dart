@@ -55,12 +55,12 @@ void main() async {
           'error': '#EF4444', // Red error
         },
         'accessibility_scores': {
-          'primary': 7.2,
-          'secondary': 6.8,
-          'surface': 21.0,
-          'text': 19.5,
-          'warning': 5.9,
-          'error': 6.1,
+          'primary': '7.2:1',
+          'secondary': '6.8:1',
+          'surface': '21.0:1',
+          'text': '19.5:1',
+          'warning': '5.9:1',
+          'error': '6.1:1',
         },
         'color_harmonies': ['complementary', 'analogous', 'triadic'],
         'design_principles': {
@@ -179,8 +179,8 @@ void main() async {
   final flow = ToolFlow(
     config: config,
     steps: steps,
-    openAiService: mockService, // Inject mock service for testing
-    // openAiService: DefaultOpenAiToolService(config: config),
+    // openAiService: mockService, // Inject mock service for testing
+    openAiService: DefaultOpenAiToolService(config: config),
   );
 
   // Execute the flow
@@ -426,8 +426,6 @@ void _displayNewWorkflowOutputUsage(ToolFlowResult result) {
     print('');
   }
 }
-
-
 
 /// Display issues analysis by round and forwarding
 void _displayIssuesAnalysis(ToolFlowResult result) {

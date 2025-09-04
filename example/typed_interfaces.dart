@@ -303,6 +303,22 @@ class SeedColorGenerationOutput extends ToolOutput {
         PropertyEntry.object(
           name: 'color_theory',
           description: 'Color theory principles used in generation',
+          properties: [
+            PropertyEntry.string(
+              name: 'harmony_type',
+              description:
+                  'Type of color harmony applied (e.g., complementary)',
+            ),
+            PropertyEntry.array(
+              name: 'principles',
+              items: PropertyType.string,
+              description: 'List of color theory principles applied',
+            ),
+            PropertyEntry.string(
+              name: 'psychological_impact',
+              description: 'Intended psychological impact of the colors',
+            ),
+          ],
         ),
         PropertyEntry.number(
           name: 'confidence',
@@ -311,7 +327,7 @@ class SeedColorGenerationOutput extends ToolOutput {
           description: 'Confidence score for the generated seed colors',
         ),
       ],
-      required: ['seed_colors', 'design_style', 'mood', 'confidence'],
+
       systemMessageTemplate:
           'You are an expert color theorist and UX designer with deep knowledge of color psychology, design principles, and brand identity. You specialize in creating foundational color palettes that serve as the basis for comprehensive design systems.\n\nYour expertise includes understanding color harmony (complementary, triadic, analogous), psychological impact of colors, accessibility considerations, and how colors convey brand personality and user emotions.',
     );
@@ -323,7 +339,7 @@ class DesignSystemColorOutput extends ToolOutput {
   static const String stepName = 'generate_design_system_colors';
 
   final Map<String, String> systemColors;
-  final Map<String, double> accessibilityScores;
+  final Map<String, String> accessibilityScores;
   final List<String> colorHarmonies;
   final Map<String, dynamic> designPrinciples;
 
@@ -338,7 +354,7 @@ class DesignSystemColorOutput extends ToolOutput {
   factory DesignSystemColorOutput.fromMap(Map<String, dynamic> map, int round) {
     return DesignSystemColorOutput(
       systemColors: Map<String, String>.from(map['system_colors'] as Map),
-      accessibilityScores: Map<String, double>.from(
+      accessibilityScores: Map<String, String>.from(
         map['accessibility_scores'] as Map? ?? {},
       ),
       colorHarmonies: List<String>.from(map['color_harmonies'] as List? ?? []),
@@ -365,11 +381,59 @@ class DesignSystemColorOutput extends ToolOutput {
         PropertyEntry.object(
           name: 'system_colors',
           description: 'Map of color category names to hex color codes',
+          properties: [
+            PropertyEntry.string(
+              name: 'primary',
+              description: 'Primary brand color',
+            ),
+            PropertyEntry.string(
+              name: 'secondary',
+              description: 'Secondary brand color',
+            ),
+            PropertyEntry.string(
+              name: 'surface',
+              description: 'Surface color for cards and backgrounds',
+            ),
+            PropertyEntry.string(
+              name: 'text',
+              description: 'Text color for primary content',
+            ),
+            PropertyEntry.string(
+              name: 'warning',
+              description: 'Warning color for alerts',
+            ),
+            PropertyEntry.string(
+              name: 'error',
+              description: 'Error color for error messages',
+            ),
+          ],
         ),
         PropertyEntry.object(
           name: 'accessibility_scores',
           description:
               'Accessibility scores for each system color against the base background or primary text',
+          properties: [
+            PropertyEntry.string(
+              name: 'primary',
+              description: 'Contrast ratio for primary color (e.g., "4.5:1")',
+            ),
+            PropertyEntry.string(
+              name: 'secondary',
+              description: 'Contrast ratio for secondary color (e.g., "4.5:1")',
+            ),
+            PropertyEntry.string(
+              name: 'text',
+              description: 'Contrast ratio for text color (e.g., "7:1")',
+            ),
+            PropertyEntry.string(
+              name: 'warning',
+              description: 'Contrast ratio for warning color (e.g., "3:1")',
+            ),
+            PropertyEntry.string(
+              name: 'error',
+              description: 'Contrast ratio for error color (e.g., "3:1")',
+            ),
+          ],
         ),
         PropertyEntry.array(
           name: 'color_harmonies',
@@ -379,9 +443,25 @@ class DesignSystemColorOutput extends ToolOutput {
         PropertyEntry.object(
           name: 'design_principles',
           description: 'Design principles applied during color generation',
+          properties: [
+            PropertyEntry.string(
+              name: 'contrast_ratio',
+              description:
+                  'WCAG AAA compliant contrast ratio for optimal accessibility',
+            ),
+            PropertyEntry.string(
+              name: 'color_psychology',
+              description:
+                  'Psychological impact of the color choices, emphasizing trust and innovation',
+            ),
+            PropertyEntry.string(
+              name: 'brand_alignment',
+              description:
+                  'Alignment of color choices with professional services branding and identity',
+            ),
+          ],
         ),
       ],
-      required: ['system_colors'],
       systemMessageTemplate:
           'You are an expert UX designer with extensive experience in design system architecture and color theory. You specialize in expanding foundational color palettes into systematic, purposeful color sets that serve specific functional roles in user interfaces.\n\nYour expertise includes creating accessible color combinations, understanding semantic color usage (primary, secondary, error, warning), ensuring proper contrast ratios, and establishing clear color hierarchies for optimal user experience.',
     );
@@ -441,21 +521,214 @@ class FullColorSuiteOutput extends ToolOutput {
         PropertyEntry.object(
           name: 'color_suite',
           description: 'Complete suite of named colors with hex codes',
+          properties: [
+            // Text colors
+            PropertyEntry.string(
+              name: 'primaryText',
+              description: 'Primary text color',
+            ),
+            PropertyEntry.string(
+              name: 'secondaryText',
+              description: 'Secondary text color',
+            ),
+            PropertyEntry.string(
+              name: 'interactiveText',
+              description: 'Text color for interactive elements',
+            ),
+            PropertyEntry.string(
+              name: 'mutedText',
+              description: 'Muted/low emphasis text color',
+            ),
+            PropertyEntry.string(
+              name: 'disabledText',
+              description: 'Disabled text color',
+            ),
+
+            // Background colors
+            PropertyEntry.string(
+              name: 'primaryBackground',
+              description: 'Primary background color',
+            ),
+            PropertyEntry.string(
+              name: 'secondaryBackground',
+              description: 'Secondary background color',
+            ),
+            PropertyEntry.string(
+              name: 'surfaceBackground',
+              description: 'Surface background color (e.g., cards)',
+            ),
+            PropertyEntry.string(
+              name: 'cardBackground',
+              description: 'Card background color',
+            ),
+            PropertyEntry.string(
+              name: 'overlayBackground',
+              description: 'Overlay background color (with opacity)',
+            ),
+            PropertyEntry.string(
+              name: 'hoverBackground',
+              description: 'Background color for hover state',
+            ),
+
+            // Status backgrounds
+            PropertyEntry.string(
+              name: 'errorBackground',
+              description: 'Background color for error states',
+            ),
+            PropertyEntry.string(
+              name: 'warningBackground',
+              description: 'Background color for warning states',
+            ),
+            PropertyEntry.string(
+              name: 'successBackground',
+              description: 'Background color for success states',
+            ),
+            PropertyEntry.string(
+              name: 'infoBackground',
+              description: 'Background color for informational states',
+            ),
+
+            // Border colors
+            PropertyEntry.string(
+              name: 'primaryBorder',
+              description: 'Primary border color',
+            ),
+            PropertyEntry.string(
+              name: 'secondaryBorder',
+              description: 'Secondary border color',
+            ),
+            PropertyEntry.string(
+              name: 'focusBorder',
+              description: 'Border color for focus state',
+            ),
+            PropertyEntry.string(
+              name: 'errorBorder',
+              description: 'Border color for error state',
+            ),
+            PropertyEntry.string(
+              name: 'warningBorder',
+              description: 'Border color for warning state',
+            ),
+
+            // Interactive colors
+            PropertyEntry.string(
+              name: 'primaryButton',
+              description: 'Primary button color',
+            ),
+            PropertyEntry.string(
+              name: 'secondaryButton',
+              description: 'Secondary button color',
+            ),
+            PropertyEntry.string(
+              name: 'disabledButton',
+              description: 'Disabled button color',
+            ),
+            PropertyEntry.string(
+              name: 'primaryLink',
+              description: 'Primary link color',
+            ),
+            PropertyEntry.string(
+              name: 'visitedLink',
+              description: 'Visited link color',
+            ),
+
+            // Icon colors
+            PropertyEntry.string(
+              name: 'primaryIcon',
+              description: 'Primary icon color',
+            ),
+            PropertyEntry.string(
+              name: 'secondaryIcon',
+              description: 'Secondary icon color',
+            ),
+            PropertyEntry.string(
+              name: 'warningIcon',
+              description: 'Warning icon color',
+            ),
+            PropertyEntry.string(
+              name: 'errorIcon',
+              description: 'Error icon color',
+            ),
+            PropertyEntry.string(
+              name: 'successIcon',
+              description: 'Success icon color',
+            ),
+          ],
         ),
         PropertyEntry.object(
           name: 'color_families',
           description: 'Grouping of colors by family or purpose',
+          properties: [
+            PropertyEntry.array(
+              name: 'blues',
+              items: PropertyType.string,
+              description: 'Array of blue color hex codes',
+            ),
+            PropertyEntry.array(
+              name: 'purples',
+              items: PropertyType.string,
+              description: 'Array of purple color hex codes',
+            ),
+            PropertyEntry.array(
+              name: 'neutrals',
+              items: PropertyType.string,
+              description: 'Array of neutral color hex codes',
+            ),
+          ],
         ),
         PropertyEntry.object(
           name: 'brand_guidelines',
           description: 'Brand-specific color usage guidelines',
+          properties: [
+            PropertyEntry.string(
+              name: 'primary_usage',
+              description:
+                  'Usage of primary brand color (e.g., call-to-action buttons, links, key highlights)',
+            ),
+            PropertyEntry.string(
+              name: 'secondary_usage',
+              description:
+                  'Usage of secondary brand color (e.g., accent elements, secondary actions, decorative elements)',
+            ),
+            PropertyEntry.string(
+              name: 'text_hierarchy',
+              description:
+                  'Text color hierarchy (e.g., primary for headings, secondary for body, muted for captions)',
+            ),
+            PropertyEntry.string(
+              name: 'background_strategy',
+              description:
+                  'Background color strategy (e.g., layered approach with subtle elevation through background variations)',
+            ),
+          ],
         ),
         PropertyEntry.object(
           name: 'usage_recommendations',
           description: 'Recommendations for using colors in different contexts',
+          properties: [
+            PropertyEntry.string(
+              name: 'accessibility',
+              description:
+                  'Accessibility compliance for color usage (e.g., WCAG AA standards)',
+            ),
+            PropertyEntry.string(
+              name: 'contrast_ratios',
+              description:
+                  'Contrast ratio recommendations for text and background colors (e.g., minimum 4.5:1)',
+            ),
+            PropertyEntry.string(
+              name: 'interactive_states',
+              description:
+                  'Guidance for interactive states (e.g., hover, focus) using color variants',
+            ),
+            PropertyEntry.string(
+              name: 'error_handling',
+              description:
+                  'Recommendations for error color usage (e.g., reserved for validation and critical alerts)',
+            ),
+          ],
         ),
       ],
-      required: ['color_suite'],
       systemMessageTemplate:
           'You are a senior design systems architect with expertise in comprehensive color specification for enterprise-grade applications. You specialize in creating complete, scalable color suites that cover all possible interface states and use cases.\n\nYour expertise includes defining granular color tokens (text variants, background layers, interactive states), creating cohesive color families, establishing usage guidelines, and ensuring consistency across complex application ecosystems.',
     );

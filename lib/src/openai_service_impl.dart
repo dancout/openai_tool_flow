@@ -86,12 +86,7 @@ class DefaultOpenAiToolService implements OpenAiToolService {
     );
 
     // Build user message
-    final userMessageInput = UserMessageInput(
-      toolInput: input,
-      instructions:
-          'Execute the ${step.toolName} tool with the provided parameters.',
-      outputFormat: 'Return structured JSON output matching the tool schema.',
-    );
+    final userMessageInput = UserMessageInput(toolInput: input);
 
     final systemMessage = _buildSystemMessage(systemMessageInput);
     final userMessage = _buildUserMessage(userMessageInput);
@@ -106,6 +101,7 @@ class DefaultOpenAiToolService implements OpenAiToolService {
         'function': {'name': step.toolName},
       },
       temperature: config.defaultTemperature,
+      // TODO: It would be nice to specify maxTokens per step!
       maxTokens: config.defaultMaxTokens,
     );
   }
@@ -126,8 +122,8 @@ class DefaultOpenAiToolService implements OpenAiToolService {
         'name': step.toolName,
         'description': description,
         'parameters': step.outputSchema.toMap(),
+        "strict": true,
       },
-      "strict": true,
     };
   }
 
@@ -191,19 +187,7 @@ class DefaultOpenAiToolService implements OpenAiToolService {
   String _buildUserMessage(UserMessageInput input) {
     final buffer = StringBuffer();
 
-    buffer.writeln('Please execute the tool with the following parameters:');
-    buffer.writeln();
     buffer.writeln(jsonEncode(input.getCleanToolInput()));
-
-    if (input.instructions.isNotEmpty) {
-      buffer.writeln();
-      buffer.writeln('Instructions: ${input.instructions}');
-    }
-
-    if (input.outputFormat.isNotEmpty) {
-      buffer.writeln();
-      buffer.writeln('Output format: ${input.outputFormat}');
-    }
 
     if (input.constraints.isNotEmpty) {
       buffer.writeln();

@@ -2,10 +2,10 @@
 ///
 /// This file demonstrates the 3-step professional color generation workflow
 /// with expert-guided system messages and comprehensive color output.
-/// 
+///
 /// Professional workflow steps:
 /// 1. Generate seed colors with color theory expertise
-/// 2. Generate design system colors with UX design expertise  
+/// 2. Generate design system colors with UX design expertise
 /// 3. Generate full color suite with design systems architecture expertise
 library;
 
@@ -64,8 +64,6 @@ class ExampleSanitizers {
     sanitized.addAll(input);
     return sanitized;
   }
-
-
 }
 
 /// Creates the professional color workflow configuration
@@ -85,8 +83,11 @@ Map<String, ToolCallStep> createProfessionalColorWorkflow() {
   return {
     seedStep.stepName: ToolCallStep.fromStepDefinition(
       seedStep,
-      model: 'gpt-4',
-      toolDescription: 'Generate foundational seed colors using expert color theory principles, considering design style, mood, and psychological impact to create a harmonious base palette',
+      model: 'gpt-4.1-mini',
+      toolDescription:
+          'Generate foundational seed colors using expert color theory principles, considering design style, mood, and psychological impact to create a harmonious base palette',
+
+      // TODO: Could we make inputBuilder optional and then if not specified, we just pass the output of the last result into this one?
       inputBuilder: (previousResults) {
         final input = SeedColorGenerationInput(
           designStyle: 'modern',
@@ -104,12 +105,15 @@ Map<String, ToolCallStep> createProfessionalColorWorkflow() {
 
     designSystemStep.stepName: ToolCallStep.fromStepDefinition(
       designSystemStep,
-      model: 'gpt-4',
-      toolDescription: 'Expand seed colors into a comprehensive design system palette with semantic roles (primary, secondary, surface, text, warning, error) ensuring accessibility and proper contrast ratios',
+      model: 'gpt-4.1-mini',
+      toolDescription:
+          'Expand seed colors into a comprehensive design system palette with semantic roles (primary, secondary, surface, text, warning, error) ensuring accessibility and proper contrast ratios',
       inputBuilder: (previousResults) {
         // Extract seed colors from previous step
         final seedResult = previousResults
-            .where((result) => result.hasOutputType<SeedColorGenerationOutput>())
+            .where(
+              (result) => result.hasOutputType<SeedColorGenerationOutput>(),
+            )
             .first
             .asTyped<SeedColorGenerationOutput>();
 
@@ -118,11 +122,11 @@ Map<String, ToolCallStep> createProfessionalColorWorkflow() {
           targetAccessibility: 'AA',
           colorCategories: [
             'primary',
-            'secondary', 
+            'secondary',
             'surface',
             'text',
             'warning',
-            'error'
+            'error',
           ],
         ).toMap();
 
@@ -140,8 +144,9 @@ Map<String, ToolCallStep> createProfessionalColorWorkflow() {
 
     fullSuiteStep.stepName: ToolCallStep.fromStepDefinition(
       fullSuiteStep,
-      model: 'gpt-4',
-      toolDescription: 'Create a complete professional color suite with granular tokens for all interface states (text variants, backgrounds, interactive elements, status indicators) following design system best practices',
+      model: 'gpt-4.1-mini',
+      toolDescription:
+          'Create a complete professional color suite with granular tokens for all interface states (text variants, backgrounds, interactive elements, status indicators) following design system best practices',
       inputBuilder: (previousResults) {
         // Extract system colors from previous step
         final designSystemResult = previousResults
@@ -181,7 +186,7 @@ Map<String, ToolCallStep> createProfessionalColorWorkflow() {
             'secondaryIcon',
             'warningIcon',
             'errorIcon',
-            'successIcon'
+            'successIcon',
           ],
           brandPersonality: 'professional',
         ).toMap();
@@ -199,5 +204,3 @@ Map<String, ToolCallStep> createProfessionalColorWorkflow() {
     ),
   };
 }
-
-
