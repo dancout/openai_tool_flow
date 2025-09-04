@@ -142,27 +142,17 @@ class DesignSystemColorInput extends ToolInput {
 /// Input for generating full color suite (Step 3)
 class FullColorSuiteInput extends ToolInput {
   final Map<String, String> systemColors;
-  final List<String> colorVariants;
   final String brandPersonality;
 
   const FullColorSuiteInput({
     required this.systemColors,
-    required this.colorVariants,
     required this.brandPersonality,
   });
-
-  /// Number of suite colors derived from colorVariants length
-  int get suiteColorCount => colorVariants.length;
 
   factory FullColorSuiteInput.fromMap(Map<String, dynamic> map) {
     final systemColors = map['system_colors'];
     if (systemColors == null) {
       throw ArgumentError('Missing required field: system_colors');
-    }
-
-    final colorVariants = map['color_variants'];
-    if (colorVariants == null) {
-      throw ArgumentError('Missing required field: color_variants');
     }
 
     final brandPersonality = map['brand_personality'];
@@ -172,7 +162,6 @@ class FullColorSuiteInput extends ToolInput {
 
     return FullColorSuiteInput(
       systemColors: Map<String, String>.from(systemColors as Map),
-      colorVariants: List<String>.from(colorVariants as List),
       brandPersonality: brandPersonality as String,
     );
   }
@@ -181,8 +170,6 @@ class FullColorSuiteInput extends ToolInput {
   Map<String, dynamic> toMap() {
     return {
       'system_colors': systemColors,
-      'suite_color_count': suiteColorCount,
-      'color_variants': colorVariants,
       'brand_personality': brandPersonality,
     };
   }
@@ -193,16 +180,6 @@ class FullColorSuiteInput extends ToolInput {
 
     if (systemColors.isEmpty) {
       issues.add('system_colors cannot be empty');
-    }
-
-    if (colorVariants.isEmpty) {
-      issues.add('color_variants cannot be empty');
-    }
-
-    if (suiteColorCount > 100) {
-      issues.add(
-        'suite_color_count (derived from color_variants) must not exceed 100',
-      );
     }
 
     for (final entry in systemColors.entries) {
