@@ -176,6 +176,9 @@ class ToolFlow {
       allResultsByToolName.putIfAbsent(toolName, () => []).add(result);
     }
 
+    // Aggregate token usage from all steps
+    _aggregateTokenUsage();
+
     return ToolFlowResult._fromTyped(
       typedResults: List.unmodifiable(_results),
       finalState: Map.unmodifiable(_state),
@@ -430,6 +433,30 @@ class ToolFlow {
       allIssues.addAll(result.issues);
     }
     return allIssues;
+  }
+
+  /// Aggregates token usage from all steps into the state
+  void _aggregateTokenUsage() {
+    int totalPromptTokens = 0;
+    int totalCompletionTokens = 0;
+    int totalTokens = 0;
+
+    // Sum up usage from all steps
+    for (int i = 0; i < steps.length; i++) {
+      final stepUsage = _state['step_${i}_usage'] as Map<String, dynamic>?;
+      if (stepUsage != null) {
+        totalPromptTokens += (stepUsage['prompt_tokens'] as int? ?? 0);
+        totalCompletionTokens += (stepUsage['completion_tokens'] as int? ?? 0);
+        totalTokens += (stepUsage['total_tokens'] as int? ?? 0);
+      }
+    }
+
+    // Store aggregated usage in state
+    _state['token_usage'] = {
+      'total_prompt_tokens': totalPromptTokens,
+      'total_completion_tokens': totalCompletionTokens,
+      'total_tokens': totalTokens,
+    };
   }
 }
 
