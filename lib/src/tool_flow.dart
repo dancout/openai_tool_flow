@@ -26,13 +26,7 @@ class ToolFlow {
   /// Results from completed steps (ordered list) using type-safe wrappers
   final List<TypedToolResult> _results = [];
 
-  /// Results keyed by tool name for easy retrieval
-  /// For duplicate tool names, this contains the MOST RECENT result
-  final Map<String, TypedToolResult> _resultsByToolName = {};
 
-  /// All results grouped by tool name (handles duplicates)
-  /// Each tool name maps to a list of results in execution order
-  final Map<String, List<TypedToolResult>> _allResultsByToolName = {};
 
   /// Creates a ToolFlow with configuration and steps
   ToolFlow({
@@ -48,8 +42,6 @@ class ToolFlow {
   Future<ToolFlowResult> run({required Map<String, dynamic> input}) async {
     _state.clear();
     _results.clear();
-    _resultsByToolName.clear();
-    _allResultsByToolName.clear();
     _state.addAll(input);
 
     // Create initial TypedToolResult from input
@@ -74,10 +66,6 @@ class ToolFlow {
 
     // Add initial result to collections
     _results.add(initialTypedResult);
-    _resultsByToolName['initial_input'] = initialTypedResult;
-    _allResultsByToolName
-        .putIfAbsent('initial_input', () => [])
-        .add(initialTypedResult);
 
     for (int i = 0; i < steps.length; i++) {
       final step = steps[i];
@@ -162,14 +150,6 @@ class ToolFlow {
       if (stepResult != null) {
         _results.add(stepResult);
 
-        // Update results by tool name (most recent wins for simple access)
-        _resultsByToolName[stepResult.toolName] = stepResult;
-
-        // Update all results by tool name (for duplicate handling)
-        _allResultsByToolName
-            .putIfAbsent(stepResult.toolName, () => [])
-            .add(stepResult);
-
         // TODO: It would be kinda cool to add how many tokens were consumed form that step into the state, both input and output tokens
 
         // Update state with step results
@@ -186,12 +166,22 @@ class ToolFlow {
       }
     }
 
+    // Build tool name maps from results list
+    final Map<String, TypedToolResult> resultsByToolName = {};
+    final Map<String, List<TypedToolResult>> allResultsByToolName = {};
+    
+    for (final result in _results) {
+      final toolName = result.toolName;
+      resultsByToolName[toolName] = result; // Most recent wins
+      allResultsByToolName.putIfAbsent(toolName, () => []).add(result);
+    }
+
     return ToolFlowResult._fromTyped(
       typedResults: List.unmodifiable(_results),
       finalState: Map.unmodifiable(_state),
       allIssues: _getAllIssues(),
-      typedResultsByToolName: Map.unmodifiable(_resultsByToolName),
-      allTypedResultsByToolName: _allResultsByToolName.map(
+      typedResultsByToolName: Map.unmodifiable(resultsByToolName),
+      allTypedResultsByToolName: allResultsByToolName.map(
         (key, value) =>
             MapEntry(key, List<TypedToolResult>.unmodifiable(value)),
       ),

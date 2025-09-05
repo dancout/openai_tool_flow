@@ -77,6 +77,12 @@ void main() {
         return flow.run(input: {'test': 'data'}).then((result) {
           expect(result.results, isA<List<TypedToolResult>>());
           expect(result.results.length, equals(2)); // initial input + 1 tool step
+          
+          // Check the initial input result (index 0)
+          expect(result.results[0], isA<TypedToolResult>()); // First result is the initial input
+          expect(result.results[0].toolName, equals('initial_input'));
+          expect(result.results[0].output.toMap(), equals({'_round': 0, 'test': 'data'}));
+          
           expect(result.results[1], isA<TypedToolResult>()); // Second result is the tool step
           expect(result.results[1].toolName, equals('test_tool_results'));
         });
