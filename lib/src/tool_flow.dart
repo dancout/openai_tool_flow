@@ -108,7 +108,6 @@ class ToolFlow {
             );
           }
         } catch (e) {
-          print('Error executing step $i attempt $attemptCount: $e');
           // Create an error result - build step input for error case
           final errorStepInput = _buildStepInput(
             step: step,
