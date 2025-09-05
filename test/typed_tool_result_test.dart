@@ -298,7 +298,7 @@ void main() {
 
       final result = await flow.run(input: {'test': 'data'});
 
-      expect(result.results.length, equals(2));
+      expect(result.results.length, equals(3)); // initial input + 2 tool steps
 
       // Check that each result has the correct type information
       final seedResult = result.getTypedResultByToolName(
@@ -367,11 +367,11 @@ void main() {
 
       final result = await flow.run(input: {'test': 'data'});
 
-      expect(result.results.length, equals(2));
+      expect(result.results.length, equals(3)); // initial input + 2 tool steps
 
       // Check that audits ran and produced no issues for valid outputs
-      final seedIssues = result.results[0].issues;
-      final suiteIssues = result.results[1].issues;
+      final seedIssues = result.results[1].issues; // First tool step (index 1)
+      final suiteIssues = result.results[2].issues; // Second tool step (index 2)
 
       expect(seedIssues, isEmpty);
       expect(suiteIssues, isEmpty);
@@ -450,11 +450,11 @@ void main() {
 
         final result = await flow.run(input: {'test': 'data'});
 
-        expect(result.results.length, equals(2));
+        expect(result.results.length, equals(3)); // initial input + 2 tool steps
 
         // Check that audits ran and produced issues for invalid outputs
-        final seedIssues = result.results[0].issues;
-        final suiteIssues = result.results[1].issues;
+        final seedIssues = result.results[1].issues; // First tool step
+        final suiteIssues = result.results[2].issues; // Second tool step
 
         expect(seedIssues, isNotEmpty);
         expect(

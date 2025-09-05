@@ -123,8 +123,7 @@ Map<String, ToolCallStep> createProfessionalColorWorkflow() {
         ).toMap();
         return input;
       },
-      buildInputsFrom: [seedStep.stepName],
-      includeResultsInToolcall: [seedStep.stepName],
+      includeResultsInToolcall: [1], // Reference seed step result by index
       stepConfig: StepConfig(
         issuesSeverityFilter: IssueSeverity.medium,
         audits: [colorFormatAudit],
@@ -151,8 +150,7 @@ Map<String, ToolCallStep> createProfessionalColorWorkflow() {
         ).toMap();
         return input;
       },
-      buildInputsFrom: [designSystemStep.stepName],
-      includeResultsInToolcall: [designSystemStep.stepName],
+      includeResultsInToolcall: [2], // Reference design system step result by index
       stepConfig: StepConfig(
         audits: [],
         stopOnFailure: false,

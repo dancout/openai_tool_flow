@@ -403,7 +403,7 @@ void main() {
         openAiService: mockService,
       );
 
-      final result = await flow.run();
+      final result = await flow.run(input: {'test': 'data'});
 
       expect(result.hasIssues, isTrue);
       expect(result.allIssues.length, equals(1));
@@ -465,7 +465,7 @@ void main() {
         openAiService: mockService,
       );
 
-      final result = await flow.run();
+      final result = await flow.run(input: {'test': 'data'});
 
       expect(result.results.length, equals(2));
 
@@ -553,7 +553,6 @@ void main() {
                   paletteResult?.output.toMap()['colors'] ?? [];
               return {'extract_palette_colors': paletteColors};
             },
-            buildInputsFrom: [0],
             outputSchema: OutputSchema(
               properties: [PropertyEntry.string(name: 'result')],
             ),
@@ -564,7 +563,7 @@ void main() {
         openAiService: mockService,
       );
 
-      final result = await flow.run();
+      final result = await flow.run(input: {'test': 'data'});
 
       expect(result.results.length, equals(2));
       expect(result.allIssues.length, equals(1)); // One issue from first step
@@ -633,7 +632,7 @@ void main() {
         openAiService: mockService,
       );
 
-      final result = await flow.run();
+      final result = await flow.run(input: {'test': 'data'});
 
       expect(result.results.length, equals(2));
 
@@ -816,7 +815,7 @@ void main() {
         openAiService: mockService,
       );
 
-      final result = await flow.run();
+      final result = await flow.run(input: {'test': 'data'});
       expect(result.results.length, equals(3));
 
       // Verify that the flow completed successfully
@@ -854,7 +853,7 @@ void main() {
         openAiService: mockService,
       );
 
-      return flow.run().then((result) {
+      return flow.run(input: {'test': 'data'}).then((result) {
         // Test new results type
         expect(result.results, isA<List<TypedToolResult>>());
         final typedResult = result.results.first;
@@ -941,7 +940,7 @@ void main() {
             openAiService: testService,
           );
 
-          final result = await flow.run();
+          final result = await flow.run(input: {'test': 'data'});
 
           expect(result.results.length, equals(2));
           expect(testService.lastSystemMessage, isNotNull);
@@ -1019,7 +1018,7 @@ void main() {
             openAiService: testService,
           );
 
-          final result = await flow.run();
+          final result = await flow.run(input: {'test': 'data'});
 
           expect(result.results.length, equals(2));
           expect(testService.lastSystemMessage, isNull);
@@ -1093,7 +1092,7 @@ void main() {
             openAiService: testService,
           );
 
-          final result = await flow.run();
+          final result = await flow.run(input: {'test': 'data'});
 
           expect(result.results.length, equals(2));
           expect(testService.lastSystemMessage, isNotNull);
