@@ -16,12 +16,13 @@ class ToolCallStep {
   final String? toolDescription;
 
   /// OpenAI model to use for this step (e.g., 'gpt-4.1', 'gpt-5')
-  final String model;
+  /// If null, falls back to the model specified in OpenAIConfig
+  final String? model;
 
   /// Function to build step input from previous results at execution time
   ///
-  /// Takes a list of ToolResult objects from steps specified in buildInputsFrom
-  /// and returns the input data for this step.
+  /// Takes a list of all previous TypedToolResult objects and returns the input data for this step.
+  /// If not provided, the previous step's TypedToolResult will be passed forward using its toMap() method.
   ///
   /// **Example:**
   /// ```dart
@@ -36,40 +37,27 @@ class ToolCallStep {
   ///   };
   /// }
   /// ```
-  final Map<String, dynamic> Function(List<TypedToolResult>) inputBuilder;
+  final Map<String, dynamic> Function(List<TypedToolResult>)? inputBuilder;
 
-  /// Specifies which previous step results to pass to inputBuilder
-  ///
-  /// Similar to includeOutputsFrom in StepConfig:
-  /// - int values: References step by index (0-based)
-  /// - String values: References step by tool name (most recent if duplicates)
-  /// - Empty list: inputBuilder receives empty list (for static input steps)
-  // TODO: Would it be possible for us to extrapolate the types of the entities as the input to inputBuilder, instead of List<ToolResult>, could we have them strongly typed to the exact types that are found when you look for the outputs you're pulling forward?
-  /// We'd have to update how the buildInputsFrom works, because instead of just specifying string, it'd have to specify types
-  /// Or, we'd need like a Lookup tool to get the Type of expected TypedOutput for that step, and assign it that way
-  final List<Object> buildInputsFrom;
-
-  /// List of steps results to include ToolOutputs and their associated issues from in the OpenAI tool call.
-  /// Can be int (step index) or String (tool name).
+  /// List of step result indices to include ToolOutputs and their associated issues from in the OpenAI tool call.
+  /// Only accepts integers representing step indices.
   ///
   /// **Usage Examples:**
   /// ```dart
-  /// // Include results from step 0 and any step with tool name 'extract_palette'
-  /// includeResultsInToolcall: [0, 'extract_palette']
+  /// // Include results from step 0 (initial input) and step 1 (first tool step)
+  /// includeResultsInToolcall: [0, 1]
   ///
   /// // Include results from steps 1 and 2
   /// includeResultsInToolcall: [1, 2]
-  ///
-  /// // Include results from 'refine_colors' tool (most recent if duplicates)
-  /// includeResultsInToolcall: ['refine_colors']
   /// ```
   ///
   /// **How it works:**
-  /// - int values: References step by index (0-based)
-  /// - String values: References step by tool name (most recent if duplicates)
+  /// - Index 0: Initial input passed to ToolFlow.run()
+  /// - Index 1: First ToolCallStep result
+  /// - Index 2: Second ToolCallStep result, etc.
   /// - Results and their associated issues (filtered by severity) are included in the system message
   /// - Provides context like "here's what you did previously and why it was wrong"
-  final List<dynamic> includeResultsInToolcall;
+  final List<int> includeResultsInToolcall;
 
   /// Issues that have been identified in previous attempts
   /// Helps provide context for retry attempts
@@ -87,11 +75,9 @@ class ToolCallStep {
   const ToolCallStep({
     required this.toolName,
     this.toolDescription,
-    // TODO: This model should not be required, as we can fall back on the .env configuration default model.
-    required this.model,
-    required this.inputBuilder,
+    this.model,
+    this.inputBuilder,
     this.includeResultsInToolcall = const [],
-    this.buildInputsFrom = const [],
     this.issues = const [],
     required this.stepConfig,
     required this.outputSchema,
@@ -103,12 +89,11 @@ class ToolCallStep {
   /// and creates a StepConfig with the appropriate output schema.
   static ToolCallStep fromStepDefinition<T extends ToolOutput>(
     StepDefinition<T> stepDefinition, {
-    required String model,
-    required Map<String, dynamic> Function(List<TypedToolResult>) inputBuilder,
-    List<Object> buildInputsFrom = const [],
+    String? model,
+    Map<String, dynamic> Function(List<TypedToolResult>)? inputBuilder,
     List<Issue> issues = const [],
     StepConfig? stepConfig,
-    List<String> includeResultsInToolcall = const [],
+    List<int> includeResultsInToolcall = const [],
     String? toolDescription,
   }) {
     // Auto-register the step definition
@@ -119,7 +104,6 @@ class ToolCallStep {
       toolDescription: toolDescription,
       model: model,
       inputBuilder: inputBuilder,
-      buildInputsFrom: buildInputsFrom,
       issues: issues,
       outputSchema: stepDefinition.outputSchema,
       stepConfig: stepConfig ?? StepConfig(),
@@ -133,7 +117,7 @@ class ToolCallStep {
     String? toolDescription,
     String? model,
     Map<String, dynamic> Function(List<TypedToolResult>)? inputBuilder,
-    List<Object>? buildInputsFrom,
+    List<int>? includeResultsInToolcall,
     List<Issue>? issues,
     int? maxRetries,
     StepConfig? stepConfig,
@@ -144,7 +128,7 @@ class ToolCallStep {
       toolDescription: toolDescription ?? this.toolDescription,
       model: model ?? this.model,
       inputBuilder: inputBuilder ?? this.inputBuilder,
-      buildInputsFrom: buildInputsFrom ?? this.buildInputsFrom,
+      includeResultsInToolcall: includeResultsInToolcall ?? this.includeResultsInToolcall,
       issues: issues ?? this.issues,
       stepConfig: stepConfig ?? this.stepConfig,
       outputSchema: outputSchema ?? this.outputSchema,
@@ -162,10 +146,10 @@ class ToolCallStep {
     return other is ToolCallStep &&
         other.toolName == toolName &&
         other.model == model &&
-        other.buildInputsFrom.toString() == buildInputsFrom.toString();
+        other.includeResultsInToolcall.toString() == includeResultsInToolcall.toString();
     // Note: inputBuilder functions cannot be compared
   }
 
   @override
-  int get hashCode => Object.hash(toolName, model, buildInputsFrom);
+  int get hashCode => Object.hash(toolName, model, includeResultsInToolcall);
 }

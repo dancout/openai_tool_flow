@@ -25,6 +25,10 @@ class StepConfig {
   /// Defaults to true for backward compatibility
   final bool stopOnFailure;
 
+  /// Maximum tokens for the OpenAI tool call for this step
+  /// If null, falls back to the default from OpenAIConfig
+  final int? maxTokens;
+
   /// Minimum severity level for issues to include when using includeResultsInToolcall.
   /// Issues at this level and higher will be included in the system message.
   /// Defaults to IssueSeverity.high to include high and critical issues only.
@@ -91,6 +95,7 @@ class StepConfig {
     this.customPassCriteria,
     this.customFailureReason,
     this.stopOnFailure = true,
+    this.maxTokens,
     this.issuesSeverityFilter = IssueSeverity.high,
     this.inputSanitizer,
     this.outputSanitizer,

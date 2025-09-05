@@ -3,6 +3,20 @@ import 'package:openai_toolflow/src/typed_interfaces.dart';
 import 'tool_call_step.dart';
 import 'tool_result.dart';
 
+/// Response from OpenAI tool call execution containing both output and usage information
+class ToolCallResponse {
+  /// The tool output data
+  final Map<String, dynamic> output;
+
+  /// Token usage information from the OpenAI response
+  final Map<String, dynamic> usage;
+
+  const ToolCallResponse({
+    required this.output,
+    required this.usage,
+  });
+}
+
 /// Abstract interface for OpenAI tool execution services.
 ///
 /// This abstraction allows for different implementations (real API calls, mocking, etc.)
@@ -10,11 +24,11 @@ import 'tool_result.dart';
 abstract class OpenAiToolService {
   /// Executes a tool call with the given step and input parameters.
   ///
-  /// Returns the raw tool output as a Map that will be used to create ToolResult.
+  /// Returns both the tool output and usage information from the OpenAI response.
   ///
   /// [includedResults] contains previous results and their filtered issues to include
   /// in the system message for context about previous attempts and problems.
-  Future<Map<String, dynamic>> executeToolCall(
+  Future<ToolCallResponse> executeToolCall(
     ToolCallStep step,
     ToolInput input, {
     List<ToolResult> includedResults = const [],

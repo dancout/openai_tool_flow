@@ -1127,7 +1127,7 @@ class MockOpenAiToolService implements OpenAiToolService {
   MockOpenAiToolService({this.responses = const {}});
 
   @override
-  Future<Map<String, dynamic>> executeToolCall(
+  Future<ToolCallResponse> executeToolCall(
     ToolCallStep step,
     ToolInput input, {
     List<ToolResult> includedResults = const [],
@@ -1136,7 +1136,14 @@ class MockOpenAiToolService implements OpenAiToolService {
     if (response == null) {
       throw Exception('No mock response for ${step.toolName}');
     }
-    return response;
+    return ToolCallResponse(
+      output: response,
+      usage: {
+        'prompt_tokens': 100,
+        'completion_tokens': 50,
+        'total_tokens': 150,
+      },
+    );
   }
 }
 
@@ -1147,7 +1154,7 @@ class TestSystemMessageService implements OpenAiToolService {
   TestSystemMessageService({this.responses = const {}});
 
   @override
-  Future<Map<String, dynamic>> executeToolCall(
+  Future<ToolCallResponse> executeToolCall(
     ToolCallStep step,
     ToolInput input, {
     List<ToolResult> includedResults = const [],
@@ -1185,6 +1192,13 @@ class TestSystemMessageService implements OpenAiToolService {
     if (response == null) {
       throw Exception('No mock response for ${step.toolName}');
     }
-    return response;
+    return ToolCallResponse(
+      output: response,
+      usage: {
+        'prompt_tokens': 100,
+        'completion_tokens': 50,
+        'total_tokens': 150,
+      },
+    );
   }
 }

@@ -45,12 +45,34 @@ class ToolFlow {
   /// Executes the tool flow with the given input
   ///
   /// Returns a ToolFlowResult containing all step results and final state
-  Future<ToolFlowResult> run({Map<String, dynamic> input = const {}}) async {
+  Future<ToolFlowResult> run({required Map<String, dynamic> input}) async {
     _state.clear();
     _results.clear();
     _resultsByToolName.clear();
     _allResultsByToolName.clear();
     _state.addAll(input);
+
+    // Create initial TypedToolResult from input
+    final initialOutput = ToolOutput(input, round: 0);
+    final initialInput = ToolInput(
+      round: 0,
+      customData: input,
+      model: config.defaultModel,
+      temperature: config.defaultTemperature,
+      maxTokens: config.defaultMaxTokens,
+    );
+    final initialResult = ToolResult<ToolOutput>(
+      toolName: 'initial_input',
+      input: initialInput,
+      output: initialOutput,
+      issues: [],
+    );
+    final initialTypedResult = TypedToolResult.fromWithType(initialResult, ToolOutput);
+    
+    // Add initial result to collections
+    _results.add(initialTypedResult);
+    _resultsByToolName['initial_input'] = initialTypedResult;
+    _allResultsByToolName.putIfAbsent('initial_input', () => []).add(initialTypedResult);
 
     for (int i = 0; i < steps.length; i++) {
       final step = steps[i];
@@ -192,10 +214,13 @@ class ToolFlow {
       includedResults: includedResults,
     );
 
+    // Store usage information in state
+    _state['step_${stepIndex}_usage'] = response.usage;
+
     // Apply output sanitization first if configured
     final sanitizedOutput = step.stepConfig.hasOutputSanitizer
-        ? step.stepConfig.sanitizeOutput(response)
-        : response;
+        ? step.stepConfig.sanitizeOutput(response.output)
+        : response.output;
 
     // Try to create typed interfaces if available
     late ToolOutput typedOutput;
@@ -312,10 +337,17 @@ class ToolFlow {
     // Execute the inputBuilder to get custom input data
     Map<String, dynamic> customData;
     try {
-      // TODO: (SKIP) Should the output of the inputBuilder be more like a structured object that always has a schema, a toMap, any of the internal custom data, etc?
-      /// And then we could pass that value into ToolInput under what is currently customData as a more structured object that we can call .toMap on later just before the open ai tool call.
-      /// ---> I think this might be one to skip.
-      customData = step.inputBuilder(inputBuilderResults);
+      if (step.inputBuilder != null) {
+        customData = step.inputBuilder!(inputBuilderResults);
+      } else {
+        // Default behavior: use previous step's output as input
+        if (inputBuilderResults.isNotEmpty) {
+          final previousResult = inputBuilderResults.last;
+          customData = previousResult.output.toMap();
+        } else {
+          customData = <String, dynamic>{};
+        }
+      }
     } catch (e) {
       throw Exception(
         'Failed to execute inputBuilder for step "${step.toolName}": $e',
@@ -326,9 +358,9 @@ class ToolFlow {
     ToolInput stepInput = ToolInput(
       round: round,
       customData: customData,
-      model: step.model,
+      model: step.model ?? config.defaultModel,
       temperature: config.defaultTemperature,
-      maxTokens: config.defaultMaxTokens,
+      maxTokens: step.stepConfig.maxTokens ?? config.defaultMaxTokens,
     );
 
     // Apply input sanitization if configured (before execution)
@@ -341,30 +373,10 @@ class ToolFlow {
     return stepInput;
   }
 
-  /// Gets the list of results that should be passed to inputBuilder
-  // TODO: (SKIP) This logic seems really similar to how we get the includeResultsInToolcall list.
-  /// // Consider consolidating the logic to a reusable helper function.
+  /// Gets the list of all previous results to pass to inputBuilder
   List<TypedToolResult> _getInputBuilderResults({required ToolCallStep step}) {
-    final inputResults = <TypedToolResult>[];
-
-    for (final reference in step.buildInputsFrom) {
-      TypedToolResult? sourceTypedResult;
-
-      // Find the source result by index or tool name
-      if (reference is int) {
-        if (reference >= 0 && reference < _results.length) {
-          sourceTypedResult = _results[reference];
-        }
-      } else if (reference is String) {
-        sourceTypedResult = _resultsByToolName[reference];
-      }
-
-      if (sourceTypedResult != null) {
-        inputResults.add(sourceTypedResult);
-      }
-    }
-
-    return inputResults;
+    // Return all previous results
+    return List.unmodifiable(_results);
   }
 
   /// Gets the list of results to include in tool call system messages with filtered issues
@@ -374,16 +386,12 @@ class ToolFlow {
     final includedResults = <ToolResult<ToolOutput>>[];
     final stepConfig = step.stepConfig;
 
-    for (final reference in step.includeResultsInToolcall) {
+    for (final index in step.includeResultsInToolcall) {
       TypedToolResult? sourceTypedResult;
 
-      // Find the source result by index or tool name
-      if (reference is int) {
-        if (reference >= 0 && reference < _results.length) {
-          sourceTypedResult = _results[reference];
-        }
-      } else if (reference is String) {
-        sourceTypedResult = _resultsByToolName[reference];
+      // Find the source result by index only
+      if (index >= 0 && index < _results.length) {
+        sourceTypedResult = _results[index];
       }
 
       if (sourceTypedResult != null) {
