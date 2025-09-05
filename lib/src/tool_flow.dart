@@ -67,12 +67,17 @@ class ToolFlow {
       output: initialOutput,
       issues: [],
     );
-    final initialTypedResult = TypedToolResult.fromWithType(initialResult, ToolOutput);
-    
+    final initialTypedResult = TypedToolResult.fromWithType(
+      initialResult,
+      ToolOutput,
+    );
+
     // Add initial result to collections
     _results.add(initialTypedResult);
     _resultsByToolName['initial_input'] = initialTypedResult;
-    _allResultsByToolName.putIfAbsent('initial_input', () => []).add(initialTypedResult);
+    _allResultsByToolName
+        .putIfAbsent('initial_input', () => [])
+        .add(initialTypedResult);
 
     for (int i = 0; i < steps.length; i++) {
       final step = steps[i];
@@ -115,6 +120,7 @@ class ToolFlow {
             );
           }
         } catch (e) {
+          print('Error executing step $i attempt $attemptCount: $e');
           // Create an error result - build step input for error case
           final errorStepInput = _buildStepInput(
             step: step,
@@ -332,7 +338,7 @@ class ToolFlow {
     required int round,
   }) {
     // Get the results to pass to the inputBuilder
-    final inputBuilderResults = _getInputBuilderResults(step: step);
+    final inputBuilderResults = List<TypedToolResult>.unmodifiable(_results);
 
     // Execute the inputBuilder to get custom input data
     Map<String, dynamic> customData;
@@ -341,12 +347,8 @@ class ToolFlow {
         customData = step.inputBuilder!(inputBuilderResults);
       } else {
         // Default behavior: use previous step's output as input
-        if (inputBuilderResults.isNotEmpty) {
-          final previousResult = inputBuilderResults.last;
-          customData = previousResult.output.toMap();
-        } else {
-          customData = <String, dynamic>{};
-        }
+        final previousResult = inputBuilderResults.last;
+        customData = previousResult.output.toMap();
       }
     } catch (e) {
       throw Exception(
@@ -371,12 +373,6 @@ class ToolFlow {
     }
 
     return stepInput;
-  }
-
-  /// Gets the list of all previous results to pass to inputBuilder
-  List<TypedToolResult> _getInputBuilderResults({required ToolCallStep step}) {
-    // Return all previous results
-    return List.unmodifiable(_results);
   }
 
   /// Gets the list of results to include in tool call system messages with filtered issues
