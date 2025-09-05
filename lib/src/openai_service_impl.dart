@@ -20,7 +20,7 @@ class DefaultOpenAiToolService implements OpenAiToolService {
     : _httpClient = httpClient;
 
   @override
-  Future<Map<String, dynamic>> executeToolCall(
+  Future<ToolCallResponse> executeToolCall(
     ToolCallStep step,
     ToolInput input, {
     List<ToolResult> includedResults = const [],
@@ -53,8 +53,14 @@ class DefaultOpenAiToolService implements OpenAiToolService {
 
       final responseData = jsonDecode(response.body) as Map<String, dynamic>;
 
-      // Extract tool call result from OpenAI response
-      return _extractToolCallResult(responseData, step.toolName);
+      // Extract tool call result and usage from OpenAI response
+      final toolOutput = _extractToolCallResult(responseData, step.toolName);
+      final usage = responseData['usage'] as Map<String, dynamic>? ?? {};
+
+      return ToolCallResponse(
+        output: toolOutput,
+        usage: usage,
+      );
     } finally {
       if (_httpClient == null) {
         // Only close if we created the client
@@ -89,7 +95,7 @@ class DefaultOpenAiToolService implements OpenAiToolService {
     final userMessage = _buildUserMessage(input);
 
     return OpenAiRequest.forModel(
-      model: step.model,
+      model: step.model ?? config.defaultModel,
       systemMessage: systemMessage,
       userMessage: userMessage,
       tools: [toolDefinition],
@@ -98,8 +104,7 @@ class DefaultOpenAiToolService implements OpenAiToolService {
         'function': {'name': step.toolName},
       },
       temperature: config.defaultTemperature,
-      // TODO: It would be nice to specify maxTokens per step!
-      maxTokens: config.defaultMaxTokens,
+      maxTokens: step.stepConfig.maxTokens ?? config.defaultMaxTokens,
     );
   }
 
@@ -256,7 +261,7 @@ class MockOpenAiToolService implements OpenAiToolService {
   });
 
   @override
-  Future<Map<String, dynamic>> executeToolCall(
+  Future<ToolCallResponse> executeToolCall(
     ToolCallStep step,
     ToolInput input, {
     List<ToolResult> includedResults = const [],
@@ -271,17 +276,45 @@ class MockOpenAiToolService implements OpenAiToolService {
 
       // Add input information for testing
       response['_mock_input_received'] = inputJson.keys.toList();
-      response['_mock_model_used'] = step.model;
+      response['_mock_model_used'] = step.model ?? 'mock-model';
 
-      return response;
+      return ToolCallResponse(
+        output: response,
+        usage: {
+          'prompt_tokens': 100,
+          'completion_tokens': 50,
+          'total_tokens': 150,
+          'prompt_tokens_details': {'cached_tokens': 0, 'audio_tokens': 0},
+          'completion_tokens_details': {
+            'reasoning_tokens': 0,
+            'audio_tokens': 0,
+            'accepted_prediction_tokens': 0,
+            'rejected_prediction_tokens': 0,
+          },
+        },
+      );
     }
 
     // Return default response with some input context
     final response = Map<String, dynamic>.from(defaultResponse);
     response['toolName'] = step.toolName;
     response['inputKeys'] = inputJson.keys.toList();
-    response['model'] = step.model;
+    response['model'] = step.model ?? 'mock-model';
 
-    return response;
+    return ToolCallResponse(
+      output: response,
+      usage: {
+        'prompt_tokens': 100,
+        'completion_tokens': 50,
+        'total_tokens': 150,
+        'prompt_tokens_details': {'cached_tokens': 0, 'audio_tokens': 0},
+        'completion_tokens_details': {
+          'reasoning_tokens': 0,
+          'audio_tokens': 0,
+          'accepted_prediction_tokens': 0,
+          'rejected_prediction_tokens': 0,
+        },
+      },
+    );
   }
 }

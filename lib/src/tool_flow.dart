@@ -26,13 +26,7 @@ class ToolFlow {
   /// Results from completed steps (ordered list) using type-safe wrappers
   final List<TypedToolResult> _results = [];
 
-  /// Results keyed by tool name for easy retrieval
-  /// For duplicate tool names, this contains the MOST RECENT result
-  final Map<String, TypedToolResult> _resultsByToolName = {};
 
-  /// All results grouped by tool name (handles duplicates)
-  /// Each tool name maps to a list of results in execution order
-  final Map<String, List<TypedToolResult>> _allResultsByToolName = {};
 
   /// Creates a ToolFlow with configuration and steps
   ToolFlow({
@@ -45,12 +39,33 @@ class ToolFlow {
   /// Executes the tool flow with the given input
   ///
   /// Returns a ToolFlowResult containing all step results and final state
-  Future<ToolFlowResult> run({Map<String, dynamic> input = const {}}) async {
+  Future<ToolFlowResult> run({required Map<String, dynamic> input}) async {
     _state.clear();
     _results.clear();
-    _resultsByToolName.clear();
-    _allResultsByToolName.clear();
     _state.addAll(input);
+
+    // Create initial TypedToolResult from input
+    final initialOutput = ToolOutput(input, round: 0);
+    final initialInput = ToolInput(
+      round: 0,
+      customData: input,
+      model: config.defaultModel,
+      temperature: config.defaultTemperature,
+      maxTokens: config.defaultMaxTokens,
+    );
+    final initialResult = ToolResult<ToolOutput>(
+      toolName: 'initial_input',
+      input: initialInput,
+      output: initialOutput,
+      issues: [],
+    );
+    final initialTypedResult = TypedToolResult.fromWithType(
+      initialResult,
+      ToolOutput,
+    );
+
+    // Add initial result to collections
+    _results.add(initialTypedResult);
 
     for (int i = 0; i < steps.length; i++) {
       final step = steps[i];
@@ -134,14 +149,6 @@ class ToolFlow {
       if (stepResult != null) {
         _results.add(stepResult);
 
-        // Update results by tool name (most recent wins for simple access)
-        _resultsByToolName[stepResult.toolName] = stepResult;
-
-        // Update all results by tool name (for duplicate handling)
-        _allResultsByToolName
-            .putIfAbsent(stepResult.toolName, () => [])
-            .add(stepResult);
-
         // TODO: It would be kinda cool to add how many tokens were consumed form that step into the state, both input and output tokens
 
         // Update state with step results
@@ -158,12 +165,25 @@ class ToolFlow {
       }
     }
 
+    // Build tool name maps from results list
+    final Map<String, TypedToolResult> resultsByToolName = {};
+    final Map<String, List<TypedToolResult>> allResultsByToolName = {};
+    
+    for (final result in _results) {
+      final toolName = result.toolName;
+      resultsByToolName[toolName] = result; // Most recent wins
+      allResultsByToolName.putIfAbsent(toolName, () => []).add(result);
+    }
+
+    // Aggregate token usage from all steps
+    _aggregateTokenUsage();
+
     return ToolFlowResult._fromTyped(
       typedResults: List.unmodifiable(_results),
       finalState: Map.unmodifiable(_state),
       allIssues: _getAllIssues(),
-      typedResultsByToolName: Map.unmodifiable(_resultsByToolName),
-      allTypedResultsByToolName: _allResultsByToolName.map(
+      typedResultsByToolName: Map.unmodifiable(resultsByToolName),
+      allTypedResultsByToolName: allResultsByToolName.map(
         (key, value) =>
             MapEntry(key, List<TypedToolResult>.unmodifiable(value)),
       ),
@@ -192,10 +212,13 @@ class ToolFlow {
       includedResults: includedResults,
     );
 
+    // Store usage information in state
+    _state['step_${stepIndex}_usage'] = response.usage;
+
     // Apply output sanitization first if configured
     final sanitizedOutput = step.stepConfig.hasOutputSanitizer
-        ? step.stepConfig.sanitizeOutput(response)
-        : response;
+        ? step.stepConfig.sanitizeOutput(response.output)
+        : response.output;
 
     // Try to create typed interfaces if available
     late ToolOutput typedOutput;
@@ -307,15 +330,18 @@ class ToolFlow {
     required int round,
   }) {
     // Get the results to pass to the inputBuilder
-    final inputBuilderResults = _getInputBuilderResults(step: step);
+    final inputBuilderResults = List<TypedToolResult>.unmodifiable(_results);
 
     // Execute the inputBuilder to get custom input data
     Map<String, dynamic> customData;
     try {
-      // TODO: (SKIP) Should the output of the inputBuilder be more like a structured object that always has a schema, a toMap, any of the internal custom data, etc?
-      /// And then we could pass that value into ToolInput under what is currently customData as a more structured object that we can call .toMap on later just before the open ai tool call.
-      /// ---> I think this might be one to skip.
-      customData = step.inputBuilder(inputBuilderResults);
+      if (step.inputBuilder != null) {
+        customData = step.inputBuilder!(inputBuilderResults);
+      } else {
+        // Default behavior: use previous step's output as input
+        final previousResult = inputBuilderResults.last;
+        customData = previousResult.output.toMap();
+      }
     } catch (e) {
       throw Exception(
         'Failed to execute inputBuilder for step "${step.toolName}": $e',
@@ -326,9 +352,9 @@ class ToolFlow {
     ToolInput stepInput = ToolInput(
       round: round,
       customData: customData,
-      model: step.model,
+      model: step.model ?? config.defaultModel,
       temperature: config.defaultTemperature,
-      maxTokens: config.defaultMaxTokens,
+      maxTokens: step.stepConfig.maxTokens ?? config.defaultMaxTokens,
     );
 
     // Apply input sanitization if configured (before execution)
@@ -341,32 +367,6 @@ class ToolFlow {
     return stepInput;
   }
 
-  /// Gets the list of results that should be passed to inputBuilder
-  // TODO: (SKIP) This logic seems really similar to how we get the includeResultsInToolcall list.
-  /// // Consider consolidating the logic to a reusable helper function.
-  List<TypedToolResult> _getInputBuilderResults({required ToolCallStep step}) {
-    final inputResults = <TypedToolResult>[];
-
-    for (final reference in step.buildInputsFrom) {
-      TypedToolResult? sourceTypedResult;
-
-      // Find the source result by index or tool name
-      if (reference is int) {
-        if (reference >= 0 && reference < _results.length) {
-          sourceTypedResult = _results[reference];
-        }
-      } else if (reference is String) {
-        sourceTypedResult = _resultsByToolName[reference];
-      }
-
-      if (sourceTypedResult != null) {
-        inputResults.add(sourceTypedResult);
-      }
-    }
-
-    return inputResults;
-  }
-
   /// Gets the list of results to include in tool call system messages with filtered issues
   List<ToolResult<ToolOutput>> _getIncludedResults({
     required ToolCallStep step,
@@ -374,16 +374,12 @@ class ToolFlow {
     final includedResults = <ToolResult<ToolOutput>>[];
     final stepConfig = step.stepConfig;
 
-    for (final reference in step.includeResultsInToolcall) {
+    for (final index in step.includeResultsInToolcall) {
       TypedToolResult? sourceTypedResult;
 
-      // Find the source result by index or tool name
-      if (reference is int) {
-        if (reference >= 0 && reference < _results.length) {
-          sourceTypedResult = _results[reference];
-        }
-      } else if (reference is String) {
-        sourceTypedResult = _resultsByToolName[reference];
+      // Find the source result by index only
+      if (index >= 0 && index < _results.length) {
+        sourceTypedResult = _results[index];
       }
 
       if (sourceTypedResult != null) {
@@ -436,6 +432,30 @@ class ToolFlow {
       allIssues.addAll(result.issues);
     }
     return allIssues;
+  }
+
+  /// Aggregates token usage from all steps into the state
+  void _aggregateTokenUsage() {
+    int totalPromptTokens = 0;
+    int totalCompletionTokens = 0;
+    int totalTokens = 0;
+
+    // Sum up usage from all steps
+    for (int i = 0; i < steps.length; i++) {
+      final stepUsage = _state['step_${i}_usage'] as Map<String, dynamic>?;
+      if (stepUsage != null) {
+        totalPromptTokens += (stepUsage['prompt_tokens'] as int? ?? 0);
+        totalCompletionTokens += (stepUsage['completion_tokens'] as int? ?? 0);
+        totalTokens += (stepUsage['total_tokens'] as int? ?? 0);
+      }
+    }
+
+    // Store aggregated usage in state
+    _state['token_usage'] = {
+      'total_prompt_tokens': totalPromptTokens,
+      'total_completion_tokens': totalCompletionTokens,
+      'total_tokens': totalTokens,
+    };
   }
 }
 

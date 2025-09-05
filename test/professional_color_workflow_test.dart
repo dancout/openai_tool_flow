@@ -67,13 +67,13 @@ void main() {
       
       // Test design system input building
       final designSystemStep = workflow['generate_design_system_colors']!;
-      final designSystemInput = designSystemStep.inputBuilder([mockSeedResult]);
+      final designSystemInput = designSystemStep.inputBuilder?.call([mockSeedResult]) ?? {};
       expect(designSystemInput['seed_colors'], isNotNull);
       expect(designSystemInput['seed_colors'], contains('#2563EB'));
 
       // Test full suite input building
       final fullSuiteStep = workflow['generate_full_color_suite']!;
-      final fullSuiteInput = fullSuiteStep.inputBuilder([mockSystemResult]);
+      final fullSuiteInput = fullSuiteStep.inputBuilder?.call([mockSystemResult]) ?? {};
       expect(fullSuiteInput['system_colors'], isNotNull);
       expect(fullSuiteInput['system_colors']['primary'], equals('#2563EB'));
     });

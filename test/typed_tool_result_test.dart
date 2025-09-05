@@ -167,19 +167,21 @@ class ColorSuiteValidationAudit
 /// Mock OpenAI service that returns typed outputs
 class TypedMockOpenAiService implements OpenAiToolService {
   @override
-  Future<Map<String, dynamic>> executeToolCall(
+  Future<ToolCallResponse> executeToolCall(
     ToolCallStep step,
     ToolInput input, {
     List<ToolResult> includedResults = const [],
   }) async {
+    Map<String, dynamic> output;
     switch (step.toolName) {
       case 'generate_seed_colors':
-        return {
+        output = {
           'colors': ['#FF0000', '#00FF00', '#0000FF'],
           'confidence': 0.8,
         };
+        break;
       case 'generate_color_suite':
-        return {
+        output = {
           'color_suite': {
             'primary': '#FF0000',
             'secondary': '#00FF00',
@@ -187,22 +189,41 @@ class TypedMockOpenAiService implements OpenAiToolService {
           },
           'category': 'vibrant',
         };
+        break;
       case 'generate_seed_colors_invalid':
-        return {
+        output = {
           'colors': ['invalid', '#00FF00', '#0000FF'],
           'confidence': 0.3,
         };
+        break;
       case 'generate_color_suite_invalid':
-        return {
+        output = {
           'color_suite': {
             'primary': '#FF0000',
             // Missing 'secondary' and 'background'
           },
           'category': 'incomplete',
         };
+        break;
       default:
-        return {'result': 'default_output'};
+        output = {'result': 'default_output'};
     }
+
+    return ToolCallResponse(
+      output: output,
+      usage: {
+        'prompt_tokens': 100,
+        'completion_tokens': 50,
+        'total_tokens': 150,
+        'prompt_tokens_details': {'cached_tokens': 0, 'audio_tokens': 0},
+        'completion_tokens_details': {
+          'reasoning_tokens': 0,
+          'audio_tokens': 0,
+          'accepted_prediction_tokens': 0,
+          'rejected_prediction_tokens': 0,
+        },
+      },
+    );
   }
 }
 
@@ -257,7 +278,6 @@ void main() {
             inputBuilder: (previousResults) => {
               'palette': previousResults.first.output.toMap(),
             },
-            buildInputsFrom: [0],
             outputSchema: OutputSchema(
               properties: [
                 PropertyEntry.object(
@@ -276,9 +296,9 @@ void main() {
         ],
       );
 
-      final result = await flow.run();
+      final result = await flow.run(input: {'test': 'data'});
 
-      expect(result.results.length, equals(2));
+      expect(result.results.length, equals(3)); // initial input + 2 tool steps
 
       // Check that each result has the correct type information
       final seedResult = result.getTypedResultByToolName(
@@ -327,7 +347,6 @@ void main() {
             inputBuilder: (previousResults) => {
               'palette': previousResults.first.output.toMap(),
             },
-            buildInputsFrom: [0],
             outputSchema: OutputSchema(
               properties: [
                 PropertyEntry.object(
@@ -346,13 +365,13 @@ void main() {
         ],
       );
 
-      final result = await flow.run();
+      final result = await flow.run(input: {'test': 'data'});
 
-      expect(result.results.length, equals(2));
+      expect(result.results.length, equals(3)); // initial input + 2 tool steps
 
       // Check that audits ran and produced no issues for valid outputs
-      final seedIssues = result.results[0].issues;
-      final suiteIssues = result.results[1].issues;
+      final seedIssues = result.results[1].issues; // First tool step (index 1)
+      final suiteIssues = result.results[2].issues; // Second tool step (index 2)
 
       expect(seedIssues, isEmpty);
       expect(suiteIssues, isEmpty);
@@ -411,7 +430,6 @@ void main() {
               inputBuilder: (previousResults) => {
                 'palette': previousResults.first.output.toMap(),
               },
-              buildInputsFrom: [0],
               outputSchema: OutputSchema(
                 properties: [
                   PropertyEntry.object(
@@ -430,13 +448,13 @@ void main() {
           ],
         );
 
-        final result = await flow.run();
+        final result = await flow.run(input: {'test': 'data'});
 
-        expect(result.results.length, equals(2));
+        expect(result.results.length, equals(3)); // initial input + 2 tool steps
 
         // Check that audits ran and produced issues for invalid outputs
-        final seedIssues = result.results[0].issues;
-        final suiteIssues = result.results[1].issues;
+        final seedIssues = result.results[1].issues; // First tool step
+        final suiteIssues = result.results[2].issues; // Second tool step
 
         expect(seedIssues, isNotEmpty);
         expect(
@@ -513,7 +531,6 @@ void main() {
               inputBuilder: (previousResults) => {
                 'palette': previousResults.first.output.toMap(),
               },
-              buildInputsFrom: [0],
               outputSchema: OutputSchema(
                 properties: [
                   PropertyEntry.object(
@@ -532,7 +549,7 @@ void main() {
           ],
         );
 
-        final result = await flow.run();
+        final result = await flow.run(input: {'test': 'data'});
 
         final seedResult = result.getTypedResultByToolName(
           'generate_seed_colors',

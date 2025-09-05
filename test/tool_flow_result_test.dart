@@ -24,7 +24,7 @@ class MockOpenAiToolService implements OpenAiToolService {
   MockOpenAiToolService({required this.responses});
 
   @override
-  Future<Map<String, dynamic>> executeToolCall(
+  Future<ToolCallResponse> executeToolCall(
     ToolCallStep step,
     ToolInput input, {
     List<ToolResult> includedResults = const [],
@@ -33,7 +33,14 @@ class MockOpenAiToolService implements OpenAiToolService {
     if (response == null) {
       throw Exception('No mock response for ${step.toolName}');
     }
-    return response;
+    return ToolCallResponse(
+      output: response,
+      usage: {
+        'prompt_tokens': 100,
+        'completion_tokens': 50,
+        'total_tokens': 150,
+      },
+    );
   }
 }
 
@@ -67,11 +74,17 @@ void main() {
           openAiService: mockService,
         );
 
-        return flow.run().then((result) {
+        return flow.run(input: {'test': 'data'}).then((result) {
           expect(result.results, isA<List<TypedToolResult>>());
-          expect(result.results.length, equals(1));
-          expect(result.results.first, isA<TypedToolResult>());
-          expect(result.results.first.toolName, equals('test_tool_results'));
+          expect(result.results.length, equals(2)); // initial input + 1 tool step
+          
+          // Check the initial input result (index 0)
+          expect(result.results[0], isA<TypedToolResult>()); // First result is the initial input
+          expect(result.results[0].toolName, equals('initial_input'));
+          expect(result.results[0].output.toMap(), equals({'_round': 0, 'test': 'data'}));
+          
+          expect(result.results[1], isA<TypedToolResult>()); // Second result is the tool step
+          expect(result.results[1].toolName, equals('test_tool_results'));
         });
       });
     });
@@ -104,7 +117,7 @@ void main() {
           openAiService: mockService,
         );
 
-        return flow.run().then((result) {
+        return flow.run(input: {'test': 'data'}).then((result) {
           final typedResult = result.getTypedResultByToolName(
             'typed_result_test',
           );
@@ -151,7 +164,7 @@ void main() {
           openAiService: mockService,
         );
 
-        return flow.run().then((result) {
+        return flow.run(input: {'test': 'data'}).then((result) {
           final allTypedResults = result.getAllTypedResultsByToolName(
             'multiple_typed_test',
           );
@@ -195,7 +208,7 @@ void main() {
           openAiService: mockService,
         );
 
-        return flow.run().then((result) {
+        return flow.run(input: {'test': 'data'}).then((result) {
           // Test that existing methods still work
           final resultByName = result.getResultByToolName('compat_test');
           expect(resultByName, isNotNull);
