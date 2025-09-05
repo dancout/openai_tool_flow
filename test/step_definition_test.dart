@@ -157,12 +157,12 @@ void main() {
         model: 'gpt-4',
         inputBuilder: (results) => {'input': 'test'},
         stepConfig: StepConfig(maxRetries: 5, stopOnFailure: false),
-        includeResultsInToolcall: ['previous_step'],
+        includeResultsInToolcall: [0], // Reference initial input by index
       );
 
       expect(step.stepConfig.maxRetries, equals(5));
       expect(step.stepConfig.stopOnFailure, isFalse);
-      expect(step.includeResultsInToolcall, contains('previous_step'));
+      expect(step.includeResultsInToolcall, contains(0));
     });
   });
 

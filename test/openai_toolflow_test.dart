@@ -271,8 +271,8 @@ void main() {
 
       expect(step.toolName, equals('extract_colors'));
       expect(step.model, equals('gpt-4'));
-      expect(step.inputBuilder([]).containsKey('max_colors'), isTrue);
-      expect(step.inputBuilder([])['max_colors'], equals(5));
+      expect(step.inputBuilder?.call([]).containsKey('max_colors'), isTrue);
+      expect(step.inputBuilder?.call([])['max_colors'], equals(5));
     });
   });
 
@@ -345,8 +345,8 @@ void main() {
 
       final result = await flow.run(input: {'imagePath': 'test.jpg'});
 
-      expect(result.results.length, equals(1));
-      expect(result.results.first.toolName, equals('extract_palette'));
+      expect(result.results.length, equals(2)); // initial input + 1 tool step
+      expect(result.results[1].toolName, equals('extract_palette')); // Second result is the tool step
       expect(result.finalOutput, isNotNull);
       expect(result.finalOutput!['colors'], isNotNull);
       expect(result.getResultByToolName('extract_palette'), isNotNull);
@@ -467,7 +467,7 @@ void main() {
 
       final result = await flow.run(input: {'test': 'data'});
 
-      expect(result.results.length, equals(2));
+      expect(result.results.length, equals(3)); // initial input + 2 tool steps
 
       // Test tool name-based retrieval
       final paletteResult = result.getResultByToolName('extract_palette');
@@ -545,9 +545,9 @@ void main() {
             toolName: 'refine_colors',
             model: 'gpt-4',
             inputBuilder: (previousResults) {
-              // Explicitly extract previous step's output
-              final paletteResult = previousResults.isNotEmpty
-                  ? previousResults.first
+              // Extract first tool step's output (index 1, since index 0 is initial input)
+              final paletteResult = previousResults.length > 1
+                  ? previousResults[1]
                   : null;
               final paletteColors =
                   paletteResult?.output.toMap()['colors'] ?? [];
@@ -565,11 +565,11 @@ void main() {
 
       final result = await flow.run(input: {'test': 'data'});
 
-      expect(result.results.length, equals(2));
+      expect(result.results.length, equals(3)); // initial input + 2 tool steps
       expect(result.allIssues.length, equals(1)); // One issue from first step
 
       // Check that second step received outputs from first step
-      final secondStepResult = result.results[1];
+      final secondStepResult = result.results[2]; // Third result is the second tool step
       expect(
         secondStepResult.input.toMap().containsKey('extract_palette_colors'),
         isTrue,
@@ -634,7 +634,7 @@ void main() {
 
       final result = await flow.run(input: {'test': 'data'});
 
-      expect(result.results.length, equals(2));
+      expect(result.results.length, equals(3));
 
       // Check that resultsByToolName contains the most recent result
       final latestResult = result.getResultByToolName('refine_colors');
@@ -808,7 +808,7 @@ void main() {
             outputSchema: OutputSchema(
               properties: [PropertyEntry.string(name: 'result')],
             ),
-            includeResultsInToolcall: ['step1_tool'], // Only include step1
+            includeResultsInToolcall: [1], // Only include step1_tool result
             stepConfig: StepConfig(),
           ),
         ],
@@ -816,12 +816,13 @@ void main() {
       );
 
       final result = await flow.run(input: {'test': 'data'});
-      expect(result.results.length, equals(3));
+      expect(result.results.length, equals(4));
 
       // Verify that the flow completed successfully
-      expect(result.results[0].toolName, equals('step1_tool'));
-      expect(result.results[1].toolName, equals('step2_tool'));
-      expect(result.results[2].toolName, equals('step3_tool'));
+      expect(result.results[0].toolName, equals('initial_input')); // Initial input
+      expect(result.results[1].toolName, equals('step1_tool'));
+      expect(result.results[2].toolName, equals('step2_tool'));
+      expect(result.results[3].toolName, equals('step3_tool'));
     });
   });
 
@@ -856,7 +857,7 @@ void main() {
       return flow.run(input: {'test': 'data'}).then((result) {
         // Test new results type
         expect(result.results, isA<List<TypedToolResult>>());
-        final typedResult = result.results.first;
+        final typedResult = result.results[1]; // Second result is the first tool step
 
         // Test round information is preserved
         expect(typedResult.output, isA<TestToolOutput>());
@@ -930,7 +931,7 @@ void main() {
                 outputSchema: OutputSchema(
                   properties: [PropertyEntry.string(name: 'result')],
                 ),
-                includeResultsInToolcall: [0], // Include step 0
+                includeResultsInToolcall: [1], // Include first tool step result
                 stepConfig: StepConfig(
                   issuesSeverityFilter:
                       IssueSeverity.high, // Only high+ severity
@@ -942,7 +943,7 @@ void main() {
 
           final result = await flow.run(input: {'test': 'data'});
 
-          expect(result.results.length, equals(2));
+          expect(result.results.length, equals(3));
           expect(testService.lastSystemMessage, isNotNull);
           expect(
             testService.lastSystemMessage!,
@@ -1020,7 +1021,7 @@ void main() {
 
           final result = await flow.run(input: {'test': 'data'});
 
-          expect(result.results.length, equals(2));
+          expect(result.results.length, equals(3));
           expect(testService.lastSystemMessage, isNull);
         },
       );
@@ -1082,8 +1083,8 @@ void main() {
                   properties: [PropertyEntry.boolean(name: 'valid')],
                 ),
                 includeResultsInToolcall: [
-                  'extract_colors',
-                ], // Include by tool name
+                  1, // Reference extract_colors result by index
+                ], // Include by index instead of tool name
                 stepConfig: StepConfig(
                   issuesSeverityFilter: IssueSeverity.medium,
                 ),
@@ -1094,7 +1095,7 @@ void main() {
 
           final result = await flow.run(input: {'test': 'data'});
 
-          expect(result.results.length, equals(2));
+          expect(result.results.length, equals(3));
           expect(testService.lastSystemMessage, isNotNull);
           expect(testService.lastSystemMessage!, contains('extract_colors'));
           expect(
