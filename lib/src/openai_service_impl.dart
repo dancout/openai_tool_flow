@@ -88,11 +88,11 @@ class DefaultOpenAiToolService implements OpenAiToolService {
       previousResults: includedResults,
       currentStepRetries: currentStepRetries,
       // TODO: Should additionalContext be a structured object?
-      additionalContext: {
-        'step_tool': step.toolName,
-        'step_model': step.model,
-        'system_message_template': step.outputSchema.systemMessageTemplate,
-      },
+      additionalContext: { //
+        'step_tool': step.toolName, //
+        'step_model': step.model, //
+        'system_message_template': step.outputSchema.systemMessageTemplate, //
+      }, //
     );
 
     final systemMessage = _buildSystemMessage(systemMessageInput);
