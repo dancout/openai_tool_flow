@@ -31,10 +31,19 @@ class ToolFlow {
   /// Each step index maps to a list of attempts (including the final successful one)
   final Map<int, List<TypedToolResult>> _allAttempts = {};
 
-  /// Gets all retry attempts for a specific step (for testing purposes)
+  /// Gets all retry attempts for a specific step (0-indexed from steps array)
   @visibleForTesting
   List<TypedToolResult>? getStepAttempts(int stepIndex) {
-    return _allAttempts[stepIndex];
+    // Convert from step index to storage index
+    // stepIndex 0 -> storage index 1, stepIndex 1 -> storage index 2, etc.
+    final storageIndex = stepIndex + 1;
+    return _allAttempts[storageIndex];
+  }
+
+  /// Gets the initial input data (stored at index 0)
+  @visibleForTesting
+  List<TypedToolResult>? getInitialInputData() {
+    return _allAttempts[0];
   }
 
   /// Creates a ToolFlow with configuration and steps
@@ -76,9 +85,12 @@ class ToolFlow {
 
     // Add initial result to collections
     _results.add(initialTypedResult);
+    
+    // Store initial input data as "attempt" at index 0 to align with _results indexing
+    _allAttempts[0] = [initialTypedResult];
 
-    for (int i = 0; i < steps.length; i++) {
-      final step = steps[i];
+    for (int i = 1; i <= steps.length; i++) {
+      final step = steps[i - 1];
       final stepConfig = step.stepConfig;
 
       TypedToolResult? stepResult;
@@ -97,7 +109,7 @@ class ToolFlow {
           // Execute the step
           stepResult = await _executeStep(
             step: step,
-            stepIndex: i,
+            stepIndex: i - 1,
             round: attemptCount - 1,
           );
 
@@ -106,7 +118,7 @@ class ToolFlow {
             stepResult = await _runAuditsForStep(
               result: stepResult,
               stepConfig: stepConfig,
-              stepIndex: i,
+              stepIndex: i - 1,
             );
           }
 
@@ -127,7 +139,7 @@ class ToolFlow {
           // Create an error result - build step input for error case
           final errorStepInput = _buildStepInput(
             step: step,
-            stepIndex: i,
+            stepIndex: i - 1,
             round: attemptCount,
           );
           final errorToolResult = ToolResult<ToolOutput>(
@@ -190,7 +202,7 @@ class ToolFlow {
     return ToolFlowResult._fromTyped(
       typedResults: List.unmodifiable(_results),
       finalState: Map.unmodifiable(_state),
-      allIssues: _getAllIssues(),
+      allIssues: _getFinalResultIssues(),
     );
   }
 
@@ -211,7 +223,7 @@ class ToolFlow {
 
     // Get current step retry attempts (excluding the current attempt)
     final currentStepRetries = _getCurrentStepAttempts(
-      stepIndex: stepIndex,
+      stepIndex: stepIndex + 1, // Use result index, not step index
       severityFilter: step.stepConfig.issuesSeverityFilter,
     );
 
@@ -460,13 +472,22 @@ class ToolFlow {
     return attemptResults;
   }
 
-  /// Gets all issues from all completed steps
-  // TODO: To be more accurate, this is all issues in the final results of each step - NOT across all attempts.
-  // TODO: Add another getter and handler for retrieving truly all issues from all attempts and name both getters accordingly.
-  List<Issue> _getAllIssues() {
+  /// Gets issues from final results of each step only (not all attempts)
+  List<Issue> _getFinalResultIssues() {
     final allIssues = <Issue>[];
     for (final result in _results) {
       allIssues.addAll(result.issues);
+    }
+    return allIssues;
+  }
+
+  /// Gets all issues from all attempts across all steps
+  List<Issue> _getAllIssuesFromAllAttempts() {
+    final allIssues = <Issue>[];
+    for (final attemptsList in _allAttempts.values) {
+      for (final attempt in attemptsList) {
+        allIssues.addAll(attempt.issues);
+      }
     }
     return allIssues;
   }

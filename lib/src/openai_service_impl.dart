@@ -81,21 +81,12 @@ class DefaultOpenAiToolService implements OpenAiToolService {
     // Create tool definition
     final toolDefinition = _buildToolDefinition(step: step, input: input);
 
-    // Include previous results with filtered issues in system message context
-    final systemMessageInput = SystemMessageInput(
-      toolFlowContext: 'Executing tool call in a structured workflow',
-      stepDescription: 'Tool: ${step.toolName}, Model: ${step.model}',
+    // Build system message directly instead of using complex SystemMessageInput
+    final systemMessage = _buildSystemMessage(
+      step: step,
       previousResults: includedResults,
       currentStepRetries: currentStepRetries,
-      // TODO: Should additionalContext be a structured object?
-      additionalContext: { //
-        'step_tool': step.toolName, //
-        'step_model': step.model, //
-        'system_message_template': step.outputSchema.systemMessageTemplate, //
-      }, //
     );
-
-    final systemMessage = _buildSystemMessage(systemMessageInput);
     final userMessage = _buildUserMessage(input);
 
     return OpenAiRequest.forModel(
@@ -133,16 +124,18 @@ class DefaultOpenAiToolService implements OpenAiToolService {
     };
   }
 
-  /// Builds system message from structured input
-  String _buildSystemMessage(SystemMessageInput input) {
+  /// Builds system message with step context and results
+  String _buildSystemMessage({
+    required ToolCallStep step,
+    required List<ToolResult> previousResults,
+    required List<ToolResult> currentStepRetries,
+  }) {
     final buffer = StringBuffer();
 
-    // Use system message template from additional context if available
-    final systemMessageTemplate =
-        // TODO: Should the systemMessage exist directly on the ToolCallStep, just like the toolDescription?
-        input.additionalContext['system_message_template'] as String?;
-
-    if (systemMessageTemplate != null) {
+    // Use system message template from step if available
+    final systemMessageTemplate = step.outputSchema.systemMessageTemplate;
+    
+    if (systemMessageTemplate?.isNotEmpty == true) {
       buffer.writeln(systemMessageTemplate);
     } else {
       // Fallback to original behavior
@@ -151,16 +144,12 @@ class DefaultOpenAiToolService implements OpenAiToolService {
       );
     }
 
-    buffer.writeln();
-    buffer.writeln('Context: ${input.toolFlowContext}');
-    buffer.writeln('Current Step: ${input.stepDescription}');
-
     // Include previous results and their associated issues if provided
-    if (input.previousResults.isNotEmpty) {
+    if (previousResults.isNotEmpty) {
       buffer.writeln();
       buffer.writeln('Previous step results and associated issues:');
-      for (int i = 0; i < input.previousResults.length; i++) {
-        final result = input.previousResults[i];
+      for (int i = 0; i < previousResults.length; i++) {
+        final result = previousResults[i];
         buffer.writeln('  Step: ${result.toolName}');
         buffer.writeln('    Output: ${jsonEncode(result.output.toMap())}');
 
@@ -182,11 +171,11 @@ class DefaultOpenAiToolService implements OpenAiToolService {
     }
 
     // Include current step retry attempts and their associated issues if provided
-    if (input.currentStepRetries.isNotEmpty) {
+    if (currentStepRetries.isNotEmpty) {
       buffer.writeln();
       buffer.writeln('Current step retry attempts and associated issues:');
-      for (int i = 0; i < input.currentStepRetries.length; i++) {
-        final result = input.currentStepRetries[i];
+      for (int i = 0; i < currentStepRetries.length; i++) {
+        final result = currentStepRetries[i];
         buffer.writeln('  Attempt ${i + 1}: ${result.toolName}');
         buffer.writeln('    Output: ${jsonEncode(result.output.toMap())}');
 
@@ -205,12 +194,6 @@ class DefaultOpenAiToolService implements OpenAiToolService {
           }
         }
       }
-    }
-
-    if (input.additionalContext.isNotEmpty) {
-      buffer.writeln();
-      // TODO: When we are adding the additionalContext here, it is adding on redundant information. For example, you are adding `additionalContext['system_message_template']`immediately into the buffer, and then spitting back everything in the additionalContext map introducing an overlap of redundant info!.
-      buffer.writeln('Additional context: ${input.additionalContext}');
     }
 
     return buffer.toString();
