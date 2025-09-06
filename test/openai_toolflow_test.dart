@@ -346,10 +346,12 @@ void main() {
       final result = await flow.run(input: {'imagePath': 'test.jpg'});
 
       expect(result.results.length, equals(2)); // initial input + 1 tool step
-      expect(result.results[1].toolName, equals('extract_palette')); // Second result is the tool step
-      expect(result.finalOutput, isNotNull);
-      expect(result.finalOutput!['colors'], isNotNull);
-      expect(result.getResultByToolName('extract_palette'), isNotNull);
+      expect(
+        result.results[1].toolName,
+        equals('extract_palette'),
+      ); // Second result is the tool step
+      expect(result.results.last, isNotNull);
+      expect(result.results.last.toJson()['output']['colors'], isNotNull);
     });
 
     test('should collect issues from audits', () async {
@@ -405,7 +407,7 @@ void main() {
 
       final result = await flow.run(input: {'test': 'data'});
 
-      expect(result.hasIssues, isTrue);
+      expect(result.allIssues.isNotEmpty, isTrue);
       expect(result.allIssues.length, equals(1));
       expect(result.allIssues.first.description, equals('Test audit issue'));
     });
@@ -470,23 +472,20 @@ void main() {
       expect(result.results.length, equals(3)); // initial input + 2 tool steps
 
       // Test tool name-based retrieval
-      final paletteResult = result.getResultByToolName('extract_palette');
+      final paletteResult = result.results.firstWhere(
+        (r) => r.toolName == 'extract_palette',
+      );
       expect(paletteResult, isNotNull);
-      expect(paletteResult!.toolName, equals('extract_palette'));
+      expect(paletteResult.toolName, equals('extract_palette'));
 
-      final refineResult = result.getResultByToolName('refine_colors');
+      final refineResult = result.results.firstWhere(
+        (r) => r.toolName == 'refine_colors',
+      );
       expect(refineResult, isNotNull);
-      expect(refineResult!.toolName, equals('refine_colors'));
+      expect(refineResult.toolName, equals('refine_colors'));
 
       // Test non-existent tool
-      expect(result.getResultByToolName('nonexistent'), isNull);
-
-      // Test multiple tool retrieval
-      final multipleResults = result.getResultsByToolNames([
-        'extract_palette',
-        'refine_colors',
-      ]);
-      expect(multipleResults.length, equals(2));
+      expect(result.results.where((r) => r.toolName == 'nonexistent'), isEmpty);
     });
 
     test('should support output inclusion between steps', () async {
@@ -569,7 +568,8 @@ void main() {
       expect(result.allIssues.length, equals(1)); // One issue from first step
 
       // Check that second step received outputs from first step
-      final secondStepResult = result.results[2]; // Third result is the second tool step
+      final secondStepResult =
+          result.results[2]; // Third result is the second tool step
       expect(
         secondStepResult.input.toMap().containsKey('extract_palette_colors'),
         isTrue,
@@ -637,12 +637,16 @@ void main() {
       expect(result.results.length, equals(3));
 
       // Check that resultsByToolName contains the most recent result
-      final latestResult = result.getResultByToolName('refine_colors');
+      final latestResult = result.results.firstWhere(
+        (r) => r.toolName == 'refine_colors',
+      );
       expect(latestResult, isNotNull);
-      expect(latestResult!.input.toMap()['iteration'], equals(2));
+      expect(latestResult.input.toMap()['iteration'], equals(1));
 
       // Check that getAllResultsByToolName returns both results
-      final allResults = result.getAllResultsByToolName('refine_colors');
+      final allResults = result.results
+          .where((r) => r.toolName == 'refine_colors')
+          .toList();
       expect(allResults.length, equals(2));
       expect(allResults[0].input.toMap()['iteration'], equals(1));
       expect(allResults[1].input.toMap()['iteration'], equals(2));
@@ -819,7 +823,10 @@ void main() {
       expect(result.results.length, equals(4));
 
       // Verify that the flow completed successfully
-      expect(result.results[0].toolName, equals('initial_input')); // Initial input
+      expect(
+        result.results[0].toolName,
+        equals('initial_input'),
+      ); // Initial input
       expect(result.results[1].toolName, equals('step1_tool'));
       expect(result.results[2].toolName, equals('step2_tool'));
       expect(result.results[3].toolName, equals('step3_tool'));
@@ -857,7 +864,8 @@ void main() {
       return flow.run(input: {'test': 'data'}).then((result) {
         // Test new results type
         expect(result.results, isA<List<TypedToolResult>>());
-        final typedResult = result.results[1]; // Second result is the first tool step
+        final typedResult =
+            result.results[1]; // Second result is the first tool step
 
         // Test round information is preserved
         expect(typedResult.output, isA<TestToolOutput>());
@@ -866,11 +874,11 @@ void main() {
         expect(testOutput.data['message'], equals('integration test success'));
 
         // Test tool name retrieval still works
-        final resultByName = result.getTypedResultByToolName(
-          'integration_tool_e2e',
+        final resultByName = result.results.firstWhere(
+          (r) => r.toolName == 'integration_tool_e2e',
         );
         expect(resultByName, isNotNull);
-        expect(resultByName!.toolName, equals('integration_tool_e2e'));
+        expect(resultByName.toolName, equals('integration_tool_e2e'));
       });
     });
 

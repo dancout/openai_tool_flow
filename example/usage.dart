@@ -197,11 +197,9 @@ void main() async {
 
     print('✅ Professional color suite generation completed!\n');
 
+    // TODO: This, and maybe more of these "_display" functions could be removed if the underlying toolresult function they were demonstrating was removed.
     // Display enhanced execution summary
     _displayExecutionSummary(result);
-
-    // Demonstrate tool name-based retrieval
-    _demonstrateToolNameRetrieval(result);
 
     // Display step results with forwarding information
     _displayStepResultsWithForwarding(result);
@@ -228,7 +226,9 @@ List<Issue> issuesWithSeverity(List<Issue> allIssues, IssueSeverity severity) {
 void _displayExecutionSummary(ToolFlowResult result) {
   print('📊 Enhanced Execution Summary:');
   print('Steps executed: ${result.results.length}');
-  print('Tools used: ${result.resultsByToolName.keys.join(', ')}');
+  print(
+    'Tools used: ${result.results.map((r) => r.toolName).toSet().join(', ')}',
+  );
   print('Total issues found: ${result.allIssues.length}');
   print(
     'Critical issues: ${issuesWithSeverity(result.allIssues, IssueSeverity.critical).length}',
@@ -242,42 +242,11 @@ void _displayExecutionSummary(ToolFlowResult result) {
   print(
     'Low issues: ${issuesWithSeverity(result.allIssues, IssueSeverity.low).length}\n',
   );
-}
 
-/// Demonstrate tool name-based result retrieval for professional workflow
-void _demonstrateToolNameRetrieval(ToolFlowResult result) {
-  print('🔍 Tool Name-Based Retrieval (Professional Workflow):');
-
-  // Single tool retrieval - seed colors
-  final seedResult = result.getResultByToolName(
-    SeedColorGenerationOutput.stepName,
-  );
-  if (seedResult != null) {
-    print(
-      '  Seed Colors: Found result with ${seedResult.output.toMap().keys.length} output keys',
-    );
-  }
-
-  // Single tool retrieval - design system colors
-  final designSystemResult = result.getResultByToolName(
-    DesignSystemColorOutput.stepName,
-  );
-  if (designSystemResult != null) {
-    print(
-      '  Design System: Found result with ${designSystemResult.output.toMap().keys.length} output keys',
-    );
-  }
-
-  // Multiple tool retrieval for professional workflow
-  final multipleResults = result.getResultsByToolNames([
-    SeedColorGenerationOutput.stepName,
-    DesignSystemColorOutput.stepName,
-    FullColorSuiteOutput.stepName,
-  ]);
-  print('  Multiple tools: Retrieved ${multipleResults.length} results');
+  print('  Multiple tools: Retrieved ${result.results.length} results');
 
   // Results where condition
-  final successfulResults = result.getResultsWhere((r) => r.issues.isEmpty);
+  final successfulResults = result.results.where((r) => r.issues.isEmpty);
   print('  Successful steps: ${successfulResults.length} steps had no issues');
   print('');
 }
@@ -295,7 +264,7 @@ void _displayStepResultsWithForwarding(ToolFlowResult result) {
 
     // Check for forwarded data
     final forwardedKeys = stepResult.input
-        .toMap()
+        .getCleanToolInput()
         .keys
         .where((key) => key.startsWith('_forwarded_') || key.contains('_'))
         .toList();
@@ -328,103 +297,91 @@ void _displayNewWorkflowOutputUsage(ToolFlowResult result) {
   print('🔧 Professional Workflow Output Usage:');
 
   // Display seed colors
-  final seedResult = result.getResultByToolName(
-    SeedColorGenerationOutput.stepName,
-  );
-  if (seedResult != null) {
-    final seedOutputMap = seedResult.output.toMap();
-    print('  💎 Seed Colors Generated:');
-    final seedColors = seedOutputMap['seed_colors'] as List?;
-    if (seedColors != null) {
-      for (int i = 0; i < seedColors.length; i++) {
-        print('    Color ${i + 1}: ${seedColors[i]}');
-      }
+  final seedResult = result.results[1];
+  final seedOutputMap = seedResult.output.toMap();
+  print('  💎 Seed Colors Generated:');
+  final seedColors = seedOutputMap['seed_colors'] as List?;
+  if (seedColors != null) {
+    for (int i = 0; i < seedColors.length; i++) {
+      print('    Color ${i + 1}: ${seedColors[i]}');
     }
-    print('    Design Style: ${seedOutputMap['design_style']}');
-    print('    Mood: ${seedOutputMap['mood']}');
-    print('    Confidence: ${seedOutputMap['confidence']}');
-    print('');
   }
+  print('    Design Style: ${seedOutputMap['design_style']}');
+  print('    Mood: ${seedOutputMap['mood']}');
+  print('    Confidence: ${seedOutputMap['confidence']}');
+  print('');
 
   // Display design system colors
-  final designSystemResult = result.getResultByToolName(
-    DesignSystemColorOutput.stepName,
-  );
-  if (designSystemResult != null) {
-    final designOutputMap = designSystemResult.output.toMap();
-    print('  🎨 Design System Colors:');
-    final systemColors =
-        designOutputMap['system_colors'] as Map<String, dynamic>?;
-    if (systemColors != null) {
-      systemColors.forEach((key, value) {
-        print('    $key: $value');
-      });
-    }
-    final accessibilityScores =
-        designOutputMap['accessibility_scores'] as Map<String, dynamic>?;
-    if (accessibilityScores != null && accessibilityScores.isNotEmpty) {
-      print('  📊 Accessibility Scores:');
-      accessibilityScores.forEach((key, value) {
-        print('    $key: ${value}:1 contrast ratio');
-      });
-    }
-    print('');
+  final designSystemResult = result.results[2];
+  final designOutputMap = designSystemResult.output.toMap();
+  print('  🎨 Design System Colors:');
+  final systemColors =
+      designOutputMap['system_colors'] as Map<String, dynamic>?;
+  if (systemColors != null) {
+    systemColors.forEach((key, value) {
+      print('    $key: $value');
+    });
   }
+  final accessibilityScores =
+      designOutputMap['accessibility_scores'] as Map<String, dynamic>?;
+  if (accessibilityScores != null && accessibilityScores.isNotEmpty) {
+    print('  📊 Accessibility Scores:');
+    accessibilityScores.forEach((key, value) {
+      print('    $key: ${value}:1 contrast ratio');
+    });
+  }
+  print('');
 
   // Display full color suite
-  final fullSuiteResult = result.getResultByToolName(
-    FullColorSuiteOutput.stepName,
-  );
-  if (fullSuiteResult != null) {
-    final suiteOutputMap = fullSuiteResult.output.toMap();
-    print('  🌈 Complete Color Suite (30 colors):');
-    final colorSuite = suiteOutputMap['color_suite'] as Map<String, dynamic>?;
-    if (colorSuite != null) {
-      // Group colors by category for better display
-      final textColors = <String, String>{};
-      final backgroundColors = <String, String>{};
-      final interactiveColors = <String, String>{};
-      final statusColors = <String, String>{};
+  final fullSuiteResult = result.results[3];
+  final suiteOutputMap = fullSuiteResult.output.toMap();
+  print('  🌈 Complete Color Suite (30 colors):');
+  final colorSuite = suiteOutputMap['color_suite'] as Map<String, dynamic>?;
+  if (colorSuite != null) {
+    // Group colors by category for better display
+    final textColors = <String, String>{};
+    final backgroundColors = <String, String>{};
+    final interactiveColors = <String, String>{};
+    final statusColors = <String, String>{};
 
-      colorSuite.forEach((key, value) {
-        if (key.contains('Text')) {
-          textColors[key] = value as String;
-        } else if (key.contains('Background')) {
-          backgroundColors[key] = value as String;
-        } else if (key.contains('Button') ||
-            key.contains('Link') ||
-            key.contains('Border')) {
-          interactiveColors[key] = value as String;
-        } else if (key.contains('error') ||
-            key.contains('warning') ||
-            key.contains('success')) {
-          statusColors[key] = value as String;
-        }
-      });
+    colorSuite.forEach((key, value) {
+      if (key.contains('Text')) {
+        textColors[key] = value as String;
+      } else if (key.contains('Background')) {
+        backgroundColors[key] = value as String;
+      } else if (key.contains('Button') ||
+          key.contains('Link') ||
+          key.contains('Border')) {
+        interactiveColors[key] = value as String;
+      } else if (key.contains('error') ||
+          key.contains('warning') ||
+          key.contains('success')) {
+        statusColors[key] = value as String;
+      }
+    });
 
-      print('    📝 Text Colors:');
-      textColors.forEach((key, value) => print('      $key: $value'));
+    print('    📝 Text Colors:');
+    textColors.forEach((key, value) => print('      $key: $value'));
 
-      print('    🏢 Background Colors:');
-      backgroundColors.forEach((key, value) => print('      $key: $value'));
+    print('    🏢 Background Colors:');
+    backgroundColors.forEach((key, value) => print('      $key: $value'));
 
-      print('    🔗 Interactive Colors:');
-      interactiveColors.forEach((key, value) => print('      $key: $value'));
+    print('    🔗 Interactive Colors:');
+    interactiveColors.forEach((key, value) => print('      $key: $value'));
 
-      print('    ⚠️ Status Colors:');
-      statusColors.forEach((key, value) => print('      $key: $value'));
-    }
-
-    final brandGuidelines =
-        suiteOutputMap['brand_guidelines'] as Map<String, dynamic>?;
-    if (brandGuidelines != null && brandGuidelines.isNotEmpty) {
-      print('  📋 Brand Guidelines:');
-      brandGuidelines.forEach((key, value) {
-        print('    $key: $value');
-      });
-    }
-    print('');
+    print('    ⚠️ Status Colors:');
+    statusColors.forEach((key, value) => print('      $key: $value'));
   }
+
+  final brandGuidelines =
+      suiteOutputMap['brand_guidelines'] as Map<String, dynamic>?;
+  if (brandGuidelines != null && brandGuidelines.isNotEmpty) {
+    print('  📋 Brand Guidelines:');
+    brandGuidelines.forEach((key, value) {
+      print('    $key: $value');
+    });
+  }
+  print('');
 }
 
 /// Display issues analysis by round and forwarding
@@ -477,8 +434,8 @@ void _exportEnhancedResults(ToolFlowResult result) {
   print('📄 Professional Color Suite Export:');
 
   // Show final color suite
-  final finalOutput = result.finalOutput;
-  if (finalOutput != null && finalOutput.containsKey('color_suite')) {
+  final finalOutput = result.results.last.output.toMap();
+  if (finalOutput.containsKey('color_suite')) {
     print('🎨 Generated Professional Color Suite:');
     final colorSuite = finalOutput['color_suite'] as Map<String, dynamic>;
 
@@ -507,9 +464,10 @@ void _exportEnhancedResults(ToolFlowResult result) {
     'successful_steps': result.results.where((r) => r.issues.isEmpty).length,
     'total_issues': result.allIssues.length,
     'workflow_type': 'Professional 3-Step Color Generation',
-    'tools_used': result.resultsByToolName.keys.toList(),
+    'tools_used': result.results.map((r) => r.toolName).toSet().toList(),
     'outputs_available': result.results.isNotEmpty,
     'accessibility_compliant': true,
+    // TODO: This should actually go through each result and find the maxRetries_used
     'maxRetries_used': 3,
   };
 
@@ -521,14 +479,12 @@ void _exportEnhancedResults(ToolFlowResult result) {
 
   // Tool name mapping for easy reference
   print('🗂️ Professional Workflow Tool Mapping:');
-  result.resultsByToolName.forEach((toolName, toolResult) {
-    final typedResult = result.getTypedResultByToolName(toolName);
-    final stepIndex = typedResult != null
-        ? result.results.indexOf(typedResult)
-        : -1;
+
+  for (TypedToolResult toolResult in result.results) {
+    final stepIndex = result.results.indexOf(toolResult);
 
     String workflowStep = '';
-    switch (toolName) {
+    switch (toolResult.toolName) {
       case 'generate_seed_colors':
         workflowStep = ' (Step 1: Seed Generation)';
         break;
@@ -540,8 +496,8 @@ void _exportEnhancedResults(ToolFlowResult result) {
         break;
     }
 
-    print('  $toolName -> Step ${stepIndex + 1}$workflowStep');
-  });
+    print('  ${toolResult.toolName} -> Step ${stepIndex + 1}$workflowStep');
+  }
   print('');
 
   print(

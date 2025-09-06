@@ -26,8 +26,6 @@ class ToolFlow {
   /// Results from completed steps (ordered list) using type-safe wrappers
   final List<TypedToolResult> _results = [];
 
-
-
   /// Creates a ToolFlow with configuration and steps
   ToolFlow({
     required this.config,
@@ -165,16 +163,6 @@ class ToolFlow {
       }
     }
 
-    // Build tool name maps from results list
-    final Map<String, TypedToolResult> resultsByToolName = {};
-    final Map<String, List<TypedToolResult>> allResultsByToolName = {};
-    
-    for (final result in _results) {
-      final toolName = result.toolName;
-      resultsByToolName[toolName] = result; // Most recent wins
-      allResultsByToolName.putIfAbsent(toolName, () => []).add(result);
-    }
-
     // Aggregate token usage from all steps
     _aggregateTokenUsage();
 
@@ -182,11 +170,6 @@ class ToolFlow {
       typedResults: List.unmodifiable(_results),
       finalState: Map.unmodifiable(_state),
       allIssues: _getAllIssues(),
-      typedResultsByToolName: Map.unmodifiable(resultsByToolName),
-      allTypedResultsByToolName: allResultsByToolName.map(
-        (key, value) =>
-            MapEntry(key, List<TypedToolResult>.unmodifiable(value)),
-      ),
     );
   }
 
@@ -436,6 +419,11 @@ class ToolFlow {
 
   /// Aggregates token usage from all steps into the state
   void _aggregateTokenUsage() {
+    // TODO: Would it be better to store the token usage in the TypedToolResult somewhere? Then it would be accessible at a more granular level to the user.
+    /// We could even have it be a list of usages per attempt so that the user could see how many tokens were consumed per attempt of each step
+    /// Then the total per step could be a convenience getter for total tokens
+    /// Same with the tool flow, we could have convenience getters for total token usage
+    /// BUT - still have access at each layer if the user was interested
     int totalPromptTokens = 0;
     int totalCompletionTokens = 0;
     int totalTokens = 0;
@@ -473,136 +461,19 @@ class ToolFlowResult {
   /// All issues collected from all steps
   final List<Issue> allIssues;
 
-  /// Results keyed by tool name for easy retrieval (backward compatible interface)
-  /// For duplicate tool names, this contains the MOST RECENT result
-  ///
-  /// **Example:**
-  /// ```dart
-  /// final latestPaletteResult = result.resultsByToolName['extract_palette'];
-  /// ```
-  Map<String, ToolResult<ToolOutput>> get resultsByToolName =>
-      _typedResultsByToolName.map(
-        (key, value) => MapEntry(key, value.underlyingResult),
-      );
-
-  /// All results grouped by tool name (backward compatible interface)
-  /// Each tool name maps to a list of results in execution order
-  ///
-  /// **Use this when you need all instances of a tool:**
-  /// ```dart
-  /// final allPaletteResults = result.allResultsByToolName['extract_palette'] ?? [];
-  /// for (final result in allPaletteResults) {
-  ///   print('Palette from step ${result.input['_round']}: ${result.output}');
-  /// }
-  /// ```
-  Map<String, List<ToolResult<ToolOutput>>> get allResultsByToolName =>
-      _allTypedResultsByToolName.map(
-        (key, value) =>
-            MapEntry(key, value.map((tr) => tr.underlyingResult).toList()),
-      );
-
-  /// Internal typed results keyed by tool name
-  final Map<String, TypedToolResult> _typedResultsByToolName;
-
-  /// Internal all typed results grouped by tool name
-  final Map<String, List<TypedToolResult>> _allTypedResultsByToolName;
-
   /// Creates a ToolFlowResult from typed results
   ToolFlowResult._fromTyped({
     required List<TypedToolResult> typedResults,
     required this.finalState,
     required this.allIssues,
-    required Map<String, TypedToolResult> typedResultsByToolName,
-    required Map<String, List<TypedToolResult>> allTypedResultsByToolName,
-  }) : _typedResults = typedResults,
-       _typedResultsByToolName = typedResultsByToolName,
-       _allTypedResultsByToolName = allTypedResultsByToolName;
+  }) : _typedResults = typedResults;
 
   /// Creates a ToolFlowResult (backward compatible constructor)
   const ToolFlowResult({
     required List<ToolResult<ToolOutput>> results,
     required this.finalState,
     required this.allIssues,
-    required Map<String, ToolResult<ToolOutput>> resultsByToolName,
-    required Map<String, List<ToolResult<ToolOutput>>> allResultsByToolName,
-  }) : _typedResults = const [],
-       _typedResultsByToolName = const {},
-       _allTypedResultsByToolName = const {};
-
-  /// Returns true if any step produced issues
-  bool get hasIssues => allIssues.isNotEmpty;
-
-  /// Returns the final output from the last successful step
-  Map<String, dynamic>? get finalOutput {
-    if (results.isEmpty) return null;
-    return results.last.output.toMap();
-  }
-
-  /// Gets the result for a specific tool by name
-  /// Returns the most recent result if there are duplicates
-  ///
-  /// **Example:**
-  /// ```dart
-  /// final paletteResult = result.getResultByToolName('extract_palette');
-  /// if (paletteResult != null) {
-  ///   final colors = paletteResult.output['colors'];
-  /// }
-  /// ```
-  ToolResult<ToolOutput>? getResultByToolName(String toolName) {
-    return resultsByToolName[toolName];
-  }
-
-  /// Gets the typed result for a specific tool by name
-  /// Returns the most recent result if there are duplicates
-  ///
-  /// This method enables type-safe access to results for audit functions
-  /// and other code that needs the specific output type.
-  TypedToolResult? getTypedResultByToolName(String toolName) {
-    return _typedResultsByToolName[toolName];
-  }
-
-  /// Gets all results for a specific tool name (handles duplicates)
-  /// Returns results in execution order
-  ///
-  /// **Use when the same tool was called multiple times:**
-  /// ```dart
-  /// final allRefinements = result.getAllResultsByToolName('refine_colors');
-  /// for (int i = 0; i < allRefinements.length; i++) {
-  ///   print('Refinement iteration ${i + 1}: ${allRefinements[i].output}');
-  /// }
-  /// ```
-  List<ToolResult<ToolOutput>> getAllResultsByToolName(String toolName) {
-    return allResultsByToolName[toolName] ?? [];
-  }
-
-  /// Gets all typed results for a specific tool name (handles duplicates)
-  /// Returns results in execution order
-  List<TypedToolResult> getAllTypedResultsByToolName(String toolName) {
-    return _allTypedResultsByToolName[toolName] ?? [];
-  }
-
-  /// Gets all results for tools matching a pattern
-  List<TypedToolResult> getResultsWhere(
-    bool Function(TypedToolResult) predicate,
-  ) {
-    return results.where(predicate).toList();
-  }
-
-  /// Gets results by tool names (most recent for each tool)
-  List<TypedToolResult> getResultsByToolNames(List<String> toolNames) {
-    return toolNames
-        .map((name) => _typedResultsByToolName[name])
-        .where((result) => result != null)
-        .cast<TypedToolResult>()
-        .toList();
-  }
-
-  /// Gets all results by tool names (including duplicates)
-  List<TypedToolResult> getAllResultsByToolNames(List<String> toolNames) {
-    return toolNames
-        .expand((name) => getAllTypedResultsByToolName(name))
-        .toList();
-  }
+  }) : _typedResults = const [];
 
   /// Converts this result to a JSON map
   Map<String, dynamic> toJson() {
@@ -610,18 +481,11 @@ class ToolFlowResult {
       'results': results.map((r) => r.toJson()).toList(),
       'finalState': finalState,
       'allIssues': allIssues.map((i) => i.toJson()).toList(),
-      'hasIssues': hasIssues,
-      'resultsByToolName': resultsByToolName.map(
-        (key, value) => MapEntry(key, value.toJson()),
-      ),
-      'allResultsByToolName': allResultsByToolName.map(
-        (key, value) => MapEntry(key, value.map((r) => r.toJson()).toList()),
-      ),
     };
   }
 
   @override
   String toString() {
-    return 'ToolFlowResult(steps: ${results.length}, issues: ${allIssues.length}, tools: ${resultsByToolName.keys.join(', ')})';
+    return 'ToolFlowResult(steps: ${results.length}, issues: ${allIssues.length})';
   }
 }

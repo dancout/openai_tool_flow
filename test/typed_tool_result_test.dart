@@ -301,17 +301,17 @@ void main() {
       expect(result.results.length, equals(3)); // initial input + 2 tool steps
 
       // Check that each result has the correct type information
-      final seedResult = result.getTypedResultByToolName(
-        'generate_seed_colors',
+      final seedResult = result.results.firstWhere(
+        (r) => r.toolName == 'generate_seed_colors',
       );
-      final suiteResult = result.getTypedResultByToolName(
-        'generate_color_suite',
+      final suiteResult = result.results.firstWhere(
+        (r) => r.toolName == 'generate_color_suite',
       );
 
       expect(seedResult, isNotNull);
       expect(suiteResult, isNotNull);
-      expect(seedResult!.outputType, equals(SeedColorGenerationTestOutput));
-      expect(suiteResult!.outputType, equals(ColorSuiteGenerationTestOutput));
+      expect(seedResult.outputType, equals(SeedColorGenerationTestOutput));
+      expect(suiteResult.outputType, equals(ColorSuiteGenerationTestOutput));
 
       // Verify type-safe casting works
       final typedSeedResult = seedResult
@@ -371,17 +371,18 @@ void main() {
 
       // Check that audits ran and produced no issues for valid outputs
       final seedIssues = result.results[1].issues; // First tool step (index 1)
-      final suiteIssues = result.results[2].issues; // Second tool step (index 2)
+      final suiteIssues =
+          result.results[2].issues; // Second tool step (index 2)
 
       expect(seedIssues, isEmpty);
       expect(suiteIssues, isEmpty);
 
       // Check that audit functions were type-safe
-      final seedResult = result.getTypedResultByToolName(
-        'generate_seed_colors',
+      final seedResult = result.results.firstWhere(
+        (r) => r.toolName == 'generate_seed_colors',
       );
-      final suiteResult = result.getTypedResultByToolName(
-        'generate_color_suite',
+      final suiteResult = result.results.firstWhere(
+        (r) => r.toolName == 'generate_color_suite',
       );
 
       expect(seedResult, isNotNull);
@@ -392,10 +393,10 @@ void main() {
       final audit2 = ColorSuiteValidationAudit();
 
       final audit1Issues = audit1.run(
-        seedResult!.asTyped<SeedColorGenerationTestOutput>(),
+        seedResult.asTyped<SeedColorGenerationTestOutput>(),
       );
       final audit2Issues = audit2.run(
-        suiteResult!.asTyped<ColorSuiteGenerationTestOutput>(),
+        suiteResult.asTyped<ColorSuiteGenerationTestOutput>(),
       );
 
       expect(audit1Issues, isEmpty);
@@ -450,7 +451,10 @@ void main() {
 
         final result = await flow.run(input: {'test': 'data'});
 
-        expect(result.results.length, equals(3)); // initial input + 2 tool steps
+        expect(
+          result.results.length,
+          equals(3),
+        ); // initial input + 2 tool steps
 
         // Check that audits ran and produced issues for invalid outputs
         final seedIssues = result.results[1].issues; // First tool step
@@ -469,11 +473,11 @@ void main() {
         );
 
         // Type-safe audit: should report issues for invalid outputs
-        final seedResult = result.getTypedResultByToolName(
-          'generate_seed_colors_invalid',
+        final seedResult = result.results.firstWhere(
+          (r) => r.toolName == 'generate_seed_colors_invalid',
         );
-        final suiteResult = result.getTypedResultByToolName(
-          'generate_color_suite_invalid',
+        final suiteResult = result.results.firstWhere(
+          (r) => r.toolName == 'generate_color_suite_invalid',
         );
 
         expect(seedResult, isNotNull);
@@ -483,10 +487,10 @@ void main() {
         final audit2 = ColorSuiteValidationAudit();
 
         final audit1Issues = audit1.run(
-          seedResult!.asTyped<SeedColorGenerationTestOutput>(),
+          seedResult.asTyped<SeedColorGenerationTestOutput>(),
         );
         final audit2Issues = audit2.run(
-          suiteResult!.asTyped<ColorSuiteGenerationTestOutput>(),
+          suiteResult.asTyped<ColorSuiteGenerationTestOutput>(),
         );
 
         expect(audit1Issues, isNotEmpty);
@@ -551,18 +555,18 @@ void main() {
 
         final result = await flow.run(input: {'test': 'data'});
 
-        final seedResult = result.getTypedResultByToolName(
-          'generate_seed_colors',
+        final seedResult = result.results.firstWhere(
+          (r) => r.toolName == 'generate_seed_colors',
         );
-        final suiteResult = result.getTypedResultByToolName(
-          'generate_color_suite',
+        final suiteResult = result.results.firstWhere(
+          (r) => r.toolName == 'generate_color_suite',
         );
 
         expect(seedResult, isNotNull);
         expect(suiteResult, isNotNull);
 
         // Safe cast: correct type
-        final typedSeed = seedResult!.asTyped<SeedColorGenerationTestOutput>();
+        final typedSeed = seedResult.asTyped<SeedColorGenerationTestOutput>();
         expect(typedSeed, isNotNull);
 
         // Safe cast: incorrect type returns null
@@ -573,13 +577,13 @@ void main() {
 
         // Unsafe cast: throws if type is wrong
         expect(
-          () => suiteResult!.asTyped<SeedColorGenerationTestOutput>(),
+          () => suiteResult.asTyped<SeedColorGenerationTestOutput>(),
           throwsA(isA<Exception>()),
         );
 
         // Unsafe cast: correct type does not throw
         expect(
-          () => suiteResult!.asTyped<ColorSuiteGenerationTestOutput>(),
+          () => suiteResult.asTyped<ColorSuiteGenerationTestOutput>(),
           returnsNormally,
         );
       },
