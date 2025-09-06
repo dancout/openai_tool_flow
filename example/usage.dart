@@ -212,9 +212,56 @@ void main() async {
 
     // Export enhanced results
     _exportEnhancedResults(result);
+
+    // Display token usage by step
+    _displayTokenUsageByStep(flow, result);
   } catch (e) {
     print('❌ Flow execution failed: $e');
   }
+}
+
+/// Display token usage by step
+void _displayTokenUsageByStep(ToolFlow flow, ToolFlowResult result) {
+  print('🔢 Token Usage by Step:');
+  int totalPromptTokens = 0;
+  int totalCompletionTokens = 0;
+  int totalTokens = 0;
+
+  // TODO: The i = 1 and the i - 1 below feels clumsy, and could be where the stepIndex and resultIndex from other TODOs comes into play.
+  for (int i = 1; i < result.results.length; i++) {
+    final stepResult = result.results[i];
+    final usage =
+        result.finalState['step_${i - 1}_usage'] as Map<String, dynamic>?;
+    final toolName = stepResult.toolName;
+    if (usage != null) {
+      final promptTokens = usage['prompt_tokens'] ?? 0;
+      final completionTokens = usage['completion_tokens'] ?? 0;
+      final stepTotalTokens = usage['total_tokens'] ?? 0;
+
+      // Add to totals
+      totalPromptTokens += promptTokens is int
+          ? promptTokens
+          : int.tryParse(promptTokens.toString()) ?? 0;
+      totalCompletionTokens += completionTokens is int
+          ? completionTokens
+          : int.tryParse(completionTokens.toString()) ?? 0;
+      totalTokens += stepTotalTokens is int
+          ? stepTotalTokens
+          : int.tryParse(stepTotalTokens.toString()) ?? 0;
+
+      print('  Step $i ($toolName):');
+      print('    Prompt tokens: ${promptTokens}');
+      print('    Completion tokens: ${completionTokens}');
+      print('    Total tokens: ${stepTotalTokens}');
+    } else {
+      print('  Step $i ($toolName): No token usage data');
+    }
+  }
+
+  print('\n🔢 Total Token Usage Across All Steps:');
+  print('  Prompt tokens: $totalPromptTokens');
+  print('  Completion tokens: $totalCompletionTokens');
+  print('  Total tokens: $totalTokens\n');
 }
 
 /// Helper function to filter issues by severity

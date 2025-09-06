@@ -1,3 +1,4 @@
+import 'package:meta/meta.dart';
 import 'package:openai_toolflow/openai_toolflow.dart';
 
 /// Manages ordered execution of tool call steps with internal state management.
@@ -24,7 +25,22 @@ class ToolFlow {
   final Map<String, dynamic> _state = {};
 
   /// Results from completed steps (ordered list) using type-safe wrappers
+  // TODO: Should we consider removing this in favor of the _allAttempts Map where we can access the final attempt at each step, and that's effectively what _results is showing?
   final List<TypedToolResult> _results = [];
+
+  /// All attempts for all steps, organized by step index
+  /// Each step index maps to a list of attempts (including the final successful one)
+  final Map<int, List<TypedToolResult>> _allAttempts = {};
+
+  // TODO: Do we actually need this visible for testing function?
+  /// Gets all attempts for a specific step (0-indexed from steps array)
+  @visibleForTesting
+  List<TypedToolResult>? getStepAttempts(int stepIndex) {
+    // Convert from step index to storage index
+    // stepIndex 0 -> storage index 1, stepIndex 1 -> storage index 2, etc.
+    final storageIndex = stepIndex + 1;
+    return _allAttempts[storageIndex];
+  }
 
   /// Creates a ToolFlow with configuration and steps
   ToolFlow({
@@ -40,6 +56,7 @@ class ToolFlow {
   Future<ToolFlowResult> run({required Map<String, dynamic> input}) async {
     _state.clear();
     _results.clear();
+    _allAttempts.clear();
     _state.addAll(input);
 
     // Create initial TypedToolResult from input
@@ -65,14 +82,20 @@ class ToolFlow {
     // Add initial result to collections
     _results.add(initialTypedResult);
 
-    for (int i = 0; i < steps.length; i++) {
-      final step = steps[i];
+    // Store initial input data as "attempt" at index 0 to align with _results indexing
+    _allAttempts[0] = [initialTypedResult];
+
+    for (int i = 1; i <= steps.length; i++) {
+      final step = steps[i - 1];
       final stepConfig = step.stepConfig;
 
       TypedToolResult? stepResult;
       bool stepPassed = false;
       int attemptCount = 0;
       final maxRetries = stepConfig.maxRetries;
+
+      // Initialize attempts list for this step
+      _allAttempts[i] = [];
 
       // Retry loop for this step
       while (attemptCount <= maxRetries && !stepPassed) {
@@ -82,7 +105,8 @@ class ToolFlow {
           // Execute the step
           stepResult = await _executeStep(
             step: step,
-            stepIndex: i,
+            // TODO: Should we use a helper function for decrementing that i JUST so that it's clear we need a different sort of index?
+            stepIndex: i - 1,
             round: attemptCount - 1,
           );
 
@@ -91,9 +115,12 @@ class ToolFlow {
             stepResult = await _runAuditsForStep(
               result: stepResult,
               stepConfig: stepConfig,
-              stepIndex: i,
+              stepIndex: i - 1,
             );
           }
+
+          // Store this attempt (whether it passes or fails)
+          _allAttempts[i]!.add(stepResult);
 
           // Check if step passed criteria
           final allIssues = stepResult.issues;
@@ -109,7 +136,7 @@ class ToolFlow {
           // Create an error result - build step input for error case
           final errorStepInput = _buildStepInput(
             step: step,
-            stepIndex: i,
+            stepIndex: i - 1,
             round: attemptCount,
           );
           final errorToolResult = ToolResult<ToolOutput>(
@@ -139,6 +166,9 @@ class ToolFlow {
             errorToolResult,
             ToolOutput,
           );
+
+          // Store this attempt (error case)
+          _allAttempts[i]!.add(stepResult);
           stepPassed = false;
         }
       }
@@ -169,7 +199,9 @@ class ToolFlow {
     return ToolFlowResult._fromTyped(
       typedResults: List.unmodifiable(_results),
       finalState: Map.unmodifiable(_state),
-      allIssues: _getAllIssues(),
+      // TODO: Do we need a list of allIssues if they are also available on the _results entries directly? Can't the user gather those themselves if they want to?
+      allIssues: _getFinalResultIssues(),
+      // TODO: Should we have _allAttempts exposed here? Potentially it could be included based on a bool parameter passed into the ToolFlow config.
     );
   }
 
@@ -188,11 +220,19 @@ class ToolFlow {
     // Get results to include in tool call if configured
     final includedResults = _getIncludedResults(step: step);
 
-    // Execute using the injected OpenAI service with included results
+    // Get current step retry attempts (excluding the current attempt)
+    final currentStepRetries = _getCurrentStepAttempts(
+      // TODO: This could be another different variable about generating stepIndex vs resultIndex
+      stepIndex: stepIndex + 1, // Use result index, not step index
+      severityFilter: step.stepConfig.issuesSeverityFilter,
+    );
+
+    // Execute using the injected OpenAI service with included results and retry attempts
     final response = await openAiService.executeToolCall(
       step,
       stepInput,
       includedResults: includedResults,
+      currentStepRetries: currentStepRetries,
     );
 
     // Store usage information in state
@@ -358,16 +398,13 @@ class ToolFlow {
     final stepConfig = step.stepConfig;
 
     for (final index in step.includeResultsInToolcall) {
-      TypedToolResult? sourceTypedResult;
-
-      // Find the source result by index only
-      if (index >= 0 && index < _results.length) {
-        sourceTypedResult = _results[index];
-      }
-
-      if (sourceTypedResult != null) {
+      // Pull all attempts for the referenced step index
+      final attempts = _allAttempts[index] ?? [];
+      // TODO: This logic is basically duplicated in _getCurrentStepAttempts. Consolidate extracting the included results to a helper function.
+      /// You may even be able to just use this _getIncludedResults function for both scenarios.
+      for (final attempt in attempts) {
         // Filter issues by severity level
-        final filteredIssues = sourceTypedResult.issues
+        final filteredIssues = attempt.issues
             .where(
               (issue) => _isIssueSeverityIncluded(
                 issue.severity,
@@ -376,10 +413,10 @@ class ToolFlow {
             )
             .toList();
 
-        // Only include result if it has issues matching the filter
+        // Only include attempt if it has issues matching the filter
         if (filteredIssues.isNotEmpty) {
           // Create a copy of the result with filtered issues
-          final filteredResult = sourceTypedResult.underlyingResult.copyWith(
+          final filteredResult = attempt.underlyingResult.copyWith(
             issues: filteredIssues,
           );
           includedResults.add(filteredResult);
@@ -408,8 +445,37 @@ class ToolFlow {
     return issueIndex >= filterIndex;
   }
 
-  /// Gets all issues from all completed steps
-  List<Issue> _getAllIssues() {
+  /// Gets the retry attempts for the current step with filtered issues
+  List<ToolResult<ToolOutput>> _getCurrentStepAttempts({
+    required int stepIndex,
+    required IssueSeverity severityFilter,
+  }) {
+    final attemptResults = <ToolResult<ToolOutput>>[];
+    final attempts = _allAttempts[stepIndex] ?? [];
+
+    for (final attempt in attempts) {
+      // Filter issues by severity level
+      final filteredIssues = attempt.issues
+          .where(
+            (issue) => _isIssueSeverityIncluded(issue.severity, severityFilter),
+          )
+          .toList();
+
+      // Only include attempt if it has issues matching the filter
+      if (filteredIssues.isNotEmpty) {
+        // Create a copy of the result with filtered issues
+        final filteredResult = attempt.underlyingResult.copyWith(
+          issues: filteredIssues,
+        );
+        attemptResults.add(filteredResult);
+      }
+    }
+
+    return attemptResults;
+  }
+
+  /// Gets issues from final results of each step only (not all attempts)
+  List<Issue> _getFinalResultIssues() {
     final allIssues = <Issue>[];
     for (final result in _results) {
       allIssues.addAll(result.issues);

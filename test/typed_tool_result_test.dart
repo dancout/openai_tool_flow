@@ -171,6 +171,7 @@ class TypedMockOpenAiService implements OpenAiToolService {
     ToolCallStep step,
     ToolInput input, {
     List<ToolResult> includedResults = const [],
+    List<ToolResult> currentStepRetries = const [],
   }) async {
     Map<String, dynamic> output;
     switch (step.toolName) {

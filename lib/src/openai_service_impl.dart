@@ -24,15 +24,17 @@ class DefaultOpenAiToolService implements OpenAiToolService {
     ToolCallStep step,
     ToolInput input, {
     List<ToolResult> includedResults = const [],
+    List<ToolResult> currentStepRetries = const [],
   }) async {
     final client = _httpClient ?? http.Client();
 
     try {
-      // Build the OpenAI request with included results
+      // Build the OpenAI request with included results and retry attempts
       final request = _buildOpenAiRequest(
         step: step,
         input: input,
         includedResults: includedResults,
+        currentStepRetries: currentStepRetries,
       );
 
       final requestJson = request.toJson();
@@ -74,24 +76,17 @@ class DefaultOpenAiToolService implements OpenAiToolService {
     required ToolCallStep step,
     required ToolInput input,
     List<ToolResult> includedResults = const [],
+    List<ToolResult> currentStepRetries = const [],
   }) {
     // Create tool definition
     final toolDefinition = _buildToolDefinition(step: step, input: input);
 
-    // Include previous results with filtered issues in system message context
-    final systemMessageInput = SystemMessageInput(
-      toolFlowContext: 'Executing tool call in a structured workflow',
-      stepDescription: 'Tool: ${step.toolName}, Model: ${step.model}',
+    // Build system message directly instead of using complex SystemMessageInput
+    final systemMessage = _buildSystemMessage(
+      step: step,
       previousResults: includedResults,
-      // TODO: Should additionalContext be a structured object?
-      additionalContext: {
-        'step_tool': step.toolName,
-        'step_model': step.model,
-        'system_message_template': step.outputSchema.systemMessageTemplate,
-      },
+      currentStepRetries: currentStepRetries,
     );
-
-    final systemMessage = _buildSystemMessage(systemMessageInput);
     final userMessage = _buildUserMessage(input);
 
     return OpenAiRequest.forModel(
@@ -129,16 +124,18 @@ class DefaultOpenAiToolService implements OpenAiToolService {
     };
   }
 
-  /// Builds system message from structured input
-  String _buildSystemMessage(SystemMessageInput input) {
+  /// Builds system message with step context and results
+  String _buildSystemMessage({
+    required ToolCallStep step,
+    required List<ToolResult> previousResults,
+    required List<ToolResult> currentStepRetries,
+  }) {
     final buffer = StringBuffer();
 
-    // Use system message template from additional context if available
-    final systemMessageTemplate =
-        // TODO: Should the systemMessage exist directly on the ToolCallStep, just like the toolDescription?
-        input.additionalContext['system_message_template'] as String?;
-
-    if (systemMessageTemplate != null) {
+    // Use system message template from step if available
+    final systemMessageTemplate = step.outputSchema.systemMessageTemplate;
+    
+    if (systemMessageTemplate?.isNotEmpty == true) {
       buffer.writeln(systemMessageTemplate);
     } else {
       // Fallback to original behavior
@@ -147,16 +144,12 @@ class DefaultOpenAiToolService implements OpenAiToolService {
       );
     }
 
-    buffer.writeln();
-    buffer.writeln('Context: ${input.toolFlowContext}');
-    buffer.writeln('Current Step: ${input.stepDescription}');
-
     // Include previous results and their associated issues if provided
-    if (input.previousResults.isNotEmpty) {
+    if (previousResults.isNotEmpty) {
       buffer.writeln();
       buffer.writeln('Previous step results and associated issues:');
-      for (int i = 0; i < input.previousResults.length; i++) {
-        final result = input.previousResults[i];
+      for (int i = 0; i < previousResults.length; i++) {
+        final result = previousResults[i];
         buffer.writeln('  Step: ${result.toolName}');
         buffer.writeln('    Output: ${jsonEncode(result.output.toMap())}');
 
@@ -177,9 +170,30 @@ class DefaultOpenAiToolService implements OpenAiToolService {
       }
     }
 
-    if (input.additionalContext.isNotEmpty) {
+    // Include current step retry attempts and their associated issues if provided
+    if (currentStepRetries.isNotEmpty) {
       buffer.writeln();
-      buffer.writeln('Additional context: ${input.additionalContext}');
+      buffer.writeln('Current step retry attempts and associated issues:');
+      for (int i = 0; i < currentStepRetries.length; i++) {
+        final result = currentStepRetries[i];
+        buffer.writeln('  Attempt ${i + 1}: ${result.toolName}');
+        buffer.writeln('    Output: ${jsonEncode(result.output.toMap())}');
+
+        // Include issues associated with this specific retry attempt
+        if (result.issues.isNotEmpty) {
+          buffer.writeln('    Associated issues:');
+          for (final issue in result.issues) {
+            buffer.writeln(
+              '      - ${issue.severity.name.toUpperCase()}: ${issue.description}',
+            );
+            if (issue.suggestions.isNotEmpty) {
+              buffer.writeln(
+                '        Suggestions: ${issue.suggestions.join(', ')}',
+              );
+            }
+          }
+        }
+      }
     }
 
     return buffer.toString();
@@ -265,9 +279,8 @@ class MockOpenAiToolService implements OpenAiToolService {
     ToolCallStep step,
     ToolInput input, {
     List<ToolResult> includedResults = const [],
+    List<ToolResult> currentStepRetries = const [],
   }) async {
-    // Simulate some processing time
-    await Future.delayed(const Duration(milliseconds: 100));
     final inputJson = input.toMap();
 
     // Return predefined response if available

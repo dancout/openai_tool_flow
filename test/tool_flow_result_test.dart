@@ -28,6 +28,7 @@ class MockOpenAiToolService implements OpenAiToolService {
     ToolCallStep step,
     ToolInput input, {
     List<ToolResult> includedResults = const [],
+    List<ToolResult> currentStepRetries = const [],
   }) async {
     final response = responses[step.toolName];
     if (response == null) {
