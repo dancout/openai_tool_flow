@@ -209,6 +209,7 @@ class DefaultOpenAiToolService implements OpenAiToolService {
 
     if (input.additionalContext.isNotEmpty) {
       buffer.writeln();
+      // TODO: When we are adding the additionalContext here, it is adding on redundant information. For example, you are adding `additionalContext['system_message_template']`immediately into the buffer, and then spitting back everything in the additionalContext map introducing an overlap of redundant info!.
       buffer.writeln('Additional context: ${input.additionalContext}');
     }
 

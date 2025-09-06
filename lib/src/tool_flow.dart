@@ -461,6 +461,8 @@ class ToolFlow {
   }
 
   /// Gets all issues from all completed steps
+  // TODO: To be more accurate, this is all issues in the final results of each step - NOT across all attempts.
+  // TODO: Add another getter and handler for retrieving truly all issues from all attempts and name both getters accordingly.
   List<Issue> _getAllIssues() {
     final allIssues = <Issue>[];
     for (final result in _results) {
