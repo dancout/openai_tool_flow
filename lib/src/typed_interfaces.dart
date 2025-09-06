@@ -12,6 +12,7 @@ class ToolInput {
   final int round;
 
   /// Custom input data specific to this tool
+  // TODO: This houses forwarded data for steps other than the initial (I think? Maybe also the initial). Does it make sense to make this be a forwarded data object instead of just unstructured custom data?
   final Map<String, dynamic> customData;
 
   /// Model configuration for this step
@@ -126,6 +127,8 @@ class ToolOutput {
   /// Converts this output to a Map for serialization
   Map<String, dynamic> toMap() {
     if (_data != null) {
+      // TODO: Do we need to include _round in this toMap?
+      // TODO: Or, should we consider something like a "getCleanOutputMap" that doesn't include it?
       return {'_round': round, ...Map<String, dynamic>.from(_data)};
     }
     throw UnimplementedError(
