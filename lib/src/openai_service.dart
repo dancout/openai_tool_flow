@@ -28,10 +28,12 @@ abstract class OpenAiToolService {
   ///
   /// [includedResults] contains previous results and their filtered issues to include
   /// in the system message for context about previous attempts and problems.
+  /// [currentStepRetries] contains retry attempts from the current step with filtered issues.
   Future<ToolCallResponse> executeToolCall(
     ToolCallStep step,
     ToolInput input, {
     List<ToolResult> includedResults = const [],
+    List<ToolResult> currentStepRetries = const [],
   });
 }
 
@@ -165,6 +167,9 @@ class SystemMessageInput {
   /// Previous step results with filtered issues relevant to this step
   final List<ToolResult> previousResults;
 
+  /// Current step retry attempts with filtered issues (excluding the final attempt)
+  final List<ToolResult> currentStepRetries;
+
   /// Additional context data
   final Map<String, dynamic> additionalContext;
 
@@ -172,6 +177,7 @@ class SystemMessageInput {
     required this.toolFlowContext,
     required this.stepDescription,
     this.previousResults = const [],
+    this.currentStepRetries = const [],
     this.additionalContext = const {},
   });
 
@@ -181,6 +187,9 @@ class SystemMessageInput {
       'toolFlowContext': toolFlowContext,
       'stepDescription': stepDescription,
       'previousResults': previousResults
+          .map((result) => result.toJson())
+          .toList(),
+      'currentStepRetries': currentStepRetries
           .map((result) => result.toJson())
           .toList(),
       'additionalContext': additionalContext,

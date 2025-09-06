@@ -1,3 +1,4 @@
+import 'package:meta/meta.dart';
 import 'package:openai_toolflow/openai_toolflow.dart';
 
 /// Manages ordered execution of tool call steps with internal state management.
@@ -26,6 +27,16 @@ class ToolFlow {
   /// Results from completed steps (ordered list) using type-safe wrappers
   final List<TypedToolResult> _results = [];
 
+  /// All retry attempts for all steps, organized by step index
+  /// Each step index maps to a list of attempts (including the final successful one)
+  final Map<int, List<TypedToolResult>> _allAttempts = {};
+
+  /// Gets all retry attempts for a specific step (for testing purposes)
+  @visibleForTesting
+  List<TypedToolResult>? getStepAttempts(int stepIndex) {
+    return _allAttempts[stepIndex];
+  }
+
   /// Creates a ToolFlow with configuration and steps
   ToolFlow({
     required this.config,
@@ -40,6 +51,7 @@ class ToolFlow {
   Future<ToolFlowResult> run({required Map<String, dynamic> input}) async {
     _state.clear();
     _results.clear();
+    _allAttempts.clear();
     _state.addAll(input);
 
     // Create initial TypedToolResult from input
@@ -74,6 +86,9 @@ class ToolFlow {
       int attemptCount = 0;
       final maxRetries = stepConfig.maxRetries;
 
+      // Initialize attempts list for this step
+      _allAttempts[i] = [];
+
       // Retry loop for this step
       while (attemptCount <= maxRetries && !stepPassed) {
         attemptCount++;
@@ -94,6 +109,9 @@ class ToolFlow {
               stepIndex: i,
             );
           }
+
+          // Store this attempt (whether it passes or fails)
+          _allAttempts[i]!.add(stepResult);
 
           // Check if step passed criteria
           final allIssues = stepResult.issues;
@@ -139,6 +157,9 @@ class ToolFlow {
             errorToolResult,
             ToolOutput,
           );
+          
+          // Store this attempt (error case)
+          _allAttempts[i]!.add(stepResult);
           stepPassed = false;
         }
       }
@@ -188,11 +209,18 @@ class ToolFlow {
     // Get results to include in tool call if configured
     final includedResults = _getIncludedResults(step: step);
 
-    // Execute using the injected OpenAI service with included results
+    // Get current step retry attempts (excluding the current attempt)
+    final currentStepRetries = _getCurrentStepAttempts(
+      stepIndex: stepIndex,
+      severityFilter: step.stepConfig.issuesSeverityFilter,
+    );
+
+    // Execute using the injected OpenAI service with included results and retry attempts
     final response = await openAiService.executeToolCall(
       step,
       stepInput,
       includedResults: includedResults,
+      currentStepRetries: currentStepRetries,
     );
 
     // Store usage information in state
@@ -406,6 +434,35 @@ class ToolFlow {
     final filterIndex = severityLevels.indexOf(filterLevel);
 
     return issueIndex >= filterIndex;
+  }
+
+  /// Gets the retry attempts for the current step with filtered issues
+  List<ToolResult<ToolOutput>> _getCurrentStepAttempts({
+    required int stepIndex,
+    required IssueSeverity severityFilter,
+  }) {
+    final attemptResults = <ToolResult<ToolOutput>>[];
+    final attempts = _allAttempts[stepIndex] ?? [];
+
+    for (final attempt in attempts) {
+      // Filter issues by severity level
+      final filteredIssues = attempt.issues
+          .where(
+            (issue) => _isIssueSeverityIncluded(issue.severity, severityFilter),
+          )
+          .toList();
+
+      // Only include attempt if it has issues matching the filter
+      if (filteredIssues.isNotEmpty) {
+        // Create a copy of the result with filtered issues
+        final filteredResult = attempt.underlyingResult.copyWith(
+          issues: filteredIssues,
+        );
+        attemptResults.add(filteredResult);
+      }
+    }
+
+    return attemptResults;
   }
 
   /// Gets all issues from all completed steps

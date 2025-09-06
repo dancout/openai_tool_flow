@@ -1139,6 +1139,7 @@ class MockOpenAiToolService implements OpenAiToolService {
     ToolCallStep step,
     ToolInput input, {
     List<ToolResult> includedResults = const [],
+    List<ToolResult> currentStepRetries = const [],
   }) async {
     final response = responses[step.toolName];
     if (response == null) {
@@ -1166,6 +1167,7 @@ class TestSystemMessageService implements OpenAiToolService {
     ToolCallStep step,
     ToolInput input, {
     List<ToolResult> includedResults = const [],
+    List<ToolResult> currentStepRetries = const [],
   }) async {
     // For testing, we'll capture what would be the system message
     // by simulating the system message generation

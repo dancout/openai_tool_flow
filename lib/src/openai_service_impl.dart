@@ -24,15 +24,17 @@ class DefaultOpenAiToolService implements OpenAiToolService {
     ToolCallStep step,
     ToolInput input, {
     List<ToolResult> includedResults = const [],
+    List<ToolResult> currentStepRetries = const [],
   }) async {
     final client = _httpClient ?? http.Client();
 
     try {
-      // Build the OpenAI request with included results
+      // Build the OpenAI request with included results and retry attempts
       final request = _buildOpenAiRequest(
         step: step,
         input: input,
         includedResults: includedResults,
+        currentStepRetries: currentStepRetries,
       );
 
       final requestJson = request.toJson();
@@ -74,6 +76,7 @@ class DefaultOpenAiToolService implements OpenAiToolService {
     required ToolCallStep step,
     required ToolInput input,
     List<ToolResult> includedResults = const [],
+    List<ToolResult> currentStepRetries = const [],
   }) {
     // Create tool definition
     final toolDefinition = _buildToolDefinition(step: step, input: input);
@@ -83,6 +86,7 @@ class DefaultOpenAiToolService implements OpenAiToolService {
       toolFlowContext: 'Executing tool call in a structured workflow',
       stepDescription: 'Tool: ${step.toolName}, Model: ${step.model}',
       previousResults: includedResults,
+      currentStepRetries: currentStepRetries,
       // TODO: Should additionalContext be a structured object?
       additionalContext: {
         'step_tool': step.toolName,
@@ -161,6 +165,32 @@ class DefaultOpenAiToolService implements OpenAiToolService {
         buffer.writeln('    Output: ${jsonEncode(result.output.toMap())}');
 
         // Include issues associated with this specific result
+        if (result.issues.isNotEmpty) {
+          buffer.writeln('    Associated issues:');
+          for (final issue in result.issues) {
+            buffer.writeln(
+              '      - ${issue.severity.name.toUpperCase()}: ${issue.description}',
+            );
+            if (issue.suggestions.isNotEmpty) {
+              buffer.writeln(
+                '        Suggestions: ${issue.suggestions.join(', ')}',
+              );
+            }
+          }
+        }
+      }
+    }
+
+    // Include current step retry attempts and their associated issues if provided
+    if (input.currentStepRetries.isNotEmpty) {
+      buffer.writeln();
+      buffer.writeln('Current step retry attempts and associated issues:');
+      for (int i = 0; i < input.currentStepRetries.length; i++) {
+        final result = input.currentStepRetries[i];
+        buffer.writeln('  Attempt ${i + 1}: ${result.toolName}');
+        buffer.writeln('    Output: ${jsonEncode(result.output.toMap())}');
+
+        // Include issues associated with this specific retry attempt
         if (result.issues.isNotEmpty) {
           buffer.writeln('    Associated issues:');
           for (final issue in result.issues) {
@@ -265,6 +295,7 @@ class MockOpenAiToolService implements OpenAiToolService {
     ToolCallStep step,
     ToolInput input, {
     List<ToolResult> includedResults = const [],
+    List<ToolResult> currentStepRetries = const [],
   }) async {
     // Simulate some processing time
     await Future.delayed(const Duration(milliseconds: 100));
