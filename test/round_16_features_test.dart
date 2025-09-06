@@ -1,5 +1,5 @@
-import 'package:test/test.dart';
 import 'package:openai_toolflow/openai_toolflow.dart';
+import 'package:test/test.dart';
 
 void main() {
   group('Round 16 Features', () {
@@ -7,11 +7,11 @@ void main() {
 
     setUp(() {
       mockService = MockOpenAiToolService();
-      
+
       // Register test outputs for all tool names used in tests
       final toolNames = [
         'input_passthrough_test',
-        'token_tracking_test', 
+        'token_tracking_test',
         'index_based_test',
         'step_one',
         'step_two',
@@ -21,10 +21,10 @@ void main() {
         'usage_tracking_test',
         'response_test',
         'step1',
-        'step2', 
+        'step2',
         'step3',
       ];
-      
+
       for (final toolName in toolNames) {
         ToolOutputRegistry.register<ToolOutput>(
           toolName,
@@ -34,139 +34,177 @@ void main() {
     });
 
     group('Optional InputBuilder with Smart Defaults', () {
-      test('should use previous step output when inputBuilder is not provided', () async {
-        // Setup mock to return predictable output for first step
-        mockService.addResponse(
-          'step_one',
-          ToolCallResponse(
-            output: {'output': 'first_step_result', 'data': 'processed'},
-            usage: {'prompt_tokens': 10, 'completion_tokens': 20, 'total_tokens': 30},
-          ),
-        );
-        
-        // Second step should get first step's output automatically
-        mockService.addResponse(
-          'step_two',
-          ToolCallResponse(
-            output: {'output': 'second_step_result', 'used_input': 'from_first'},
-            usage: {'prompt_tokens': 10, 'completion_tokens': 20, 'total_tokens': 30},
-          ),
-        );
-
-        final flow = ToolFlow(
-          config: OpenAIConfig(apiKey: 'test', baseUrl: 'http://localhost'),
-          steps: [
-            ToolCallStep(
-              toolName: 'step_one',
-              inputBuilder: (results) => {'process': 'initial_data'},
-              outputSchema: OutputSchema(properties: []),
-              stepConfig: StepConfig(),
+      test(
+        'should use previous step output when inputBuilder is not provided',
+        () async {
+          // Setup mock to return predictable output for first step
+          mockService.addResponse(
+            'step_one',
+            ToolCallResponse(
+              output: {'output': 'first_step_result', 'data': 'processed'},
+              usage: {
+                'prompt_tokens': 10,
+                'completion_tokens': 20,
+                'total_tokens': 30,
+              },
             ),
-            ToolCallStep(
-              toolName: 'step_two',
-              // No inputBuilder provided - should use previous step's output
-              outputSchema: OutputSchema(properties: []),
-              stepConfig: StepConfig(),
+          );
+
+          // Second step should get first step's output automatically
+          mockService.addResponse(
+            'step_two',
+            ToolCallResponse(
+              output: {
+                'output': 'second_step_result',
+                'used_input': 'from_first',
+              },
+              usage: {
+                'prompt_tokens': 10,
+                'completion_tokens': 20,
+                'total_tokens': 30,
+              },
             ),
-          ],
-          openAiService: mockService,
-        );
+          );
 
-        final result = await flow.run(input: {'initial': 'data'});
+          final flow = ToolFlow(
+            config: OpenAIConfig(apiKey: 'test', baseUrl: 'http://localhost'),
+            steps: [
+              ToolCallStep(
+                toolName: 'step_one',
+                inputBuilder: (results) => {'process': 'initial_data'},
+                outputSchema: OutputSchema(properties: []),
+                stepConfig: StepConfig(),
+              ),
+              ToolCallStep(
+                toolName: 'step_two',
+                // No inputBuilder provided - should use previous step's output
+                outputSchema: OutputSchema(properties: []),
+                stepConfig: StepConfig(),
+              ),
+            ],
+            openAiService: mockService,
+          );
 
-        expect(result.results.length, equals(3)); // initial + 2 steps
-        
-        // Verify that the second step received the first step's output as input
-        final secondStepInput = mockService.getCapturedInput('step_two');
-        expect(secondStepInput, isNotNull);
-        expect(secondStepInput!.toMap()['output'], equals('first_step_result'));
-        expect(secondStepInput.toMap()['data'], equals('processed'));
-      });
+          final result = await flow.run(input: {'initial': 'data'});
 
-      test('should prefer explicit inputBuilder over default behavior', () async {
-        mockService.addResponse(
-          'step_one',
-          ToolCallResponse(
-            output: {'output': 'first_step_result'},
-            usage: {'prompt_tokens': 10, 'completion_tokens': 20, 'total_tokens': 30},
-          ),
-        );
-        
-        mockService.addResponse(
-          'step_two',
-          ToolCallResponse(
-            output: {'output': 'second_step_result'},
-            usage: {'prompt_tokens': 10, 'completion_tokens': 20, 'total_tokens': 30},
-          ),
-        );
+          expect(result.results.length, equals(3)); // initial + 2 steps
 
-        final flow = ToolFlow(
-          config: OpenAIConfig(apiKey: 'test', baseUrl: 'http://localhost'),
-          steps: [
-            ToolCallStep(
-              toolName: 'step_one',
-              inputBuilder: (results) => {'process': 'initial_data'},
-              outputSchema: OutputSchema(properties: []),
-              stepConfig: StepConfig(),
+          // Verify that the second step received the first step's output as input
+          final secondStepInput = mockService.getCapturedInput('step_two');
+          expect(secondStepInput, isNotNull);
+          expect(
+            secondStepInput!.toMap()['output'],
+            equals('first_step_result'),
+          );
+          expect(secondStepInput.toMap()['data'], equals('processed'));
+        },
+      );
+
+      test(
+        'should prefer explicit inputBuilder over default behavior',
+        () async {
+          mockService.addResponse(
+            'step_one',
+            ToolCallResponse(
+              output: {'output': 'first_step_result'},
+              usage: {
+                'prompt_tokens': 10,
+                'completion_tokens': 20,
+                'total_tokens': 30,
+              },
             ),
-            ToolCallStep(
-              toolName: 'step_two',
-              inputBuilder: (results) => {'custom': 'explicit_input'},
-              outputSchema: OutputSchema(properties: []),
-              stepConfig: StepConfig(),
+          );
+
+          mockService.addResponse(
+            'step_two',
+            ToolCallResponse(
+              output: {'output': 'second_step_result'},
+              usage: {
+                'prompt_tokens': 10,
+                'completion_tokens': 20,
+                'total_tokens': 30,
+              },
             ),
-          ],
-          openAiService: mockService,
-        );
+          );
 
-        await flow.run(input: {'initial': 'data'});
+          final flow = ToolFlow(
+            config: OpenAIConfig(apiKey: 'test', baseUrl: 'http://localhost'),
+            steps: [
+              ToolCallStep(
+                toolName: 'step_one',
+                inputBuilder: (results) => {'process': 'initial_data'},
+                outputSchema: OutputSchema(properties: []),
+                stepConfig: StepConfig(),
+              ),
+              ToolCallStep(
+                toolName: 'step_two',
+                inputBuilder: (results) => {'custom': 'explicit_input'},
+                outputSchema: OutputSchema(properties: []),
+                stepConfig: StepConfig(),
+              ),
+            ],
+            openAiService: mockService,
+          );
 
-        // Verify that the explicit inputBuilder was used
-        final secondStepInput = mockService.getCapturedInput('step_two');
-        expect(secondStepInput, isNotNull);
-        expect(secondStepInput!.toMap()['custom'], equals('explicit_input'));
-        expect(secondStepInput.toMap().containsKey('output'), isFalse);
-      });
+          await flow.run(input: {'initial': 'data'});
+
+          // Verify that the explicit inputBuilder was used
+          final secondStepInput = mockService.getCapturedInput('step_two');
+          expect(secondStepInput, isNotNull);
+          expect(secondStepInput!.toMap()['custom'], equals('explicit_input'));
+          expect(secondStepInput.toMap().containsKey('output'), isFalse);
+        },
+      );
     });
 
     group('Required Input Parameter', () {
-      test('should create initial TypedToolResult from input at index 0', () async {
-        mockService.addResponse(
-          'test_step',
-          ToolCallResponse(
-            output: {'output': 'step_result'},
-            usage: {'prompt_tokens': 10, 'completion_tokens': 20, 'total_tokens': 30},
-          ),
-        );
-
-        final flow = ToolFlow(
-          config: OpenAIConfig(apiKey: 'test', baseUrl: 'http://localhost'),
-          steps: [
-            ToolCallStep(
-              toolName: 'test_step',
-              inputBuilder: (results) => {
-                'initial_round': results[0].output.toMap()['_round'],
-                'initial_data': results[0].output.toMap()['test_input'],
+      test(
+        'should create initial TypedToolResult from input at index 0',
+        () async {
+          mockService.addResponse(
+            'test_step',
+            ToolCallResponse(
+              output: {'output': 'step_result'},
+              usage: {
+                'prompt_tokens': 10,
+                'completion_tokens': 20,
+                'total_tokens': 30,
               },
-              outputSchema: OutputSchema(properties: []),
-              stepConfig: StepConfig(),
             ),
-          ],
-          openAiService: mockService,
-        );
+          );
 
-        final result = await flow.run(input: {'test_input': 'initial_value'});
+          final flow = ToolFlow(
+            config: OpenAIConfig(apiKey: 'test', baseUrl: 'http://localhost'),
+            steps: [
+              ToolCallStep(
+                toolName: 'test_step',
+                inputBuilder: (results) => {
+                  'initial_round': results[0].output.toMap()['_round'],
+                  'initial_data': results[0].output.toMap()['test_input'],
+                },
+                outputSchema: OutputSchema(properties: []),
+                stepConfig: StepConfig(),
+              ),
+            ],
+            openAiService: mockService,
+          );
 
-        // Verify initial result is at index 0
-        expect(result.results[0].toolName, equals('initial_input'));
-        expect(result.results[0].output.toMap()['test_input'], equals('initial_value'));
-        expect(result.results[0].output.toMap()['_round'], equals(0));
-        
-        // Verify the step could access the initial input
-        final stepInput = mockService.getCapturedInput('test_step');
-        expect(stepInput!.toMap()['initial_round'], equals(0));
-        expect(stepInput.toMap()['initial_data'], equals('initial_value'));
-      });
+          final result = await flow.run(input: {'test_input': 'initial_value'});
+
+          // Verify initial result is at index 0
+          expect(result.results[0].toolName, equals('initial_input'));
+          expect(
+            result.results[0].output.toMap()['test_input'],
+            equals('initial_value'),
+          );
+          expect(result.results[0].output.toMap()['_round'], equals(0));
+
+          // Verify the step could access the initial input
+          final stepInput = mockService.getCapturedInput('test_step');
+          expect(stepInput!.toMap()['initial_round'], equals(0));
+          expect(stepInput.toMap()['initial_data'], equals('initial_value'));
+        },
+      );
     });
 
     group('Index-Based Result References', () {
@@ -175,15 +213,23 @@ void main() {
           'step_one',
           ToolCallResponse(
             output: {'step1': 'result'},
-            usage: {'prompt_tokens': 10, 'completion_tokens': 20, 'total_tokens': 30},
+            usage: {
+              'prompt_tokens': 10,
+              'completion_tokens': 20,
+              'total_tokens': 30,
+            },
           ),
         );
-        
+
         mockService.addResponse(
           'step_two',
           ToolCallResponse(
             output: {'step2': 'result'},
-            usage: {'prompt_tokens': 10, 'completion_tokens': 20, 'total_tokens': 30},
+            usage: {
+              'prompt_tokens': 10,
+              'completion_tokens': 20,
+              'total_tokens': 30,
+            },
           ),
         );
 
@@ -201,7 +247,10 @@ void main() {
               inputBuilder: (results) => {'data': 'second'},
               outputSchema: OutputSchema(properties: []),
               stepConfig: StepConfig(),
-              includeResultsInToolcall: [0, 1], // Include initial input and first step
+              includeResultsInToolcall: [
+                0,
+                1,
+              ], // Include initial input and first step
             ),
           ],
           openAiService: mockService,
@@ -211,11 +260,13 @@ void main() {
 
         // Verify that the step configuration was captured correctly
         // (The actual inclusion depends on whether results have issues)
-        final includedResults = mockService.getCapturedIncludedResults('step_two');
+        final includedResults = mockService.getCapturedIncludedResults(
+          'step_two',
+        );
         expect(includedResults, isNotNull);
         // Since our test results don't have issues, nothing will be included
         expect(includedResults!.length, equals(0));
-        
+
         // But verify that the includeResultsInToolcall was set correctly
         final capturedStep = mockService.getCapturedStep('step_two');
         expect(capturedStep!.includeResultsInToolcall, equals([0, 1]));
@@ -226,7 +277,11 @@ void main() {
           'test_step',
           ToolCallResponse(
             output: {'output': 'result'},
-            usage: {'prompt_tokens': 10, 'completion_tokens': 20, 'total_tokens': 30},
+            usage: {
+              'prompt_tokens': 10,
+              'completion_tokens': 20,
+              'total_tokens': 30,
+            },
           ),
         );
 
@@ -246,7 +301,9 @@ void main() {
 
         await flow.run(input: {'initial': 'test'});
 
-        final includedResults = mockService.getCapturedIncludedResults('test_step');
+        final includedResults = mockService.getCapturedIncludedResults(
+          'test_step',
+        );
         expect(includedResults, isNotNull);
         expect(includedResults!.length, equals(0));
       });
@@ -258,7 +315,11 @@ void main() {
           'token_test',
           ToolCallResponse(
             output: {'output': 'result'},
-            usage: {'prompt_tokens': 10, 'completion_tokens': 20, 'total_tokens': 30},
+            usage: {
+              'prompt_tokens': 10,
+              'completion_tokens': 20,
+              'total_tokens': 30,
+            },
           ),
         );
 
@@ -288,13 +349,17 @@ void main() {
           'model_test',
           ToolCallResponse(
             output: {'output': 'result'},
-            usage: {'prompt_tokens': 10, 'completion_tokens': 20, 'total_tokens': 30},
+            usage: {
+              'prompt_tokens': 10,
+              'completion_tokens': 20,
+              'total_tokens': 30,
+            },
           ),
         );
 
         final flow = ToolFlow(
           config: OpenAIConfig(
-            apiKey: 'test', 
+            apiKey: 'test',
             baseUrl: 'http://localhost',
             defaultModel: 'default-model',
           ),
@@ -315,7 +380,10 @@ void main() {
         final capturedStep = mockService.getCapturedStep('model_test');
         expect(capturedStep, isNotNull);
         // The service should have used the default model from config
-        expect(capturedStep!.model, isNull); // Step model is null, falls back to config
+        expect(
+          capturedStep!.model,
+          isNull,
+        ); // Step model is null, falls back to config
       });
 
       test('should track token usage in ToolFlow state', () async {
@@ -323,7 +391,11 @@ void main() {
           'usage_tracking_test',
           ToolCallResponse(
             output: {'output': 'result'},
-            usage: {'prompt_tokens': 10, 'completion_tokens': 20, 'total_tokens': 30},
+            usage: {
+              'prompt_tokens': 10,
+              'completion_tokens': 20,
+              'total_tokens': 30,
+            },
           ),
         );
 
@@ -354,7 +426,11 @@ void main() {
 
     group('Service Interface Enhancement', () {
       test('should return ToolCallResponse with usage information', () async {
-        final expectedUsage = {'prompt_tokens': 10, 'completion_tokens': 20, 'total_tokens': 30};
+        final expectedUsage = {
+          'prompt_tokens': 10,
+          'completion_tokens': 20,
+          'total_tokens': 30,
+        };
         mockService.addResponse(
           'response_test',
           ToolCallResponse(
@@ -380,8 +456,11 @@ void main() {
 
         // Verify the service was called and returned the expected response
         expect(result.results.length, equals(2));
-        expect(result.results[1].output.toMap()['output'], equals('test_result'));
-        
+        expect(
+          result.results[1].output.toMap()['output'],
+          equals('test_result'),
+        );
+
         // Verify usage tracking worked
         final finalUsage = result.finalState['token_usage'];
         expect(finalUsage['total_prompt_tokens'], equals(10));
@@ -392,21 +471,42 @@ void main() {
 
     group('All Previous Results Access', () {
       test('should pass all previous results to inputBuilder', () async {
-        mockService.addResponse('step1', ToolCallResponse(
-          output: {'step1': 'output1'},
-          usage: {'prompt_tokens': 10, 'completion_tokens': 20, 'total_tokens': 30},
-        ));
-        mockService.addResponse('step2', ToolCallResponse(
-          output: {'step2': 'output2'},
-          usage: {'prompt_tokens': 10, 'completion_tokens': 20, 'total_tokens': 30},
-        ));
-        mockService.addResponse('step3', ToolCallResponse(
-          output: {'step3': 'output3'},
-          usage: {'prompt_tokens': 10, 'completion_tokens': 20, 'total_tokens': 30},
-        ));
+        mockService.addResponse(
+          'step1',
+          ToolCallResponse(
+            output: {'step1': 'output1'},
+            usage: {
+              'prompt_tokens': 10,
+              'completion_tokens': 20,
+              'total_tokens': 30,
+            },
+          ),
+        );
+        mockService.addResponse(
+          'step2',
+          ToolCallResponse(
+            output: {'step2': 'output2'},
+            usage: {
+              'prompt_tokens': 10,
+              'completion_tokens': 20,
+              'total_tokens': 30,
+            },
+          ),
+        );
+        mockService.addResponse(
+          'step3',
+          ToolCallResponse(
+            output: {'step3': 'output3'},
+            usage: {
+              'prompt_tokens': 10,
+              'completion_tokens': 20,
+              'total_tokens': 30,
+            },
+          ),
+        );
 
         List<TypedToolResult>? capturedResults;
-        
+
         final flow = ToolFlow(
           config: OpenAIConfig(apiKey: 'test', baseUrl: 'http://localhost'),
           steps: [
@@ -460,7 +560,8 @@ class MockOpenAiToolService implements OpenAiToolService {
   }
 
   ToolInput? getCapturedInput(String toolName) => _capturedInputs[toolName];
-  List<ToolResult>? getCapturedIncludedResults(String toolName) => _capturedIncludedResults[toolName];
+  List<ToolResult>? getCapturedIncludedResults(String toolName) =>
+      _capturedIncludedResults[toolName];
   ToolCallStep? getCapturedStep(String toolName) => _capturedSteps[toolName];
 
   @override
@@ -468,6 +569,7 @@ class MockOpenAiToolService implements OpenAiToolService {
     ToolCallStep step,
     ToolInput input, {
     List<ToolResult> includedResults = const [],
+    List<ToolResult> currentStepRetries = const [],
   }) async {
     // Capture inputs and included results for verification
     _capturedInputs[step.toolName] = input;
