@@ -281,8 +281,6 @@ class MockOpenAiToolService implements OpenAiToolService {
     List<ToolResult> includedResults = const [],
     List<ToolResult> currentStepRetries = const [],
   }) async {
-    // Simulate some processing time
-    await Future.delayed(const Duration(milliseconds: 100));
     final inputJson = input.toMap();
 
     // Return predefined response if available

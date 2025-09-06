@@ -25,25 +25,21 @@ class ToolFlow {
   final Map<String, dynamic> _state = {};
 
   /// Results from completed steps (ordered list) using type-safe wrappers
+  // TODO: Should we consider removing this in favor of the _allAttempts Map where we can access the final attempt at each step, and that's effectively what _results is showing?
   final List<TypedToolResult> _results = [];
 
-  /// All retry attempts for all steps, organized by step index
+  /// All attempts for all steps, organized by step index
   /// Each step index maps to a list of attempts (including the final successful one)
   final Map<int, List<TypedToolResult>> _allAttempts = {};
 
-  /// Gets all retry attempts for a specific step (0-indexed from steps array)
+  // TODO: Do we actually need this visible for testing function?
+  /// Gets all attempts for a specific step (0-indexed from steps array)
   @visibleForTesting
   List<TypedToolResult>? getStepAttempts(int stepIndex) {
     // Convert from step index to storage index
     // stepIndex 0 -> storage index 1, stepIndex 1 -> storage index 2, etc.
     final storageIndex = stepIndex + 1;
     return _allAttempts[storageIndex];
-  }
-
-  /// Gets the initial input data (stored at index 0)
-  @visibleForTesting
-  List<TypedToolResult>? getInitialInputData() {
-    return _allAttempts[0];
   }
 
   /// Creates a ToolFlow with configuration and steps
@@ -85,7 +81,7 @@ class ToolFlow {
 
     // Add initial result to collections
     _results.add(initialTypedResult);
-    
+
     // Store initial input data as "attempt" at index 0 to align with _results indexing
     _allAttempts[0] = [initialTypedResult];
 
@@ -109,6 +105,7 @@ class ToolFlow {
           // Execute the step
           stepResult = await _executeStep(
             step: step,
+            // TODO: Should we use a helper function for decrementing that i JUST so that it's clear we need a different sort of index?
             stepIndex: i - 1,
             round: attemptCount - 1,
           );
@@ -169,7 +166,7 @@ class ToolFlow {
             errorToolResult,
             ToolOutput,
           );
-          
+
           // Store this attempt (error case)
           _allAttempts[i]!.add(stepResult);
           stepPassed = false;
@@ -202,7 +199,9 @@ class ToolFlow {
     return ToolFlowResult._fromTyped(
       typedResults: List.unmodifiable(_results),
       finalState: Map.unmodifiable(_state),
+      // TODO: Do we need a list of allIssues if they are also available on the _results entries directly? Can't the user gather those themselves if they want to?
       allIssues: _getFinalResultIssues(),
+      // TODO: Should we have _allAttempts exposed here? Potentially it could be included based on a bool parameter passed into the ToolFlow config.
     );
   }
 
@@ -223,6 +222,7 @@ class ToolFlow {
 
     // Get current step retry attempts (excluding the current attempt)
     final currentStepRetries = _getCurrentStepAttempts(
+      // TODO: This could be another different variable about generating stepIndex vs resultIndex
       stepIndex: stepIndex + 1, // Use result index, not step index
       severityFilter: step.stepConfig.issuesSeverityFilter,
     );
@@ -400,6 +400,8 @@ class ToolFlow {
     for (final index in step.includeResultsInToolcall) {
       // Pull all attempts for the referenced step index
       final attempts = _allAttempts[index] ?? [];
+      // TODO: This logic is basically duplicated in _getCurrentStepAttempts. Consolidate extracting the included results to a helper function.
+      /// You may even be able to just use this _getIncludedResults function for both scenarios.
       for (final attempt in attempts) {
         // Filter issues by severity level
         final filteredIssues = attempt.issues
@@ -477,19 +479,6 @@ class ToolFlow {
     final allIssues = <Issue>[];
     for (final result in _results) {
       allIssues.addAll(result.issues);
-    }
-    return allIssues;
-  }
-
-  /// Gets all issues from all attempts across all steps
-  /// This method is available for comprehensive debugging when you need to see 
-  /// all issues that occurred during the execution, not just final results
-  List<Issue> getAllIssuesFromAllAttempts() {
-    final allIssues = <Issue>[];
-    for (final attemptsList in _allAttempts.values) {
-      for (final attempt in attemptsList) {
-        allIssues.addAll(attempt.issues);
-      }
     }
     return allIssues;
   }
