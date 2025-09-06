@@ -482,7 +482,9 @@ class ToolFlow {
   }
 
   /// Gets all issues from all attempts across all steps
-  List<Issue> _getAllIssuesFromAllAttempts() {
+  /// This method is available for comprehensive debugging when you need to see 
+  /// all issues that occurred during the execution, not just final results
+  List<Issue> getAllIssuesFromAllAttempts() {
     final allIssues = <Issue>[];
     for (final attemptsList in _allAttempts.values) {
       for (final attempt in attemptsList) {
