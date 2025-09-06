@@ -386,16 +386,11 @@ class ToolFlow {
     final stepConfig = step.stepConfig;
 
     for (final index in step.includeResultsInToolcall) {
-      TypedToolResult? sourceTypedResult;
-
-      // Find the source result by index only
-      if (index >= 0 && index < _results.length) {
-        sourceTypedResult = _results[index];
-      }
-
-      if (sourceTypedResult != null) {
+      // Pull all attempts for the referenced step index
+      final attempts = _allAttempts[index] ?? [];
+      for (final attempt in attempts) {
         // Filter issues by severity level
-        final filteredIssues = sourceTypedResult.issues
+        final filteredIssues = attempt.issues
             .where(
               (issue) => _isIssueSeverityIncluded(
                 issue.severity,
@@ -404,10 +399,10 @@ class ToolFlow {
             )
             .toList();
 
-        // Only include result if it has issues matching the filter
+        // Only include attempt if it has issues matching the filter
         if (filteredIssues.isNotEmpty) {
           // Create a copy of the result with filtered issues
-          final filteredResult = sourceTypedResult.underlyingResult.copyWith(
+          final filteredResult = attempt.underlyingResult.copyWith(
             issues: filteredIssues,
           );
           includedResults.add(filteredResult);
