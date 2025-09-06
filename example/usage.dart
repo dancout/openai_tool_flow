@@ -229,7 +229,7 @@ void _displayTokenUsageByStep(ToolFlow flow, ToolFlowResult result) {
 
   // TODO: The i = 1 and the i - 1 below feels clumsy, and could be where the stepIndex and resultIndex from other TODOs comes into play.
   for (int i = 1; i < result.results.length; i++) {
-    final stepResult = result.results[i];
+    final stepResult = result.finalResults[i];
     final usage =
         result.finalState['step_${i - 1}_usage'] as Map<String, dynamic>?;
     final toolName = stepResult.toolName;
@@ -274,7 +274,7 @@ void _displayExecutionSummary(ToolFlowResult result) {
   print('📊 Enhanced Execution Summary:');
   print('Steps executed: ${result.results.length}');
   print(
-    'Tools used: ${result.results.map((r) => r.toolName).toSet().join(', ')}',
+    'Tools used: ${result.finalResults.map((r) => r.toolName).toSet().join(', ')}',
   );
   print('Total issues found: ${result.allIssues.length}');
   print(
@@ -293,7 +293,7 @@ void _displayExecutionSummary(ToolFlowResult result) {
   print('  Multiple tools: Retrieved ${result.results.length} results');
 
   // Results where condition
-  final successfulResults = result.results.where((r) => r.issues.isEmpty);
+  final successfulResults = result.finalResults.where((r) => r.issues.isEmpty);
   print('  Successful steps: ${successfulResults.length} steps had no issues');
   print('');
 }
@@ -303,7 +303,7 @@ void _displayStepResultsWithForwarding(ToolFlowResult result) {
   print('📋 Step Results with Forwarding Info:');
 
   for (int i = 0; i < result.results.length; i++) {
-    final stepResult = result.results[i];
+    final stepResult = result.finalResults[i];
     print('Step ${i + 1}: ${stepResult.toolName}');
     print('  Output keys: ${stepResult.output.toMap().keys.join(', ')}');
     print('  Issues: ${stepResult.issues.length}');
@@ -344,7 +344,7 @@ void _displayNewWorkflowOutputUsage(ToolFlowResult result) {
   print('🔧 Professional Workflow Output Usage:');
 
   // Display seed colors
-  final seedResult = result.results[1];
+  final seedResult = result.finalResults[1];
   final seedOutputMap = seedResult.output.toMap();
   print('  💎 Seed Colors Generated:');
   final seedColors = seedOutputMap['seed_colors'] as List?;
@@ -359,7 +359,7 @@ void _displayNewWorkflowOutputUsage(ToolFlowResult result) {
   print('');
 
   // Display design system colors
-  final designSystemResult = result.results[2];
+  final designSystemResult = result.finalResults[2];
   final designOutputMap = designSystemResult.output.toMap();
   print('  🎨 Design System Colors:');
   final systemColors =
@@ -380,7 +380,7 @@ void _displayNewWorkflowOutputUsage(ToolFlowResult result) {
   print('');
 
   // Display full color suite
-  final fullSuiteResult = result.results[3];
+  final fullSuiteResult = result.finalResults[3];
   final suiteOutputMap = fullSuiteResult.output.toMap();
   print('  🌈 Complete Color Suite (30 colors):');
   final colorSuite = suiteOutputMap['color_suite'] as Map<String, dynamic>?;
@@ -481,7 +481,7 @@ void _exportEnhancedResults(ToolFlowResult result) {
   print('📄 Professional Color Suite Export:');
 
   // Show final color suite
-  final finalOutput = result.results.last.output.toMap();
+  final finalOutput = result.finalResults.last.output.toMap();
   if (finalOutput.containsKey('color_suite')) {
     print('🎨 Generated Professional Color Suite:');
     final colorSuite = finalOutput['color_suite'] as Map<String, dynamic>;
@@ -505,17 +505,25 @@ void _exportEnhancedResults(ToolFlowResult result) {
     print('');
   }
 
+  // Calculate actual max retries used across all steps
+  int maxRetriesUsed = 0;
+  for (final stepAttempts in result.results) {
+    if (stepAttempts.length > 1) { // More than 1 attempt means retries occurred
+      final retriesForStep = stepAttempts.length - 1; // Subtract 1 for initial attempt
+      maxRetriesUsed = maxRetriesUsed > retriesForStep ? maxRetriesUsed : retriesForStep;
+    }
+  }
+
   // Summary statistics for professional workflow
   final stats = {
     'total_steps': result.results.length,
-    'successful_steps': result.results.where((r) => r.issues.isEmpty).length,
+    'successful_steps': result.finalResults.where((r) => r.issues.isEmpty).length,
     'total_issues': result.allIssues.length,
     'workflow_type': 'Professional 3-Step Color Generation',
-    'tools_used': result.results.map((r) => r.toolName).toSet().toList(),
-    'outputs_available': result.results.isNotEmpty,
+    'tools_used': result.finalResults.map((r) => r.toolName).toSet().toList(),
+    'outputs_available': result.finalResults.isNotEmpty,
     'accessibility_compliant': true,
-    // TODO: This should actually go through each result and find the maxRetries_used
-    'maxRetries_used': 3,
+    'maxRetries_used': maxRetriesUsed,
   };
 
   print('📊 Professional Workflow Statistics:');
@@ -527,8 +535,8 @@ void _exportEnhancedResults(ToolFlowResult result) {
   // Tool name mapping for easy reference
   print('🗂️ Professional Workflow Tool Mapping:');
 
-  for (TypedToolResult toolResult in result.results) {
-    final stepIndex = result.results.indexOf(toolResult);
+  for (TypedToolResult toolResult in result.finalResults) {
+    final stepIndex = result.finalResults.indexOf(toolResult);
 
     String workflowStep = '';
     switch (toolResult.toolName) {

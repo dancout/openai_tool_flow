@@ -76,7 +76,7 @@ void main() {
         );
 
         return flow.run(input: {'test': 'data'}).then((result) {
-          expect(result.results, isA<List<TypedToolResult>>());
+          expect(result.finalResults, isA<List<TypedToolResult>>());
           expect(
             result.results.length,
             equals(2),
@@ -84,20 +84,20 @@ void main() {
 
           // Check the initial input result (index 0)
           expect(
-            result.results[0],
+            result.finalResults[0],
             isA<TypedToolResult>(),
           ); // First result is the initial input
-          expect(result.results[0].toolName, equals('initial_input'));
+          expect(result.finalResults[0].toolName, equals('initial_input'));
           expect(
-            result.results[0].output.toMap(),
+            result.finalResults[0].output.toMap(),
             equals({'_round': 0, 'test': 'data'}),
           );
 
           expect(
-            result.results[1],
+            result.finalResults[1],
             isA<TypedToolResult>(),
           ); // Second result is the tool step
-          expect(result.results[1].toolName, equals('test_tool_results'));
+          expect(result.finalResults[1].toolName, equals('test_tool_results'));
         });
       });
     });
@@ -132,19 +132,19 @@ void main() {
 
         return flow.run(input: {'test': 'data'}).then((result) {
           // Test that existing methods still work
-          final resultByName = result.results.firstWhere(
+          final resultByName = result.finalResults.firstWhere(
             (r) => r.toolName == 'compat_test',
           );
           expect(resultByName, isNotNull);
           expect(resultByName.toolName, equals('compat_test'));
 
-          final allResults = result.results
+          final allResults = result.finalResults
               .where((r) => r.toolName == 'compat_test')
               .toList();
           expect(allResults.length, equals(1));
           expect(allResults.first.toolName, equals('compat_test'));
 
-          final resultsByNames = result.results
+          final resultsByNames = result.finalResults
               .where((r) => ['compat_test'].contains(r.toolName))
               .toList();
           expect(resultsByNames.length, equals(1));

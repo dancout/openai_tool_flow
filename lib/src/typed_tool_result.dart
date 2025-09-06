@@ -1,4 +1,5 @@
 import 'issue.dart';
+import 'token_usage.dart';
 import 'tool_result.dart';
 import 'typed_interfaces.dart';
 
@@ -15,20 +16,35 @@ class TypedToolResult {
   /// The runtime type of the output for type-safe operations
   final Type _outputType;
 
+  /// Token usage information for this tool call attempt
+  final TokenUsage tokenUsage;
+
   /// Creates a TypedToolResult wrapper for the given result
-  TypedToolResult._(this._result, this._outputType);
+  TypedToolResult._(this._result, this._outputType, this.tokenUsage);
 
   /// Creates a TypedToolResult from a ToolResult with specific output type
-  static TypedToolResult from<T extends ToolOutput>(ToolResult<T> result) {
-    return TypedToolResult._(result as ToolResult<ToolOutput>, T);
+  static TypedToolResult from<T extends ToolOutput>(
+    ToolResult<T> result, {
+    TokenUsage? tokenUsage,
+  }) {
+    return TypedToolResult._(
+      result as ToolResult<ToolOutput>,
+      T,
+      tokenUsage ?? const TokenUsage.zero(),
+    );
   }
 
   /// Creates a TypedToolResult from a ToolResult with runtime type information
   static TypedToolResult fromWithType(
     ToolResult<ToolOutput> result,
-    Type outputType,
-  ) {
-    return TypedToolResult._(result, outputType);
+    Type outputType, {
+    TokenUsage? tokenUsage,
+  }) {
+    return TypedToolResult._(
+      result,
+      outputType,
+      tokenUsage ?? const TokenUsage.zero(),
+    );
   }
 
   /// Gets the tool name from the wrapped result
@@ -87,16 +103,28 @@ class TypedToolResult {
   }
 
   /// Creates a copy of this TypedToolResult with optional updated fields
-  TypedToolResult copyWith({ToolResult<ToolOutput>? result, Type? outputType}) {
-    return TypedToolResult._(result ?? _result, outputType ?? _outputType);
+  TypedToolResult copyWith({
+    ToolResult<ToolOutput>? result,
+    Type? outputType,
+    TokenUsage? tokenUsage,
+  }) {
+    return TypedToolResult._(
+      result ?? _result,
+      outputType ?? _outputType,
+      tokenUsage ?? this.tokenUsage,
+    );
   }
 
   /// Converts to JSON for serialization
-  Map<String, dynamic> toJson() => _result.toJson();
+  Map<String, dynamic> toJson() {
+    final resultJson = _result.toJson();
+    resultJson['tokenUsage'] = tokenUsage.toMap();
+    return resultJson;
+  }
 
   @override
   String toString() {
-    return 'TypedToolResult(toolName: $toolName, outputType: $_outputType, issues: ${issues.length})';
+    return 'TypedToolResult(toolName: $toolName, outputType: $_outputType, issues: ${issues.length}, tokens: $tokenUsage)';
   }
 
   @override
@@ -104,9 +132,10 @@ class TypedToolResult {
     if (identical(this, other)) return true;
     return other is TypedToolResult &&
         other._result == _result &&
-        other._outputType == _outputType;
+        other._outputType == _outputType &&
+        other.tokenUsage == tokenUsage;
   }
 
   @override
-  int get hashCode => Object.hash(_result, _outputType);
+  int get hashCode => Object.hash(_result, _outputType, tokenUsage);
 }
