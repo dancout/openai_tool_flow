@@ -1,4 +1,6 @@
 /// Test for the professional color workflow implementation
+library;
+
 import 'package:test/test.dart';
 import 'package:openai_toolflow/openai_toolflow.dart';
 

@@ -221,7 +221,7 @@ class ToolFlow {
     // Build result based on includeAllAttempts setting
     final resultData = _buildResultData();
 
-    return ToolFlowResult._fromTyped(
+    return ToolFlowResult.fromTypedResults(
       typedResults: resultData,
       finalState: Map.unmodifiable(_state),
     );
@@ -630,7 +630,7 @@ class ToolFlowResult {
   }
 
   /// Creates a ToolFlowResult from typed results
-  ToolFlowResult._fromTyped({
+  ToolFlowResult.fromTypedResults({
     required List<List<TypedToolResult>> typedResults,
     required this.finalState,
   }) : _stepResults = typedResults;
