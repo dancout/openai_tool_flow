@@ -21,15 +21,6 @@ class ToolFlow {
   /// OpenAI service for making tool calls (can be injected for testing)
   final OpenAiToolService openAiService;
 
-  /// Whether to include token usage tracking on TypedToolResult objects
-  /// Set to false to save memory and execution time. Defaults to true.
-  final bool includeTokenUsage;
-
-  /// Whether to include all attempts in the ToolFlowResult.results
-  /// If false, only returns the final attempt of each step.
-  /// If true, returns all attempts of each step. Defaults to true.
-  final bool includeAllAttempts;
-
   /// Internal state accumulated across steps
   final Map<String, dynamic> _state = {};
 
@@ -37,6 +28,8 @@ class ToolFlow {
   /// Each step index maps to a list of attempts (including the final successful one)
   /// Index 0 contains initial input data, indices 1+ contain step attempts
   final List<List<TypedToolResult>> _stepAttempts = [];
+
+  // TODO: Consider adding stepIndex/resultIndex helpers to improve clarity and reduce off-by-one errors
 
   /// Gets all attempts for a specific step (0-indexed from steps array)
   @visibleForTesting
@@ -51,29 +44,13 @@ class ToolFlow {
     return null;
   }
 
-  /// Gets the step storage index for a given step index
-  /// Step 0 is stored at index 1, step 1 at index 2, etc.
-  /// Index 0 is reserved for initial input data
-  int _getStepStorageIndex(int stepIndex) => stepIndex + 1;
 
-  /// Gets the final result for a specific step (0-indexed from steps array)
-  TypedToolResult? getFinalStepResult(int stepIndex) {
-    final attempts = getStepAttempts(stepIndex);
-    return attempts?.isNotEmpty == true ? attempts!.last : null;
-  }
-
-  /// Gets the initial input result (always at index 0)
-  TypedToolResult getInitialInputResult() {
-    return _stepAttempts.isNotEmpty ? _stepAttempts[0].first : throw StateError('No initial input data');
-  }
 
   /// Creates a ToolFlow with configuration and steps
   ToolFlow({
     required this.config,
     required this.steps,
     OpenAiToolService? openAiService,
-    this.includeTokenUsage = true,
-    this.includeAllAttempts = true,
   }) : openAiService =
            openAiService ?? DefaultOpenAiToolService(config: config);
 
@@ -101,8 +78,8 @@ class ToolFlow {
       issues: [],
     );
     final initialTypedResult = TypedToolResult.fromWithType(
-      initialResult,
-      ToolOutput,
+      result: initialResult,
+      outputType: ToolOutput,
       tokenUsage: const TokenUsage.zero(), // Initial input has no token usage
     );
 
@@ -143,7 +120,7 @@ class ToolFlow {
           }
 
           // Store this attempt (whether it passes or fails)
-          final currentStepStorageIndex = _getStepStorageIndex(stepIndex);
+          final currentStepStorageIndex = stepIndex + 1;
           _stepAttempts[currentStepStorageIndex].add(stepResult);
 
           // Check if step passed criteria
@@ -187,13 +164,13 @@ class ToolFlow {
           );
           // Wrap error result in TypedToolResult
           stepResult = TypedToolResult.fromWithType(
-            errorToolResult,
-            ToolOutput,
+            result: errorToolResult,
+            outputType: ToolOutput,
             tokenUsage: const TokenUsage.zero(), // Error cases have no token usage
           );
 
           // Store this attempt (error case)
-          final currentStepStorageIndex = _getStepStorageIndex(stepIndex);
+          final currentStepStorageIndex = stepIndex + 1;
           _stepAttempts[currentStepStorageIndex].add(stepResult);
           stepPassed = false;
         }
@@ -218,26 +195,10 @@ class ToolFlow {
     // Aggregate token usage from all steps
     _aggregateTokenUsage();
 
-    // Build result based on includeAllAttempts setting
-    final resultData = _buildResultData();
-
     return ToolFlowResult.fromTypedResults(
-      typedResults: resultData,
+      typedResults: List.unmodifiable(_stepAttempts),
       finalState: Map.unmodifiable(_state),
     );
-  }
-
-  /// Builds the result data based on the includeAllAttempts configuration
-  List<List<TypedToolResult>> _buildResultData() {
-    if (includeAllAttempts) {
-      // Return all attempts for all steps
-      return List.unmodifiable(_stepAttempts);
-    } else {
-      // Return only final attempt of each step
-      return _stepAttempts.map((attempts) {
-        return attempts.isNotEmpty ? [attempts.last] : <TypedToolResult>[];
-      }).toList();
-    }
   }
 
   /// Executes a single step
@@ -272,10 +233,8 @@ class ToolFlow {
     // Store usage information in state
     _state['step_${stepIndex}_usage'] = response.usage;
 
-    // Create token usage object from response
-    final tokenUsage = includeTokenUsage 
-        ? TokenUsage.fromMap(response.usage) 
-        : const TokenUsage.zero();
+    // Create token usage object from response (always included)
+    final tokenUsage = TokenUsage.fromMap(response.usage);
 
     // Apply output sanitization first if configured
     final sanitizedOutput = step.stepConfig.hasOutputSanitizer
@@ -307,8 +266,8 @@ class ToolFlow {
     // Create TypedToolResult with type information from registry and token usage
     final outputType = ToolOutputRegistry.getOutputType(step.toolName);
     return TypedToolResult.fromWithType(
-      result, 
-      outputType,
+      result: result, 
+      outputType: outputType,
       tokenUsage: tokenUsage,
     );
   }
@@ -392,21 +351,13 @@ class ToolFlow {
   /// Builds input for a step based on inputBuilder and step configuration
   /// Gets the final attempt of each step for passing to inputBuilder
   List<TypedToolResult> _getFinalAttemptsForInputBuilder() {
+    // Simply iterate through all step attempts and get the last (final) attempt of each
     final finalAttempts = <TypedToolResult>[];
-    
-    // Include initial input at index 0
-    if (_stepAttempts.isNotEmpty) {
-      finalAttempts.add(_stepAttempts[0].first);
-    }
-    
-    // Include final attempt of each executed step
-    for (int i = 1; i < _stepAttempts.length; i++) {
-      final stepAttempts = _stepAttempts[i];
+    for (final stepAttempts in _stepAttempts) {
       if (stepAttempts.isNotEmpty) {
         finalAttempts.add(stepAttempts.last);
       }
     }
-    
     return List.unmodifiable(finalAttempts);
   }
 
@@ -530,15 +481,15 @@ class ToolFlow {
     required IssueSeverity severityFilter,
   }) {
     // Get attempts for the current step using storage index
-    final storageIndex = _getStepStorageIndex(stepIndex);
-    if (storageIndex < _stepAttempts.length) {
-      final attempts = _stepAttempts[storageIndex];
-      return _filterAttemptsBySeverity(
-        attempts: attempts,
-        severityFilter: severityFilter,
-      );
+    final storageIndex = stepIndex + 1;
+    if (storageIndex >= _stepAttempts.length) {
+      throw StateError('Step storage index $storageIndex is out of bounds. _stepAttempts has ${_stepAttempts.length} entries.');
     }
-    return [];
+    final attempts = _stepAttempts[storageIndex];
+    return _filterAttemptsBySeverity(
+      attempts: attempts,
+      severityFilter: severityFilter,
+    );
   }
 
 
@@ -591,19 +542,6 @@ class ToolFlowResult {
     );
   }
 
-  /// DEPRECATED: Backward compatibility method returning flat list of final attempts
-  /// Use [results] for the new nested structure or [finalResults] for final attempts only
-  @Deprecated('Use finalResults instead for final attempts or results for full nested structure')
-  List<TypedToolResult> get flatResults {
-    final flat = <TypedToolResult>[];
-    for (final stepAttempts in _stepResults) {
-      if (stepAttempts.isNotEmpty) {
-        flat.add(stepAttempts.last); // Use final attempt from each step
-      }
-    }
-    return flat;
-  }
-
   /// Returns only the final (successful or last failed) result from each step
   List<TypedToolResult> get finalResults {
     final finals = <TypedToolResult>[];
@@ -629,23 +567,22 @@ class ToolFlowResult {
     return issues;
   }
 
+  /// Issues collected from only the final results of each step
+  List<Issue> get allFinalResultsIssues {
+    final issues = <Issue>[];
+    for (final stepAttempts in _stepResults) {
+      if (stepAttempts.isNotEmpty) {
+        issues.addAll(stepAttempts.last.issues);
+      }
+    }
+    return issues;
+  }
+
   /// Creates a ToolFlowResult from typed results
   ToolFlowResult.fromTypedResults({
     required List<List<TypedToolResult>> typedResults,
     required this.finalState,
   }) : _stepResults = typedResults;
-
-  /// Creates a ToolFlowResult (backward compatible constructor)
-  /// Note: This constructor is deprecated and should be migrated to use the new structure
-  ToolFlowResult({
-    required List<ToolResult<ToolOutput>> results,
-    required this.finalState,
-    required List<Issue> allIssues, // Ignored, derived from results instead
-  }) : _stepResults = [
-          // Convert old flat structure to new nested structure
-          // This is a compatibility layer - each result becomes a single-attempt step
-          ...results.map((result) => [TypedToolResult.fromWithType(result, ToolOutput)]),
-        ];
 
   /// Converts this result to a JSON map
   Map<String, dynamic> toJson() {

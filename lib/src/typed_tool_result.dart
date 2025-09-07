@@ -35,9 +35,9 @@ class TypedToolResult {
   }
 
   /// Creates a TypedToolResult from a ToolResult with runtime type information
-  static TypedToolResult fromWithType(
-    ToolResult<ToolOutput> result,
-    Type outputType, {
+  static TypedToolResult fromWithType({
+    required ToolResult<ToolOutput> result,
+    required Type outputType,
     TokenUsage? tokenUsage,
   }) {
     return TypedToolResult._(

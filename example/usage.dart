@@ -82,11 +82,11 @@ void _displayTokenUsageByStep(ToolFlow flow, ToolFlowResult result) {
   int totalCompletionTokens = 0;
   int totalTokens = 0;
 
-  // TODO: The i = 1 and the i - 1 below feels clumsy, and could be where the stepIndex and resultIndex from other TODOs comes into play.
-  for (int i = 1; i < result.results.length; i++) {
-    final stepResult = result.finalResults[i];
+  // Skip initial input (index 0) and iterate through actual step results
+  for (int stepIndex = 0; stepIndex < result.finalResults.length - 1; stepIndex++) {
+    final stepResult = result.finalResults[stepIndex + 1]; // +1 to skip initial input
     final usage =
-        result.finalState['step_${i - 1}_usage'] as Map<String, dynamic>?;
+        result.finalState['step_${stepIndex}_usage'] as Map<String, dynamic>?;
     final toolName = stepResult.toolName;
     if (usage != null) {
       final promptTokens = usage['prompt_tokens'] ?? 0;
@@ -360,12 +360,12 @@ void _exportEnhancedResults(ToolFlowResult result) {
     print('');
   }
 
-  // Calculate actual max retries used across all steps
-  int maxRetriesUsed = 0;
+  // Calculate total retries used across all steps
+  int totalRetriesUsed = 0;
   for (final stepAttempts in result.results) {
     if (stepAttempts.length > 1) { // More than 1 attempt means retries occurred
       final retriesForStep = stepAttempts.length - 1; // Subtract 1 for initial attempt
-      maxRetriesUsed = maxRetriesUsed > retriesForStep ? maxRetriesUsed : retriesForStep;
+      totalRetriesUsed += retriesForStep;
     }
   }
 
@@ -378,7 +378,7 @@ void _exportEnhancedResults(ToolFlowResult result) {
     'tools_used': result.finalResults.map((r) => r.toolName).toSet().toList(),
     'outputs_available': result.finalResults.isNotEmpty,
     'accessibility_compliant': true,
-    'maxRetries_used': maxRetriesUsed,
+    'maxRetries_used': totalRetriesUsed,
   };
 
   print('📊 Professional Workflow Statistics:');
