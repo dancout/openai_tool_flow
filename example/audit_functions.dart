@@ -54,6 +54,48 @@ class ColorQualityIssue extends Issue {
   }
 }
 
+class FullColorSuiteQualityAuditFunction
+    extends AuditFunction<FullColorSuiteOutput> {
+  @override
+  String get name => 'full_color_suite_quality_audit';
+
+  @override
+  List<Issue> run(ToolResult<FullColorSuiteOutput> result) {
+    // Validate color formats
+    return _validateColorFormat(result.output.colorSuite);
+  }
+}
+
+List<Issue> _validateColorFormat(Map<String, String> colors) {
+  final issues = <Issue>[];
+
+  int colorIndex = 0;
+
+  colors.forEach((colorName, colorValue) {
+    if (!RegExp(r'^#[0-9A-Fa-f]{6}$').hasMatch(colorValue)) {
+      issues.add(
+        ColorQualityIssue(
+          id: 'invalid_color_format_$colorIndex',
+          severity: IssueSeverity.critical,
+          description:
+              'Color $colorName ($colorValue) is not in valid, 6-digit hex format',
+          context: {
+            'color_name': colorName,
+            'color_value': colorValue,
+            'expected_format': '#RRGGBB',
+          },
+          suggestions: ['Convert to valid, 6-digit hex format'],
+          problematicColor: colorValue,
+          qualityScore: 0.0,
+        ),
+      );
+    }
+    colorIndex++;
+  });
+
+  return issues;
+}
+
 /// Example of a comprehensive color audit function for design system colors
 class ColorQualityAuditFunction extends AuditFunction<DesignSystemColorOutput> {
   @override
@@ -61,34 +103,9 @@ class ColorQualityAuditFunction extends AuditFunction<DesignSystemColorOutput> {
 
   @override
   List<Issue> run(ToolResult<DesignSystemColorOutput> result) {
-    final issues = <Issue>[];
-
     // Now we can safely access the strongly-typed output
     final systemColors = result.output.systemColors;
-    int colorIndex = 0;
-    
-    systemColors.forEach((colorName, colorValue) {
-      if (!RegExp(r'^#[0-9A-Fa-f]{6}$').hasMatch(colorValue)) {
-        issues.add(
-          ColorQualityIssue(
-            id: 'invalid_color_format_$colorIndex',
-            severity: IssueSeverity.medium,
-            description: 'Color $colorName ($colorValue) is not in valid hex format',
-            context: {
-              'color_name': colorName,
-              'color_value': colorValue,
-              'expected_format': '#RRGGBB',
-            },
-            suggestions: ['Convert to valid hex format'],
-            problematicColor: colorValue,
-            qualityScore: 0.0,
-          ),
-        );
-      }
-      colorIndex++;
-    });
-
-    return issues;
+    return _validateColorFormat(systemColors);
   }
 
   @override

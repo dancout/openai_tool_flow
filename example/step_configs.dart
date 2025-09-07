@@ -79,6 +79,8 @@ Map<String, ToolCallStep> createProfessionalColorWorkflow() {
     minimumColors: 3,
     weightedThreshold: 2.5,
   );
+  final fullColorSuiteQualityAuditFunction =
+      FullColorSuiteQualityAuditFunction();
 
   return {
     seedStep.stepName: ToolCallStep.fromStepDefinition(
@@ -152,7 +154,7 @@ Map<String, ToolCallStep> createProfessionalColorWorkflow() {
       },
       includeResultsInToolcall: [2], // Reference design system step result by index
       stepConfig: StepConfig(
-        audits: [],
+        audits: [fullColorSuiteQualityAuditFunction],
         stopOnFailure: false,
         maxRetries: 3, // Explicitly set to 3 as required
         inputSanitizer: ExampleSanitizers.designSystemToFullSuiteInputSanitizer,
