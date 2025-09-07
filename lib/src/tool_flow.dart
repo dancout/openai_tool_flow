@@ -574,15 +574,7 @@ class ToolFlowResult {
   /// Returns true if all final results have passed their audit criteria
   /// Steps that do not have audits specified automatically pass by default
   bool get passesCriteria {
-    for (final stepAttempts in _stepResults) {
-      if (stepAttempts.isNotEmpty) {
-        final finalResult = stepAttempts.last;
-        if (!finalResult.passesCriteria) {
-          return false;
-        }
-      }
-    }
-    return true;
+    return !finalResults.any((finalResult) => !finalResult.passesCriteria);
   }
 
   /// Creates a ToolFlowResult from typed results
