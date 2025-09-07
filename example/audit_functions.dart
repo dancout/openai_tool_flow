@@ -3,6 +3,8 @@
 /// This file demonstrates audit functions for the 3-step professional color workflow:
 /// - ColorDiversityAuditFunction: Audits seed color generation (step 1)
 /// - ColorQualityAuditFunction: Audits design system colors (step 2)
+library;
+
 import 'package:openai_toolflow/openai_toolflow.dart';
 
 import 'typed_interfaces.dart';

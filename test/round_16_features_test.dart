@@ -192,12 +192,12 @@ void main() {
           final result = await flow.run(input: {'test_input': 'initial_value'});
 
           // Verify initial result is at index 0
-          expect(result.results[0].toolName, equals('initial_input'));
+          expect(result.finalResults[0].toolName, equals('initial_input'));
           expect(
-            result.results[0].output.toMap()['test_input'],
+            result.finalResults[0].output.toMap()['test_input'],
             equals('initial_value'),
           );
-          expect(result.results[0].output.toMap()['_round'], equals(0));
+          expect(result.finalResults[0].output.toMap()['_round'], equals(0));
 
           // Verify the step could access the initial input
           final stepInput = mockService.getCapturedInput('test_step');
@@ -457,7 +457,7 @@ void main() {
         // Verify the service was called and returned the expected response
         expect(result.results.length, equals(2));
         expect(
-          result.results[1].output.toMap()['output'],
+          result.finalResults[1].output.toMap()['output'],
           equals('test_result'),
         );
 

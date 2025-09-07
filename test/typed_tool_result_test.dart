@@ -302,10 +302,10 @@ void main() {
       expect(result.results.length, equals(3)); // initial input + 2 tool steps
 
       // Check that each result has the correct type information
-      final seedResult = result.results.firstWhere(
+      final seedResult = result.finalResults.firstWhere(
         (r) => r.toolName == 'generate_seed_colors',
       );
-      final suiteResult = result.results.firstWhere(
+      final suiteResult = result.finalResults.firstWhere(
         (r) => r.toolName == 'generate_color_suite',
       );
 
@@ -371,18 +371,18 @@ void main() {
       expect(result.results.length, equals(3)); // initial input + 2 tool steps
 
       // Check that audits ran and produced no issues for valid outputs
-      final seedIssues = result.results[1].issues; // First tool step (index 1)
+      final seedIssues = result.finalResults[1].issues; // First tool step (index 1)
       final suiteIssues =
-          result.results[2].issues; // Second tool step (index 2)
+          result.finalResults[2].issues; // Second tool step (index 2)
 
       expect(seedIssues, isEmpty);
       expect(suiteIssues, isEmpty);
 
       // Check that audit functions were type-safe
-      final seedResult = result.results.firstWhere(
+      final seedResult = result.finalResults.firstWhere(
         (r) => r.toolName == 'generate_seed_colors',
       );
-      final suiteResult = result.results.firstWhere(
+      final suiteResult = result.finalResults.firstWhere(
         (r) => r.toolName == 'generate_color_suite',
       );
 
@@ -458,8 +458,8 @@ void main() {
         ); // initial input + 2 tool steps
 
         // Check that audits ran and produced issues for invalid outputs
-        final seedIssues = result.results[1].issues; // First tool step
-        final suiteIssues = result.results[2].issues; // Second tool step
+        final seedIssues = result.finalResults[1].issues; // First tool step
+        final suiteIssues = result.finalResults[2].issues; // Second tool step
 
         expect(seedIssues, isNotEmpty);
         expect(
@@ -474,10 +474,10 @@ void main() {
         );
 
         // Type-safe audit: should report issues for invalid outputs
-        final seedResult = result.results.firstWhere(
+        final seedResult = result.finalResults.firstWhere(
           (r) => r.toolName == 'generate_seed_colors_invalid',
         );
-        final suiteResult = result.results.firstWhere(
+        final suiteResult = result.finalResults.firstWhere(
           (r) => r.toolName == 'generate_color_suite_invalid',
         );
 
@@ -556,10 +556,10 @@ void main() {
 
         final result = await flow.run(input: {'test': 'data'});
 
-        final seedResult = result.results.firstWhere(
+        final seedResult = result.finalResults.firstWhere(
           (r) => r.toolName == 'generate_seed_colors',
         );
-        final suiteResult = result.results.firstWhere(
+        final suiteResult = result.finalResults.firstWhere(
           (r) => r.toolName == 'generate_color_suite',
         );
 

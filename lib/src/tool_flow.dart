@@ -24,23 +24,27 @@ class ToolFlow {
   /// Internal state accumulated across steps
   final Map<String, dynamic> _state = {};
 
-  /// Results from completed steps (ordered list) using type-safe wrappers
-  // TODO: Should we consider removing this in favor of the _allAttempts Map where we can access the final attempt at each step, and that's effectively what _results is showing?
-  final List<TypedToolResult> _results = [];
-
   /// All attempts for all steps, organized by step index
   /// Each step index maps to a list of attempts (including the final successful one)
-  final Map<int, List<TypedToolResult>> _allAttempts = {};
+  /// Index 0 contains initial input data, indices 1+ contain step attempts
+  final List<List<TypedToolResult>> _stepAttempts = [];
 
-  // TODO: Do we actually need this visible for testing function?
+  // TODO: Consider if these visibleForTesting are actually needed.
+
   /// Gets all attempts for a specific step (0-indexed from steps array)
   @visibleForTesting
   List<TypedToolResult>? getStepAttempts(int stepIndex) {
-    // Convert from step index to storage index
-    // stepIndex 0 -> storage index 1, stepIndex 1 -> storage index 2, etc.
+    // Step index maps directly to _stepAttempts index
+    // stepIndex 0 -> _stepAttempts[1], stepIndex 1 -> _stepAttempts[2], etc.
+    // Index 0 in _stepAttempts is reserved for initial input data
     final storageIndex = stepIndex + 1;
-    return _allAttempts[storageIndex];
+    if (storageIndex < _stepAttempts.length) {
+      return _stepAttempts[storageIndex];
+    }
+    return null;
   }
+
+
 
   /// Creates a ToolFlow with configuration and steps
   ToolFlow({
@@ -55,8 +59,7 @@ class ToolFlow {
   /// Returns a ToolFlowResult containing all step results and final state
   Future<ToolFlowResult> run({required Map<String, dynamic> input}) async {
     _state.clear();
-    _results.clear();
-    _allAttempts.clear();
+    _stepAttempts.clear();
     _state.addAll(input);
 
     // Create initial TypedToolResult from input
@@ -75,18 +78,16 @@ class ToolFlow {
       issues: [],
     );
     final initialTypedResult = TypedToolResult.fromWithType(
-      initialResult,
-      ToolOutput,
+      result: initialResult,
+      outputType: ToolOutput,
+      tokenUsage: const TokenUsage.zero(), // Initial input has no token usage
     );
 
-    // Add initial result to collections
-    _results.add(initialTypedResult);
+    // Initialize storage: index 0 is initial input, indices 1+ are step attempts
+    _stepAttempts.add([initialTypedResult]);
 
-    // Store initial input data as "attempt" at index 0 to align with _results indexing
-    _allAttempts[0] = [initialTypedResult];
-
-    for (int i = 1; i <= steps.length; i++) {
-      final step = steps[i - 1];
+    for (int stepIndex = 0; stepIndex < steps.length; stepIndex++) {
+      final step = steps[stepIndex];
       final stepConfig = step.stepConfig;
 
       TypedToolResult? stepResult;
@@ -95,7 +96,7 @@ class ToolFlow {
       final maxRetries = stepConfig.maxRetries;
 
       // Initialize attempts list for this step
-      _allAttempts[i] = [];
+      _stepAttempts.add(<TypedToolResult>[]);
 
       // Retry loop for this step
       while (attemptCount <= maxRetries && !stepPassed) {
@@ -105,8 +106,7 @@ class ToolFlow {
           // Execute the step
           stepResult = await _executeStep(
             step: step,
-            // TODO: Should we use a helper function for decrementing that i JUST so that it's clear we need a different sort of index?
-            stepIndex: i - 1,
+            stepIndex: stepIndex,
             round: attemptCount - 1,
           );
 
@@ -115,12 +115,13 @@ class ToolFlow {
             stepResult = await _runAuditsForStep(
               result: stepResult,
               stepConfig: stepConfig,
-              stepIndex: i - 1,
+              stepIndex: stepIndex,
             );
           }
 
           // Store this attempt (whether it passes or fails)
-          _allAttempts[i]!.add(stepResult);
+          final currentStepStorageIndex = stepIndex + 1;
+          _stepAttempts[currentStepStorageIndex].add(stepResult);
 
           // Check if step passed criteria
           final allIssues = stepResult.issues;
@@ -129,14 +130,14 @@ class ToolFlow {
           if (!stepPassed && attemptCount <= maxRetries) {
             // Log retry attempt
             print(
-              'Step $i attempt $attemptCount failed. ${stepConfig.getFailureReason(allIssues)}. Retrying...',
+              'Step ${stepIndex + 1} attempt $attemptCount failed. ${stepConfig.getFailureReason(allIssues)}. Retrying...',
             );
           }
         } catch (e) {
           // Create an error result - build step input for error case
           final errorStepInput = _buildStepInput(
             step: step,
-            stepIndex: i - 1,
+            stepIndex: stepIndex,
             round: attemptCount,
           );
           final errorToolResult = ToolResult<ToolOutput>(
@@ -147,11 +148,11 @@ class ToolFlow {
             }, round: attemptCount - 1),
             issues: [
               Issue(
-                id: 'error_${step.toolName}_${i}_attempt_$attemptCount',
+                id: 'error_${step.toolName}_${stepIndex + 1}_attempt_$attemptCount',
                 severity: IssueSeverity.critical,
                 description: 'Tool execution failed: $e',
                 context: {
-                  'step': i,
+                  'step': stepIndex + 1,
                   'attempt': attemptCount,
                   'toolName': step.toolName,
                   'model': step.model,
@@ -163,31 +164,29 @@ class ToolFlow {
           );
           // Wrap error result in TypedToolResult
           stepResult = TypedToolResult.fromWithType(
-            errorToolResult,
-            ToolOutput,
+            result: errorToolResult,
+            outputType: ToolOutput,
+            tokenUsage: const TokenUsage.zero(), // Error cases have no token usage
           );
 
           // Store this attempt (error case)
-          _allAttempts[i]!.add(stepResult);
+          final currentStepStorageIndex = stepIndex + 1;
+          _stepAttempts[currentStepStorageIndex].add(stepResult);
           stepPassed = false;
         }
       }
 
-      // Add the final result
+      // Check if step completed successfully
       if (stepResult != null) {
-        _results.add(stepResult);
-
-        // TODO: It would be kinda cool to add how many tokens were consumed form that step into the state, both input and output tokens
-
         // Update state with step results
-        _state['step_${i}_result'] = stepResult.toJson();
+        _state['step_${stepIndex}_result'] = stepResult.toJson();
         _state.addAll(stepResult.output.toMap());
       }
 
       // Check if we should stop on failure
       if (!stepPassed && stepConfig.stopOnFailure) {
         print(
-          'Step $i failed after $maxRetries retries. Stopping flow execution.',
+          'Step ${stepIndex + 1} failed after $maxRetries retries. Stopping flow execution.',
         );
         break;
       }
@@ -196,12 +195,9 @@ class ToolFlow {
     // Aggregate token usage from all steps
     _aggregateTokenUsage();
 
-    return ToolFlowResult._fromTyped(
-      typedResults: List.unmodifiable(_results),
+    return ToolFlowResult.fromTypedResults(
+      typedResults: List.unmodifiable(_stepAttempts),
       finalState: Map.unmodifiable(_state),
-      // TODO: Do we need a list of allIssues if they are also available on the _results entries directly? Can't the user gather those themselves if they want to?
-      allIssues: _getFinalResultIssues(),
-      // TODO: Should we have _allAttempts exposed here? Potentially it could be included based on a bool parameter passed into the ToolFlow config.
     );
   }
 
@@ -222,8 +218,7 @@ class ToolFlow {
 
     // Get current step retry attempts (excluding the current attempt)
     final currentStepRetries = _getCurrentStepAttempts(
-      // TODO: This could be another different variable about generating stepIndex vs resultIndex
-      stepIndex: stepIndex + 1, // Use result index, not step index
+      stepIndex: stepIndex,
       severityFilter: step.stepConfig.issuesSeverityFilter,
     );
 
@@ -237,6 +232,9 @@ class ToolFlow {
 
     // Store usage information in state
     _state['step_${stepIndex}_usage'] = response.usage;
+
+    // Create token usage object from response (always included)
+    final tokenUsage = TokenUsage.fromMap(response.usage);
 
     // Apply output sanitization first if configured
     final sanitizedOutput = step.stepConfig.hasOutputSanitizer
@@ -265,9 +263,13 @@ class ToolFlow {
       issues: [],
     );
 
-    // Create TypedToolResult with type information from registry
+    // Create TypedToolResult with type information from registry and token usage
     final outputType = ToolOutputRegistry.getOutputType(step.toolName);
-    return TypedToolResult.fromWithType(result, outputType);
+    return TypedToolResult.fromWithType(
+      result: result, 
+      outputType: outputType,
+      tokenUsage: tokenUsage,
+    );
   }
 
   /// Runs audits for a step and returns the result with any issues found
@@ -347,13 +349,25 @@ class ToolFlow {
   }
 
   /// Builds input for a step based on inputBuilder and step configuration
+  /// Gets the final attempt of each step for passing to inputBuilder
+  List<TypedToolResult> _getFinalAttemptsForInputBuilder() {
+    // Simply iterate through all step attempts and get the last (final) attempt of each
+    final finalAttempts = <TypedToolResult>[];
+    for (final stepAttempts in _stepAttempts) {
+      if (stepAttempts.isNotEmpty) {
+        finalAttempts.add(stepAttempts.last);
+      }
+    }
+    return List.unmodifiable(finalAttempts);
+  }
+
   ToolInput _buildStepInput({
     required ToolCallStep step,
     required int stepIndex,
     required int round,
   }) {
-    // Get the results to pass to the inputBuilder
-    final inputBuilderResults = List<TypedToolResult>.unmodifiable(_results);
+    // Get the results to pass to the inputBuilder (final attempt of each step)
+    final inputBuilderResults = _getFinalAttemptsForInputBuilder();
 
     // Execute the inputBuilder to get custom input data
     Map<String, dynamic> customData;
@@ -398,29 +412,16 @@ class ToolFlow {
     final stepConfig = step.stepConfig;
 
     for (final index in step.includeResultsInToolcall) {
-      // Pull all attempts for the referenced step index
-      final attempts = _allAttempts[index] ?? [];
-      // TODO: This logic is basically duplicated in _getCurrentStepAttempts. Consolidate extracting the included results to a helper function.
-      /// You may even be able to just use this _getIncludedResults function for both scenarios.
-      for (final attempt in attempts) {
-        // Filter issues by severity level
-        final filteredIssues = attempt.issues
-            .where(
-              (issue) => _isIssueSeverityIncluded(
-                issue.severity,
-                stepConfig.issuesSeverityFilter,
-              ),
-            )
-            .toList();
-
-        // Only include attempt if it has issues matching the filter
-        if (filteredIssues.isNotEmpty) {
-          // Create a copy of the result with filtered issues
-          final filteredResult = attempt.underlyingResult.copyWith(
-            issues: filteredIssues,
-          );
-          includedResults.add(filteredResult);
-        }
+      // Get attempts for the referenced step index
+      // Convert step index to storage index if needed
+      final storageIndex = index == 0 ? 0 : index; // Index 0 is initial input, others are direct
+      if (storageIndex < _stepAttempts.length) {
+        final attempts = _stepAttempts[storageIndex];
+        final filteredResults = _filterAttemptsBySeverity(
+          attempts: attempts,
+          severityFilter: stepConfig.issuesSeverityFilter,
+        );
+        includedResults.addAll(filteredResults);
       }
     }
 
@@ -445,13 +446,13 @@ class ToolFlow {
     return issueIndex >= filterIndex;
   }
 
-  /// Gets the retry attempts for the current step with filtered issues
-  List<ToolResult<ToolOutput>> _getCurrentStepAttempts({
-    required int stepIndex,
+  /// Filters TypedToolResult attempts by issue severity and returns ToolResult objects
+  /// Consolidates logic previously duplicated in _getIncludedResults and _getCurrentStepAttempts
+  List<ToolResult<ToolOutput>> _filterAttemptsBySeverity({
+    required List<TypedToolResult> attempts,
     required IssueSeverity severityFilter,
   }) {
-    final attemptResults = <ToolResult<ToolOutput>>[];
-    final attempts = _allAttempts[stepIndex] ?? [];
+    final filteredResults = <ToolResult<ToolOutput>>[];
 
     for (final attempt in attempts) {
       // Filter issues by severity level
@@ -467,21 +468,31 @@ class ToolFlow {
         final filteredResult = attempt.underlyingResult.copyWith(
           issues: filteredIssues,
         );
-        attemptResults.add(filteredResult);
+        filteredResults.add(filteredResult);
       }
     }
 
-    return attemptResults;
+    return filteredResults;
   }
 
-  /// Gets issues from final results of each step only (not all attempts)
-  List<Issue> _getFinalResultIssues() {
-    final allIssues = <Issue>[];
-    for (final result in _results) {
-      allIssues.addAll(result.issues);
+  /// Gets the retry attempts for the current step with filtered issues
+  List<ToolResult<ToolOutput>> _getCurrentStepAttempts({
+    required int stepIndex,
+    required IssueSeverity severityFilter,
+  }) {
+    // Get attempts for the current step using storage index
+    final storageIndex = stepIndex + 1;
+    if (storageIndex >= _stepAttempts.length) {
+      throw StateError('Step storage index $storageIndex is out of bounds. _stepAttempts has ${_stepAttempts.length} entries.');
     }
-    return allIssues;
+    final attempts = _stepAttempts[storageIndex];
+    return _filterAttemptsBySeverity(
+      attempts: attempts,
+      severityFilter: severityFilter,
+    );
   }
+
+
 
   /// Aggregates token usage from all steps into the state
   void _aggregateTokenUsage() {
@@ -516,35 +527,68 @@ class ToolFlow {
 /// Result of executing a ToolFlow
 class ToolFlowResult {
   /// Internal typed results from all executed steps
-  final List<TypedToolResult> _typedResults;
+  /// Structure: List of steps, where each step contains a list of attempts
+  final List<List<TypedToolResult>> _stepResults;
 
-  /// Results from all executed steps (now returns TypedToolResult)
-  List<TypedToolResult> get results => List.unmodifiable(_typedResults);
+  /// Results from all executed steps organized by step
+  /// Returns `List<List<TypedToolResult>>` where:
+  /// - Outer list index: step index (0 = initial input, 1+ = actual steps)
+  /// - Inner list: all attempts for that step (or just final attempt if includeAllAttempts=false)
+  List<List<TypedToolResult>> get results {
+    return List.unmodifiable(
+      _stepResults.map((stepAttempts) => 
+        List<TypedToolResult>.unmodifiable(stepAttempts)
+      ).toList()
+    );
+  }
+
+  /// Returns only the final (successful or last failed) result from each step
+  List<TypedToolResult> get finalResults {
+    final finals = <TypedToolResult>[];
+    for (final stepAttempts in _stepResults) {
+      if (stepAttempts.isNotEmpty) {
+        finals.add(stepAttempts.last);
+      }
+    }
+    return finals;
+  }
 
   /// Final state after all steps completed
   final Map<String, dynamic> finalState;
 
-  /// All issues collected from all steps
-  final List<Issue> allIssues;
+  /// All issues collected from all steps (derived from results)
+  List<Issue> get allIssues {
+    final issues = <Issue>[];
+    for (final stepAttempts in _stepResults) {
+      for (final attempt in stepAttempts) {
+        issues.addAll(attempt.issues);
+      }
+    }
+    return issues;
+  }
+
+  /// Issues collected from only the final results of each step
+  List<Issue> get allFinalResultsIssues {
+    final issues = <Issue>[];
+    for (final stepAttempts in _stepResults) {
+      if (stepAttempts.isNotEmpty) {
+        issues.addAll(stepAttempts.last.issues);
+      }
+    }
+    return issues;
+  }
 
   /// Creates a ToolFlowResult from typed results
-  ToolFlowResult._fromTyped({
-    required List<TypedToolResult> typedResults,
+  ToolFlowResult.fromTypedResults({
+    required List<List<TypedToolResult>> typedResults,
     required this.finalState,
-    required this.allIssues,
-  }) : _typedResults = typedResults;
-
-  /// Creates a ToolFlowResult (backward compatible constructor)
-  const ToolFlowResult({
-    required List<ToolResult<ToolOutput>> results,
-    required this.finalState,
-    required this.allIssues,
-  }) : _typedResults = const [];
+  }) : _stepResults = typedResults;
 
   /// Converts this result to a JSON map
   Map<String, dynamic> toJson() {
     return {
-      'results': results.map((r) => r.toJson()).toList(),
+      'results': results.map((stepAttempts) => 
+          stepAttempts.map((attempt) => attempt.toJson()).toList()).toList(),
       'finalState': finalState,
       'allIssues': allIssues.map((i) => i.toJson()).toList(),
     };
@@ -552,6 +596,6 @@ class ToolFlowResult {
 
   @override
   String toString() {
-    return 'ToolFlowResult(steps: ${results.length}, issues: ${allIssues.length})';
+    return 'ToolFlowResult(steps: ${results.length}, totalIssues: ${allIssues.length})';
   }
 }
