@@ -178,8 +178,8 @@ void main() async {
   final flow = ToolFlow(
     config: config,
     steps: steps,
-    // openAiService: mockService, // Inject mock service for testing
-    openAiService: DefaultOpenAiToolService(config: config),
+    openAiService: mockService, // Inject mock service for testing
+    // openAiService: DefaultOpenAiToolService(config: config),
   );
 
   // Execute the flow
