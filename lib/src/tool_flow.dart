@@ -280,7 +280,6 @@ class ToolFlow {
     required int round,
   }) {
     final allIssues = <Issue>[];
-    bool overallPassesCriteria = true;
 
     // If no audits are configured, automatically pass
     if (stepConfig.audits.isEmpty) {
@@ -291,12 +290,10 @@ class ToolFlow {
     for (final audit in stepConfig.audits) {
       // Execute audit with proper type-safe casting
       late List<Issue> auditIssues;
-      late bool auditPassed;
 
       try {
         // Use a type-safe approach to execute the audit
         auditIssues = audit.runWithTypeChecking(output);
-        auditPassed = audit.passedCriteria(auditIssues);
       } catch (e) {
         // If audit execution fails, create an audit execution error
         auditIssues = [
@@ -318,7 +315,6 @@ class ToolFlow {
             round: round,
           ),
         ];
-        auditPassed = false;
       }
 
       // Add round information to audit issues
@@ -341,12 +337,10 @@ class ToolFlow {
           .toList();
 
       allIssues.addAll(roundedIssues);
-      
-      // Update overall pass status - if any audit fails, overall fails
-      if (!auditPassed) {
-        overallPassesCriteria = false;
-      }
     }
+
+    // Use stepConfig's pass criteria to determine overall pass/fail status
+    final overallPassesCriteria = stepConfig.passedCriteria(allIssues);
 
     return AuditResults(issues: allIssues, passesCriteria: overallPassesCriteria);
   }

@@ -280,7 +280,7 @@ void main() {
     test('should execute simple audit function', () {
       final audit = SimpleAuditFunction<ToolOutput>(
         name: 'test_audit',
-        auditFunction: (result) => [
+        auditFunction: (output) => [
           Issue(
             id: 'audit-issue',
             severity: IssueSeverity.low,
@@ -297,7 +297,7 @@ void main() {
         output: TestToolOutput({}, round: 0),
       );
 
-      final issues = audit.run(result);
+      final issues = audit.run(result.output);
       expect(issues.length, equals(1));
       expect(issues.first.description, equals('Audit found issue'));
     });
@@ -363,7 +363,7 @@ void main() {
 
       final audit = SimpleAuditFunction<TestToolOutput>(
         name: 'test_audit',
-        auditFunction: (result) => [
+        auditFunction: (output) => [
           Issue(
             id: 'audit-issue',
             severity: IssueSeverity.medium,
@@ -498,13 +498,13 @@ void main() {
       // Create an audit that generates issues
       final audit = SimpleAuditFunction<TestToolOutput>(
         name: 'color_audit',
-        auditFunction: (result) => [
+        auditFunction: (output) => [
           Issue(
             id: 'color-issue',
             severity: IssueSeverity.low,
             description: 'Color needs adjustment',
             context: {
-              'color': result.output.toMap()['colors']?.first ?? 'unknown',
+              'color': output.toMap()['colors']?.first ?? 'unknown',
             },
             suggestions: ['Increase saturation'],
           ),
@@ -912,7 +912,7 @@ void main() {
                   audits: [
                     SimpleAuditFunction<TestToolOutput>(
                       name: 'test_audit',
-                      auditFunction: (result) => [
+                      auditFunction: (output) => [
                         Issue(
                           id: 'high-issue',
                           severity: IssueSeverity.high,
@@ -997,7 +997,7 @@ void main() {
                   audits: [
                     SimpleAuditFunction<TestToolOutput>(
                       name: 'test_audit',
-                      auditFunction: (result) => [
+                      auditFunction: (output) => [
                         Issue(
                           id: 'low-issue',
                           severity: IssueSeverity.low,
@@ -1070,7 +1070,7 @@ void main() {
                   audits: [
                     SimpleAuditFunction<TestToolOutput>(
                       name: 'color_audit',
-                      auditFunction: (result) => [
+                      auditFunction: (output) => [
                         Issue(
                           id: 'color-issue',
                           severity: IssueSeverity.medium,
