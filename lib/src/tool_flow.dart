@@ -228,6 +228,7 @@ class ToolFlow {
       currentStepRetries: currentStepRetries,
     );
 
+    // TODO: We probably don't need to be storing response usage into the state anymore, since we have it at each tool result
     // Store usage information in state
     _state['step_${stepIndex}_usage'] = response.usage;
 
@@ -493,6 +494,7 @@ class ToolFlow {
 
 
   /// Aggregates token usage from all steps into the state
+  // TODO: Is this needed anymore since we have the tokenUsage at each TypedToolResult?
   void _aggregateTokenUsage() {
     int totalPromptTokens = 0;
     int totalCompletionTokens = 0;
