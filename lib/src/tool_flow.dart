@@ -29,7 +29,7 @@ class ToolFlow {
   /// Index 0 contains initial input data, indices 1+ contain step attempts
   final List<List<TypedToolResult>> _stepAttempts = [];
 
-  // TODO: Consider adding stepIndex/resultIndex helpers to improve clarity and reduce off-by-one errors
+  // TODO: Consider if these visibleForTesting are actually needed.
 
   /// Gets all attempts for a specific step (0-indexed from steps array)
   @visibleForTesting
