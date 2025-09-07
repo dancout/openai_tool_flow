@@ -44,9 +44,9 @@ void main() {
             round: 1,
           ),
           issues: [],
+          auditResults: const AuditResults(issues: [], passesCriteria: true),
         ),
         outputType: SeedColorGenerationOutput,
-        passesCriteria: true,
       );
 
       final mockSystemResult = TypedToolResult.fromWithType(
@@ -65,9 +65,9 @@ void main() {
             round: 1,
           ),
           issues: [],
+          auditResults: const AuditResults(issues: [], passesCriteria: true),
         ),
         outputType: DesignSystemColorOutput,
-        passesCriteria: true,
       );
 
       final workflow = createProfessionalColorWorkflow();

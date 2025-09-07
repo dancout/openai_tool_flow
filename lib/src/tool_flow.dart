@@ -1,5 +1,6 @@
 import 'package:meta/meta.dart';
 import 'package:openai_toolflow/openai_toolflow.dart';
+import 'tool_result.dart';
 
 /// Manages ordered execution of tool call steps with internal state management.
 ///
@@ -102,7 +103,7 @@ class ToolFlow {
         attemptCount++;
 
         try {
-          // Execute the step (audits are now run inside _executeStep)
+          // Execute the step
           stepResult = await _executeStep(
             step: step,
             stepIndex: stepIndex,
@@ -113,7 +114,7 @@ class ToolFlow {
           final currentStepStorageIndex = stepIndex + 1;
           _stepAttempts[currentStepStorageIndex].add(stepResult);
 
-          // Check if step passed criteria (now using the passesCriteria field)
+          // Check if step passed criteria
           stepPassed = stepResult.passesCriteria;
 
           if (!stepPassed && attemptCount <= maxRetries) {
@@ -254,21 +255,21 @@ class ToolFlow {
       round: round,
     );
 
-    // Create initial result with audit issues
+    // Create initial result with audit results
     final result = ToolResult<ToolOutput>(
       toolName: step.toolName,
       input: stepInput,
       output: typedOutput,
       issues: auditResults.issues,
+      auditResults: auditResults,
     );
 
-    // Create TypedToolResult with type information from registry, token usage, and audit results
+    // Create TypedToolResult with type information from registry and token usage
     final outputType = ToolOutputRegistry.getOutputType(step.toolName);
     return TypedToolResult.fromWithType(
       result: result, 
       outputType: outputType,
       tokenUsage: tokenUsage,
-      passesCriteria: auditResults.passesCriteria,
     );
   }
 
@@ -597,18 +598,4 @@ class ToolFlowResult {
   String toString() {
     return 'ToolFlowResult(steps: ${results.length}, totalIssues: ${allIssues.length})';
   }
-}
-
-/// Results from running audits on a tool output
-class AuditResults {
-  /// List of issues found during audit execution
-  final List<Issue> issues;
-  
-  /// Whether all audits passed their criteria
-  final bool passesCriteria;
-  
-  const AuditResults({
-    required this.issues,
-    required this.passesCriteria,
-  });
 }

@@ -1,6 +1,20 @@
 import 'issue.dart';
 import 'typed_interfaces.dart';
 
+// Forward declaration for AuditResults
+class AuditResults {
+  /// List of issues found during audit execution
+  final List<Issue> issues;
+  
+  /// Whether all audits passed their criteria
+  final bool passesCriteria;
+  
+  const AuditResults({
+    required this.issues,
+    required this.passesCriteria,
+  });
+}
+
 /// Structured output of a tool call step.
 ///
 /// This class follows a strict but extensible schema:
@@ -20,12 +34,16 @@ class ToolResult<T extends ToolOutput> {
   /// Issues identified during tool execution or subsequent audits
   final List<Issue> issues;
 
+  /// Results from audit execution, if any audits were performed
+  final AuditResults? auditResults;
+
   /// Creates a ToolResult with required fields
   const ToolResult({
     required this.toolName,
     required this.input,
     required this.output,
     this.issues = const [],
+    this.auditResults,
   });
 
   /// Converts this ToolResult to a JSON map
@@ -47,12 +65,14 @@ class ToolResult<T extends ToolOutput> {
     ToolInput? input,
     T? output,
     List<Issue>? issues,
+    AuditResults? auditResults,
   }) {
     return ToolResult<T>(
       toolName: toolName ?? this.toolName,
       input: input ?? this.input,
       output: output ?? this.output,
       issues: issues ?? this.issues,
+      auditResults: auditResults ?? this.auditResults,
     );
   }
 

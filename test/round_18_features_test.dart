@@ -77,7 +77,6 @@ void main() {
           result: result,
           outputType: ToolOutput,
           tokenUsage: tokenUsage,
-          passesCriteria: true,
         );
 
         expect(typedResult.tokenUsage, equals(tokenUsage));
@@ -103,7 +102,6 @@ void main() {
         final typedResult = TypedToolResult.fromWithType(
           result: result,
           outputType: ToolOutput,
-          passesCriteria: true,
         );
 
         expect(typedResult.tokenUsage.promptTokens, equals(0));
@@ -129,9 +127,9 @@ void main() {
                 ),
                 output: ToolOutput({'initial': 'data'}, round: 0),
                 issues: [],
+                auditResults: const AuditResults(issues: [], passesCriteria: true),
               ),
               outputType: ToolOutput,
-              passesCriteria: true,
             ),
           ],
           [
@@ -147,9 +145,9 @@ void main() {
                 ),
                 output: ToolOutput({'result': 'success'}, round: 0),
                 issues: [],
+                auditResults: const AuditResults(issues: [], passesCriteria: true),
               ),
               outputType: ToolOutput,
-              passesCriteria: true,
             ),
           ],
         ];
