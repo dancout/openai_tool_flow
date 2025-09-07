@@ -14,7 +14,6 @@ library;
 
 import 'package:openai_toolflow/openai_toolflow.dart';
 
-import 'audit_functions.dart';
 import 'step_configs.dart';
 import 'typed_interfaces.dart';
 
@@ -197,21 +196,14 @@ void main() async {
 
     print('✅ Professional color suite generation completed!\n');
 
-    // TODO: This, and maybe more of these "_display" functions could be removed if the underlying toolresult function they were demonstrating was removed.
     // Display enhanced execution summary
     _displayExecutionSummary(result);
-
-    // Display step results with forwarding information
-    _displayStepResultsWithForwarding(result);
 
     // Display new workflow output usage
     _displayNewWorkflowOutputUsage(result);
 
     // Show issues analysis by round and forwarding
     _displayIssuesAnalysis(result);
-
-    // Export enhanced results
-    _exportEnhancedResults(result);
 
     // Display token usage by step
     _displayTokenUsageByStep(flow, result);
@@ -279,69 +271,8 @@ void _displayExecutionSummary(ToolFlowResult result) {
   print('📊 Enhanced Execution Summary:');
   print('Steps executed: ${result.results.length}');
   print(
-    'Tools used: ${result.finalResults.map((r) => r.toolName).toSet().join(', ')}',
+    'Tools used: ${result.finalResults.map((r) => r.toolName).toSet().join(', ')}\n',
   );
-  print('Total issues found: ${result.allIssues.length}');
-  print(
-    'Critical issues: ${issuesWithSeverity(result.allIssues, IssueSeverity.critical).length}',
-  );
-  print(
-    'High issues: ${issuesWithSeverity(result.allIssues, IssueSeverity.high).length}',
-  );
-  print(
-    'Medium issues: ${issuesWithSeverity(result.allIssues, IssueSeverity.medium).length}',
-  );
-  print(
-    'Low issues: ${issuesWithSeverity(result.allIssues, IssueSeverity.low).length}\n',
-  );
-
-  print('  Multiple tools: Retrieved ${result.results.length} results');
-
-  // Results where condition
-  final successfulResults = result.finalResults.where((r) => r.issues.isEmpty);
-  print('  Successful steps: ${successfulResults.length} steps had no issues');
-  print('');
-}
-
-/// Display step results with forwarding information
-void _displayStepResultsWithForwarding(ToolFlowResult result) {
-  print('📋 Step Results with Forwarding Info:');
-
-  for (int i = 0; i < result.results.length; i++) {
-    final stepResult = result.finalResults[i];
-    print('Step ${i + 1}: ${stepResult.toolName}');
-    print('  Output keys: ${stepResult.output.toMap().keys.join(', ')}');
-    print('  Issues: ${stepResult.issues.length}');
-    print('  Typed output type: ${stepResult.output.runtimeType}');
-
-    // Check for forwarded data
-    final forwardedKeys = stepResult.input
-        .getCleanToolInput()
-        .keys
-        .where((key) => key.startsWith('_forwarded_') || key.contains('_'))
-        .toList();
-
-    if (forwardedKeys.isNotEmpty) {
-      print('  Forwarded data: ${forwardedKeys.join(', ')}');
-    }
-
-    if (stepResult.issues.isNotEmpty) {
-      for (final issue in stepResult.issues) {
-        final roundInfo = issue.round > 0 ? ' (Round ${issue.round})' : '';
-        print(
-          '    ⚠️ ${issue.severity.name.toUpperCase()}$roundInfo: ${issue.description}',
-        );
-
-        if (issue is ColorQualityIssue) {
-          print('      🎨 Problematic color: ${issue.problematicColor}');
-          print(
-            '      📊 Quality score: ${issue.qualityScore.toStringAsFixed(2)}',
-          );
-        }
-      }
-    }
-    print('');
-  }
 }
 
 /// Display professional workflow output usage examples
@@ -441,67 +372,7 @@ void _displayIssuesAnalysis(ToolFlowResult result) {
     issuesByRound.putIfAbsent(issue.round, () => []).add(issue);
   }
 
-  print('📈 Issues Analysis by Retry Round:');
-  issuesByRound.forEach((round, issues) {
-    print('  Round $round: ${issues.length} issues');
-    for (final issue in issues) {
-      print('    - ${issue.severity.name}: ${issue.description}');
-
-      // Show related data if available
-      if (issue.relatedData != null && issue.relatedData!.isNotEmpty) {
-        final stepIndex = issue.relatedData!['step_index'];
-        final auditName = issue.relatedData!['audit_name'];
-        if (stepIndex != null && auditName != null) {
-          print('      (Step $stepIndex, Audit: $auditName)');
-        }
-      }
-    }
-  });
-
-  // Show critical issues that need attention
-  final criticalIssues = issuesWithSeverity(
-    result.allIssues,
-    IssueSeverity.critical,
-  );
-  if (criticalIssues.isNotEmpty) {
-    print('\n🚨 Critical Issues Requiring Attention:');
-    for (final issue in criticalIssues) {
-      print('  ${issue.description}');
-      print('  Suggestions: ${issue.suggestions.join(', ')}');
-    }
-  }
-  print('');
-}
-
-/// Export enhanced results with professional workflow features
-void _exportEnhancedResults(ToolFlowResult result) {
-  print('📄 Professional Color Suite Export:');
-
-  // Show final color suite
-  final finalOutput = result.finalResults.last.output.toMap();
-  if (finalOutput.containsKey('color_suite')) {
-    print('🎨 Generated Professional Color Suite:');
-    final colorSuite = finalOutput['color_suite'] as Map<String, dynamic>;
-
-    // Display most important colors for quick reference
-    final importantColors = {
-      'primaryText': colorSuite['primaryText'],
-      'primaryBackground': colorSuite['primaryBackground'],
-      'primaryButton': colorSuite['primaryButton'],
-      'errorBackground': colorSuite['errorBackground'],
-      'warningBackground': colorSuite['warningBackground'],
-      'successBackground': colorSuite['successBackground'],
-    };
-
-    print('  🔑 Key Colors:');
-    importantColors.forEach((key, value) {
-      if (value != null) print('    $key: $value');
-    });
-
-    print('  📊 Total colors in suite: ${colorSuite.length}');
-    print('');
-  }
-
+  print('📈 Issues Analysis:');
   // Calculate total retries used across all steps
   int totalRetriesUsed = 0;
   for (final stepAttempts in result.results) {
@@ -512,56 +383,51 @@ void _exportEnhancedResults(ToolFlowResult result) {
       totalRetriesUsed += retriesForStep;
     }
   }
+  print('\nTotal retries used: $totalRetriesUsed');
 
-  // Summary statistics for professional workflow
-  final stats = {
-    'total_steps': result.results.length,
-    'successful_steps': result.finalResults
-        .where((r) => r.issues.isEmpty)
-        .length,
-    'total_issues': result.allIssues.length,
-    'workflow_type': 'Professional 3-Step Color Generation',
-    'tools_used': result.finalResults.map((r) => r.toolName).toSet().toList(),
-    'outputs_available': result.finalResults.isNotEmpty,
-    'accessibility_compliant': true,
-    'total_retries_used': totalRetriesUsed,
-  };
+  print('Total issues found: ${result.allIssues.length}');
+  print(
+    'Critical issues: ${issuesWithSeverity(result.allIssues, IssueSeverity.critical).length}',
+  );
+  print(
+    'High issues: ${issuesWithSeverity(result.allIssues, IssueSeverity.high).length}',
+  );
+  print(
+    'Medium issues: ${issuesWithSeverity(result.allIssues, IssueSeverity.medium).length}',
+  );
+  print(
+    'Low issues: ${issuesWithSeverity(result.allIssues, IssueSeverity.low).length}\n',
+  );
 
-  print('📊 Professional Workflow Statistics:');
-  stats.forEach((key, value) {
-    print('  $key: $value');
-  });
-  print('');
-
-  // Tool name mapping for easy reference
-  print('🗂️ Professional Workflow Tool Mapping:');
-
-  for (TypedToolResult toolResult in result.finalResults) {
-    final stepIndex = result.finalResults.indexOf(toolResult);
-
-    String workflowStep = '';
-    switch (toolResult.toolName) {
-      case 'generate_seed_colors':
-        workflowStep = ' (Step 1: Seed Generation)';
-        break;
-      case 'generate_design_system_colors':
-        workflowStep = ' (Step 2: System Colors)';
-        break;
-      case 'generate_full_color_suite':
-        workflowStep = ' (Step 3: Complete Suite)';
-        break;
+  // Group issues by step index (from relatedData['step_index'])
+  final issuesByStep = <int, List<Issue>>{};
+  for (final issue in result.allIssues) {
+    final stepIndex = issue.relatedData?['step_index'];
+    if (stepIndex != null) {
+      issuesByStep.putIfAbsent(stepIndex, () => []).add(issue);
+    } else {
+      // If no step_index, group under -1 (unknown)
+      issuesByStep.putIfAbsent(-1, () => []).add(issue);
     }
-
-    print('  ${toolResult.toolName} -> Step ${stepIndex + 1}$workflowStep');
   }
-  print('');
 
-  print(
-    '✅ Professional color theme generation with expert guidance completed!',
-  );
-  print(
-    '🎯 Generated: 3 seed colors → 6 system colors → 30 complete color suite',
-  );
-  print('📏 All steps used maxRetries=3 as specified');
-  print('🎨 Ready for production use in professional applications');
+  print('Issues by Step:');
+  issuesByStep.forEach((step, issues) {
+    final stepLabel = step >= 0 ? 'Step ${step + 1}' : 'Unknown Step';
+    print('  $stepLabel: ${issues.length} issues');
+    for (final issue in issues) {
+      print('    - ${issue.severity.name}: ${issue.description}');
+      // Show round and audit name if available
+      final auditName = issue.relatedData?['audit_name'];
+      if (issue.round > 0 || auditName != null) {
+        final roundInfo = 'Round ${issue.round}';
+        final auditInfo = auditName != null ? 'Audit: $auditName' : '';
+        final details = [
+          roundInfo,
+          auditInfo,
+        ].where((s) => s.isNotEmpty).join(', ');
+        print('      ($details)');
+      }
+    }
+  });
 }
