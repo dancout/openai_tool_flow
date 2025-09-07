@@ -16,6 +16,7 @@ import 'package:openai_toolflow/openai_toolflow.dart';
 
 import 'audit_functions.dart';
 import 'step_configs.dart';
+import 'typed_interfaces.dart';
 
 void main() async {
   print('🎨 Improved Professional Color Theme Generator');
@@ -29,6 +30,150 @@ void main() async {
   // Use the professional workflow from step_configs.dart
   final workflow = createProfessionalColorWorkflow();
   final steps = workflow.values.toList();
+
+  // Create a mock service for demonstration with enhanced responses for new workflow
+  final mockService = MockOpenAiToolService(
+    responses: {
+      SeedColorGenerationOutput.stepName: {
+        'seed_colors': [
+          '#2563EB',
+          '#7C3AED',
+          '#059669',
+        ], // Professional blue, purple, green
+        'design_style': 'modern',
+        'mood': 'professional',
+        'color_theory': {
+          'harmony_type': 'triadic',
+          'principles': ['contrast', 'balance', 'accessibility'],
+          'psychological_impact': 'trustworthy and innovative',
+        },
+        'confidence': 0.92,
+      },
+      DesignSystemColorOutput.stepName: {
+        'system_colors': {
+          'primary': '#2563EB', // Professional blue
+          'secondary': '#7C3AED', // Accent purple
+          'surface': '#F8FAFC', // Light surface
+          'text': '#1E293B', // Dark text
+          'warning': '#F59E0B', // Amber warning
+          'error': '#EF4444', // Red error
+        },
+        'accessibility_scores': {
+          'primary': '7.2:1',
+          'secondary': '6.8:1',
+          'surface': '21.0:1',
+          'text': '19.5:1',
+          'warning': '5.9:1',
+          'error': '6.1:1',
+        },
+        'color_harmonies': ['complementary', 'analogous', 'triadic'],
+        'design_principles': {
+          'contrast_ratio': 'AAA compliant',
+          'color_psychology': 'trust and innovation focused',
+          'brand_alignment': 'professional services',
+        },
+      },
+      FullColorSuiteOutput.stepName: {
+        'color_suite': {
+          // Text colors
+          'primaryText': '#1E293B',
+          'secondaryText': '#475569',
+          'interactiveText': '#2563EB',
+          'mutedText': '#94A3B8',
+          'disabledText': '#CBD5E1',
+
+          // Background colors
+          'primaryBackground': '#FFFFFF',
+          'secondaryBackground': '#F8FAFC',
+          'surfaceBackground': '#F1F5F9',
+          'cardBackground': '#FFFFFF',
+          'overlayBackground': '#1E293B80',
+          'hoverBackground': '#F1F5F9',
+
+          // Status backgrounds
+          'errorBackground': '#FEF2F2',
+          'warningBackground': '#FFFBEB',
+          'successBackground': '#F0FDF4',
+          'infoBackground': '#EFF6FF',
+
+          // Border colors
+          'primaryBorder': '#E2E8F0',
+          'secondaryBorder': '#F1F5F9',
+          'focusBorder': '#2563EB',
+          'errorBorder': '#EF4444',
+          'warningBorder': '#F59E0B',
+
+          // Interactive colors
+          'primaryButton': '#2563EB',
+          'secondaryButton': '#7C3AED',
+          'disabledButton': '#94A3B8',
+          'primaryLink': '#2563EB',
+          'visitedLink': '#7C3AED',
+
+          // Icon colors
+          'primaryIcon': '#1E293B',
+          'secondaryIcon': '#475569',
+          'warningIcon': '#F59E0B',
+          'errorIcon': '#EF4444',
+          'successIcon': '#059669',
+        },
+        'color_families': {
+          'blues': [
+            '#EFF6FF',
+            '#DBEAFE',
+            '#BFDBFE',
+            '#93C5FD',
+            '#60A5FA',
+            '#3B82F6',
+            '#2563EB',
+            '#1D4ED8',
+            '#1E40AF',
+          ],
+          'purples': [
+            '#FAF5FF',
+            '#F3E8FF',
+            '#E9D5FF',
+            '#D8B4FE',
+            '#C084FC',
+            '#A855F7',
+            '#9333EA',
+            '#7C3AED',
+            '#6D28D9',
+          ],
+          'neutrals': [
+            '#FFFFFF',
+            '#F8FAFC',
+            '#F1F5F9',
+            '#E2E8F0',
+            '#CBD5E1',
+            '#94A3B8',
+            '#64748B',
+            '#475569',
+            '#334155',
+            '#1E293B',
+          ],
+        },
+        'brand_guidelines': {
+          'primary_usage': 'Call-to-action buttons, links, key highlights',
+          'secondary_usage':
+              'Accent elements, secondary actions, decorative elements',
+          'text_hierarchy':
+              'Primary text for headings, secondary for body, muted for captions',
+          'background_strategy':
+              'Layered approach with subtle elevation through background variations',
+        },
+        'usage_recommendations': {
+          'accessibility': 'All color combinations meet WCAG AA standards',
+          'contrast_ratios':
+              'Text colors provide minimum 4.5:1 ratio against backgrounds',
+          'interactive_states':
+              'Hover and focus states use darker variants for clear feedback',
+          'error_handling':
+              'Error colors reserved for validation and critical alerts only',
+        },
+      },
+    },
+  );
 
   // Create the tool flow with service injection
   final flow = ToolFlow(
@@ -83,8 +228,13 @@ void _displayTokenUsageByStep(ToolFlow flow, ToolFlowResult result) {
   int totalTokens = 0;
 
   // Skip initial input (index 0) and iterate through actual step results
-  for (int stepIndex = 0; stepIndex < result.finalResults.length - 1; stepIndex++) {
-    final stepResult = result.finalResults[stepIndex + 1]; // +1 to skip initial input
+  for (
+    int stepIndex = 0;
+    stepIndex < result.finalResults.length - 1;
+    stepIndex++
+  ) {
+    final stepResult =
+        result.finalResults[stepIndex + 1]; // +1 to skip initial input
     final usage =
         result.finalState['step_${stepIndex}_usage'] as Map<String, dynamic>?;
     final toolName = stepResult.toolName;
@@ -104,12 +254,12 @@ void _displayTokenUsageByStep(ToolFlow flow, ToolFlowResult result) {
           ? stepTotalTokens
           : int.tryParse(stepTotalTokens.toString()) ?? 0;
 
-      print('  Step $i ($toolName):');
+      print('  Step ${stepIndex + 1} ($toolName):');
       print('    Prompt tokens: $promptTokens');
       print('    Completion tokens: $completionTokens');
       print('    Total tokens: $stepTotalTokens');
     } else {
-      print('  Step $i ($toolName): No token usage data');
+      print('  Step ${stepIndex + 1} ($toolName): No token usage data');
     }
   }
 
@@ -363,8 +513,10 @@ void _exportEnhancedResults(ToolFlowResult result) {
   // Calculate total retries used across all steps
   int totalRetriesUsed = 0;
   for (final stepAttempts in result.results) {
-    if (stepAttempts.length > 1) { // More than 1 attempt means retries occurred
-      final retriesForStep = stepAttempts.length - 1; // Subtract 1 for initial attempt
+    if (stepAttempts.length > 1) {
+      // More than 1 attempt means retries occurred
+      final retriesForStep =
+          stepAttempts.length - 1; // Subtract 1 for initial attempt
       totalRetriesUsed += retriesForStep;
     }
   }
@@ -372,13 +524,15 @@ void _exportEnhancedResults(ToolFlowResult result) {
   // Summary statistics for professional workflow
   final stats = {
     'total_steps': result.results.length,
-    'successful_steps': result.finalResults.where((r) => r.issues.isEmpty).length,
+    'successful_steps': result.finalResults
+        .where((r) => r.issues.isEmpty)
+        .length,
     'total_issues': result.allIssues.length,
     'workflow_type': 'Professional 3-Step Color Generation',
     'tools_used': result.finalResults.map((r) => r.toolName).toSet().toList(),
     'outputs_available': result.finalResults.isNotEmpty,
     'accessibility_compliant': true,
-    'maxRetries_used': totalRetriesUsed,
+    'total_retries_used': totalRetriesUsed,
   };
 
   print('📊 Professional Workflow Statistics:');
