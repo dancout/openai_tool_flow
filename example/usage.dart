@@ -374,14 +374,6 @@ void _displayNewWorkflowOutputUsage(ToolFlowResult result) {
       print('    $key: $value');
     });
   }
-  final accessibilityScores =
-      designOutputMap['accessibility_scores'] as Map<String, dynamic>?;
-  if (accessibilityScores != null && accessibilityScores.isNotEmpty) {
-    print('  📊 Accessibility Scores:');
-    accessibilityScores.forEach((key, value) {
-      print('    $key: $value:1 contrast ratio');
-    });
-  }
   print('');
 
   // Display full color suite

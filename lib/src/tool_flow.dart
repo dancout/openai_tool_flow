@@ -496,11 +496,6 @@ class ToolFlow {
 
   /// Aggregates token usage from all steps into the state
   void _aggregateTokenUsage() {
-    // TODO: Would it be better to store the token usage in the TypedToolResult somewhere? Then it would be accessible at a more granular level to the user.
-    /// We could even have it be a list of usages per attempt so that the user could see how many tokens were consumed per attempt of each step
-    /// Then the total per step could be a convenience getter for total tokens
-    /// Same with the tool flow, we could have convenience getters for total token usage
-    /// BUT - still have access at each layer if the user was interested
     int totalPromptTokens = 0;
     int totalCompletionTokens = 0;
     int totalTokens = 0;

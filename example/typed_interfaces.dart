@@ -293,13 +293,11 @@ class DesignSystemColorOutput extends ToolOutput {
   static const String stepName = 'generate_design_system_colors';
 
   final Map<String, String> systemColors;
-  final Map<String, String> accessibilityScores;
   final List<String> colorHarmonies;
   final Map<String, dynamic> designPrinciples;
 
   const DesignSystemColorOutput({
     required this.systemColors,
-    this.accessibilityScores = const {},
     this.colorHarmonies = const [],
     this.designPrinciples = const {},
     required super.round,
@@ -308,9 +306,6 @@ class DesignSystemColorOutput extends ToolOutput {
   factory DesignSystemColorOutput.fromMap(Map<String, dynamic> map, int round) {
     return DesignSystemColorOutput(
       systemColors: Map<String, String>.from(map['system_colors'] as Map),
-      accessibilityScores: Map<String, String>.from(
-        map['accessibility_scores'] as Map? ?? {},
-      ),
       colorHarmonies: List<String>.from(map['color_harmonies'] as List? ?? []),
       designPrinciples: Map<String, dynamic>.from(
         map['design_principles'] as Map? ?? {},
@@ -323,7 +318,6 @@ class DesignSystemColorOutput extends ToolOutput {
   Map<String, dynamic> toMap() {
     return {
       'system_colors': systemColors,
-      'accessibility_scores': accessibilityScores,
       'color_harmonies': colorHarmonies,
       'design_principles': designPrinciples,
     };
@@ -359,33 +353,6 @@ class DesignSystemColorOutput extends ToolOutput {
             PropertyEntry.string(
               name: 'error',
               description: 'Error color for error messages',
-            ),
-          ],
-        ),
-        PropertyEntry.object(
-          name: 'accessibility_scores',
-          description:
-              'Accessibility scores for each system color against the base background or primary text',
-          properties: [
-            PropertyEntry.string(
-              name: 'primary',
-              description: 'Contrast ratio for primary color (e.g., "4.5:1")',
-            ),
-            PropertyEntry.string(
-              name: 'secondary',
-              description: 'Contrast ratio for secondary color (e.g., "4.5:1")',
-            ),
-            PropertyEntry.string(
-              name: 'text',
-              description: 'Contrast ratio for text color (e.g., "7:1")',
-            ),
-            PropertyEntry.string(
-              name: 'warning',
-              description: 'Contrast ratio for warning color (e.g., "3:1")',
-            ),
-            PropertyEntry.string(
-              name: 'error',
-              description: 'Contrast ratio for error color (e.g., "3:1")',
             ),
           ],
         ),

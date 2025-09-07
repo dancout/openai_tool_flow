@@ -51,11 +51,6 @@ class ExampleSanitizers {
       sanitized['system_colors'] = input['system_colors'];
     }
 
-    // Include accessibility context if available
-    if (input.containsKey('accessibility_scores')) {
-      sanitized['accessibility_context'] = input['accessibility_scores'];
-    }
-
     // Include design principles context
     if (input.containsKey('design_principles')) {
       sanitized['design_principles_context'] = input['design_principles'];
@@ -89,7 +84,6 @@ Map<String, ToolCallStep> createProfessionalColorWorkflow() {
       toolDescription:
           'Generate foundational seed colors using expert color theory principles, considering design style, mood, and psychological impact to create a harmonious base palette',
 
-      // TODO: Could we make inputBuilder optional and then if not specified, we just pass the output of the last result into this one?
       inputBuilder: (previousResults) {
         final input = SeedColorGenerationInput(
           designStyle: 'modern',
