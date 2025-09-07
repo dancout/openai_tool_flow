@@ -1,5 +1,8 @@
 # openai_toolflow
 
+TODO: LOOK AT THIS!
+check out https://pub.dev/packages/dartantic_ai and see if that is too similar to what you are doing for this to be worthwhile to pursue.
+
 `openai_toolflow` is a Dart package for orchestrating **OpenAI tool calls with audits**.  
 It allows developers to define a pipeline of tool calls (functions executed through OpenAI models) where:
 
