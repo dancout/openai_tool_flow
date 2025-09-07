@@ -103,6 +103,7 @@ void main() {
         final typedResult = TypedToolResult.fromWithType(
           result: result,
           outputType: ToolOutput,
+          passesCriteria: true,
         );
 
         expect(typedResult.tokenUsage.promptTokens, equals(0));
@@ -130,6 +131,7 @@ void main() {
                 issues: [],
               ),
               outputType: ToolOutput,
+              passesCriteria: true,
             ),
           ],
           [
@@ -147,6 +149,7 @@ void main() {
                 issues: [],
               ),
               outputType: ToolOutput,
+              passesCriteria: true,
             ),
           ],
         ];

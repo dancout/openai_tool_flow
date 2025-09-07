@@ -30,7 +30,7 @@ class TypedToolResult {
   static TypedToolResult from<T extends ToolOutput>(
     ToolResult<T> result, {
     TokenUsage? tokenUsage,
-    required bool passesCriteria,
+    bool passesCriteria = true,
   }) {
     return TypedToolResult._(
       result as ToolResult<ToolOutput>,
@@ -45,7 +45,7 @@ class TypedToolResult {
     required ToolResult<ToolOutput> result,
     required Type outputType,
     TokenUsage? tokenUsage,
-    required bool passesCriteria,
+    bool passesCriteria = true,
   }) {
     return TypedToolResult._(
       result,

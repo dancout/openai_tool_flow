@@ -6,15 +6,15 @@ class SimpleAuditFunction<T extends ToolOutput> extends AuditFunction<T> {
   @override
   final String name;
 
-  final List<Issue> Function(ToolResult<T>) _auditFunction;
+  final List<Issue> Function(T) _auditFunction;
 
   SimpleAuditFunction({
     required this.name,
-    required List<Issue> Function(ToolResult<T>) auditFunction,
+    required List<Issue> Function(T) auditFunction,
   }) : _auditFunction = auditFunction;
 
   @override
-  List<Issue> run(ToolResult<T> result) => _auditFunction(result);
+  List<Issue> run(T output) => _auditFunction(output);
 }
 
 /// Mock service that can simulate failures for testing retry functionality
@@ -182,9 +182,9 @@ void main() {
               audits: [
                 SimpleAuditFunction<ToolOutput>(
                   name: 'failure_audit',
-                  auditFunction: (result) {
-                    final output = result.output.toMap();
-                    final attempt = output['attempt'] as int? ?? 1;
+                  auditFunction: (output) {
+                    final outputMap = output.toMap();
+                    final attempt = outputMap['attempt'] as int? ?? 1;
                     return [
                       Issue(
                         id: 'test_issue_attempt_$attempt',
@@ -192,7 +192,7 @@ void main() {
                         description: 'Test failure (attempt $attempt)',
                         context: {'attempt': attempt},
                         suggestions: ['Fix the issue and retry'],
-                        round: result.input.round,
+                        round: output.round,
                       ),
                     ];
                   },
@@ -245,7 +245,7 @@ void main() {
               audits: [
                 SimpleAuditFunction<ToolOutput>(
                   name: 'color_validation',
-                  auditFunction: (result) => [
+                  auditFunction: (output) => [
                     // Always create an issue so the final result will have it for includeResultsInToolcall
                     Issue(
                       id: 'color_issue',
@@ -253,7 +253,7 @@ void main() {
                       description: 'Color validation issue',
                       context: {},
                       suggestions: ['Fix colors'],
-                      round: result.input.round,
+                      round: output.round,
                     ),
                   ],
                 ),
@@ -323,14 +323,14 @@ void main() {
               audits: [
                 SimpleAuditFunction<ToolOutput>(
                   name: 'step1_audit',
-                  auditFunction: (result) => [
+                  auditFunction: (output) => [
                     Issue(
                       id: 'step1_issue',
                       severity: IssueSeverity.high,
                       description: 'Step1 completed with issue',
                       context: {},
                       suggestions: [],
-                      round: result.input.round,
+                      round: output.round,
                     ),
                   ],
                 ),
@@ -350,14 +350,14 @@ void main() {
               audits: [
                 SimpleAuditFunction<ToolOutput>(
                   name: 'critical_audit',
-                  auditFunction: (result) => [
+                  auditFunction: (output) => [
                     Issue(
                       id: 'critical_issue',
                       severity: IssueSeverity.critical,
                       description: 'Critical failure',
                       context: {},
                       suggestions: ['Fix critical error'],
-                      round: result.input.round,
+                      round: output.round,
                     ),
                   ],
                 ),
@@ -409,14 +409,14 @@ void main() {
               audits: [
                 SimpleAuditFunction<ToolOutput>(
                   name: 'low_severity_audit',
-                  auditFunction: (result) => [
+                  auditFunction: (output) => [
                     Issue(
                       id: 'low_issue',
                       severity: IssueSeverity.low,
                       description: 'Low severity issue',
                       context: {},
                       suggestions: ['Minor fix needed'],
-                      round: result.input.round,
+                      round: output.round,
                     ),
                   ],
                 ),

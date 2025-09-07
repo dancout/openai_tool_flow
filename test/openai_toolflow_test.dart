@@ -38,14 +38,14 @@ class SimpleAuditFunction<T extends ToolOutput> extends AuditFunction<T> {
   @override
   final String name;
 
-  final List<Issue> Function(ToolResult<T>) _auditFunction;
+  final List<Issue> Function(T) _auditFunction;
   final bool Function(List<Issue>)? _passedCriteriaFunction;
   final String Function(List<Issue>)? _failureReasonFunction;
 
   /// Creates a simple audit function with a name and audit function
   SimpleAuditFunction({
     required this.name,
-    required List<Issue> Function(ToolResult<T>) auditFunction,
+    required List<Issue> Function(T) auditFunction,
     bool Function(List<Issue>)? passedCriteriaFunction,
     String Function(List<Issue>)? failureReasonFunction,
   }) : _auditFunction = auditFunction,
@@ -53,7 +53,7 @@ class SimpleAuditFunction<T extends ToolOutput> extends AuditFunction<T> {
        _failureReasonFunction = failureReasonFunction;
 
   @override
-  List<Issue> run(ToolResult<T> result) => _auditFunction(result);
+  List<Issue> run(T output) => _auditFunction(output);
 
   @override
   bool passedCriteria(List<Issue> issues) {
