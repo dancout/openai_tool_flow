@@ -46,6 +46,7 @@ void main() {
           issues: [],
         ),
         outputType: SeedColorGenerationOutput,
+        passesCriteria: true,
       );
 
       final mockSystemResult = TypedToolResult.fromWithType(
@@ -66,6 +67,7 @@ void main() {
           issues: [],
         ),
         outputType: DesignSystemColorOutput,
+        passesCriteria: true,
       );
 
       final workflow = createProfessionalColorWorkflow();

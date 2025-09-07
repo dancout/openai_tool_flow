@@ -77,6 +77,7 @@ void main() {
           result: result,
           outputType: ToolOutput,
           tokenUsage: tokenUsage,
+          passesCriteria: true,
         );
 
         expect(typedResult.tokenUsage, equals(tokenUsage));

@@ -79,6 +79,7 @@ class ToolFlow {
       result: initialResult,
       outputType: ToolOutput,
       tokenUsage: const TokenUsage.zero(), // Initial input has no token usage
+      passesCriteria: true, // Initial input always passes criteria
     );
 
     // Initialize storage: index 0 is initial input, indices 1+ are step attempts
@@ -101,34 +102,24 @@ class ToolFlow {
         attemptCount++;
 
         try {
-          // Execute the step
+          // Execute the step (audits are now run inside _executeStep)
           stepResult = await _executeStep(
             step: step,
             stepIndex: stepIndex,
             round: attemptCount - 1,
           );
 
-          // Run audits if configured for this step
-          if (stepConfig.hasAudits) {
-            stepResult = await _runAuditsForStep(
-              result: stepResult,
-              stepConfig: stepConfig,
-              stepIndex: stepIndex,
-            );
-          }
-
           // Store this attempt (whether it passes or fails)
           final currentStepStorageIndex = stepIndex + 1;
           _stepAttempts[currentStepStorageIndex].add(stepResult);
 
-          // Check if step passed criteria
-          final allIssues = stepResult.issues;
-          stepPassed = stepConfig.passedCriteria(allIssues);
+          // Check if step passed criteria (now using the passesCriteria field)
+          stepPassed = stepResult.passesCriteria;
 
           if (!stepPassed && attemptCount <= maxRetries) {
             // Log retry attempt
             print(
-              'Step ${stepIndex + 1} attempt $attemptCount failed. ${stepConfig.getFailureReason(allIssues)}. Retrying...',
+              'Step ${stepIndex + 1} attempt $attemptCount failed. ${stepConfig.getFailureReason(stepResult.issues)}. Retrying...',
             );
           }
         } catch (e) {
@@ -165,6 +156,7 @@ class ToolFlow {
             result: errorToolResult,
             outputType: ToolOutput,
             tokenUsage: const TokenUsage.zero(), // Error cases have no token usage
+            passesCriteria: false, // Error cases do not pass criteria
           );
 
           // Store this attempt (error case)
@@ -254,39 +246,57 @@ class ToolFlow {
       round: round,
     );
 
-    // Create initial result without issues (audits will add them)
+    // Run audits on the typed output first
+    final auditResults = _runAuditsOnOutput(
+      output: typedOutput,
+      stepConfig: step.stepConfig,
+      stepIndex: stepIndex,
+      round: round,
+    );
+
+    // Create initial result with audit issues
     final result = ToolResult<ToolOutput>(
       toolName: step.toolName,
       input: stepInput,
       output: typedOutput,
-      issues: [],
+      issues: auditResults.issues,
     );
 
-    // Create TypedToolResult with type information from registry and token usage
+    // Create TypedToolResult with type information from registry, token usage, and audit results
     final outputType = ToolOutputRegistry.getOutputType(step.toolName);
     return TypedToolResult.fromWithType(
       result: result, 
       outputType: outputType,
       tokenUsage: tokenUsage,
+      passesCriteria: auditResults.passesCriteria,
     );
   }
 
-  /// Runs audits for a step and returns the result with any issues found
-  Future<TypedToolResult> _runAuditsForStep({
-    required TypedToolResult result,
+  /// Runs audits on a tool output and returns the issues and pass/fail status
+  AuditResults _runAuditsOnOutput({
+    required ToolOutput output,
     required StepConfig stepConfig,
     required int stepIndex,
-  }) async {
-    var auditedResult = result;
+    required int round,
+  }) {
+    final allIssues = <Issue>[];
+    bool overallPassesCriteria = true;
+
+    // If no audits are configured, automatically pass
+    if (stepConfig.audits.isEmpty) {
+      return AuditResults(issues: [], passesCriteria: true);
+    }
 
     // Run step-specific audits only (global audits are deprecated)
     for (final audit in stepConfig.audits) {
       // Execute audit with proper type-safe casting
       late List<Issue> auditIssues;
+      late bool auditPassed;
 
       try {
         // Use a type-safe approach to execute the audit
-        auditIssues = audit.runWithTypeChecking(result.underlyingResult);
+        auditIssues = audit.runWithTypeChecking(output);
+        auditPassed = audit.passedCriteria(auditIssues);
       } catch (e) {
         // If audit execution fails, create an audit execution error
         auditIssues = [
@@ -298,20 +308,17 @@ class ToolFlow {
               'step_index': stepIndex,
               'audit_name': audit.name,
               'error': e.toString(),
-              'actual_output_type': auditedResult.outputType.toString(),
+              'actual_output_type': output.runtimeType.toString(),
             },
             suggestions: [
               'Check audit function implementation',
               'Verify tool output structure matches expectations',
               'Ensure tool output type matches audit expectations',
             ],
-            round:
-                int.tryParse(
-                  result.input.toMap()['_round']?.toString() ?? '0',
-                ) ??
-                0,
+            round: round,
           ),
         ];
+        auditPassed = false;
       }
 
       // Add round information to audit issues
@@ -323,28 +330,25 @@ class ToolFlow {
               description: issue.description,
               context: issue.context,
               suggestions: issue.suggestions,
-              round:
-                  int.tryParse(
-                    result.input.toMap()['_round']?.toString() ?? '0',
-                  ) ??
-                  0,
+              round: round,
               relatedData: {
                 'step_index': stepIndex,
                 'audit_name': audit.name,
-                'tool_output': result.output,
+                'tool_output': output,
               },
             ),
           )
           .toList();
 
-      auditedResult = auditedResult.copyWith(
-        result: auditedResult.underlyingResult.copyWith(
-          issues: [...auditedResult.underlyingResult.issues, ...roundedIssues],
-        ),
-      );
+      allIssues.addAll(roundedIssues);
+      
+      // Update overall pass status - if any audit fails, overall fails
+      if (!auditPassed) {
+        overallPassesCriteria = false;
+      }
     }
 
-    return auditedResult;
+    return AuditResults(issues: allIssues, passesCriteria: overallPassesCriteria);
   }
 
   /// Builds input for a step based on inputBuilder and step configuration
@@ -573,6 +577,20 @@ class ToolFlowResult {
     return issues;
   }
 
+  /// Returns true if all final results have passed their audit criteria
+  /// Steps that do not have audits specified automatically pass by default
+  bool get passesCriteria {
+    for (final stepAttempts in _stepResults) {
+      if (stepAttempts.isNotEmpty) {
+        final finalResult = stepAttempts.last;
+        if (!finalResult.passesCriteria) {
+          return false;
+        }
+      }
+    }
+    return true;
+  }
+
   /// Creates a ToolFlowResult from typed results
   ToolFlowResult.fromTypedResults({
     required List<List<TypedToolResult>> typedResults,
@@ -593,4 +611,18 @@ class ToolFlowResult {
   String toString() {
     return 'ToolFlowResult(steps: ${results.length}, totalIssues: ${allIssues.length})';
   }
+}
+
+/// Results from running audits on a tool output
+class AuditResults {
+  /// List of issues found during audit execution
+  final List<Issue> issues;
+  
+  /// Whether all audits passed their criteria
+  final bool passesCriteria;
+  
+  const AuditResults({
+    required this.issues,
+    required this.passesCriteria,
+  });
 }

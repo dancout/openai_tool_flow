@@ -19,18 +19,24 @@ class TypedToolResult {
   /// Token usage information for this tool call attempt
   final TokenUsage tokenUsage;
 
+  /// Whether this result has passed all audit criteria
+  /// Steps that do not have audits specified automatically pass by default
+  final bool passesCriteria;
+
   /// Creates a TypedToolResult wrapper for the given result
-  TypedToolResult._(this._result, this._outputType, this.tokenUsage);
+  TypedToolResult._(this._result, this._outputType, this.tokenUsage, this.passesCriteria);
 
   /// Creates a TypedToolResult from a ToolResult with specific output type
   static TypedToolResult from<T extends ToolOutput>(
     ToolResult<T> result, {
     TokenUsage? tokenUsage,
+    required bool passesCriteria,
   }) {
     return TypedToolResult._(
       result as ToolResult<ToolOutput>,
       T,
       tokenUsage ?? const TokenUsage.zero(),
+      passesCriteria,
     );
   }
 
@@ -39,11 +45,13 @@ class TypedToolResult {
     required ToolResult<ToolOutput> result,
     required Type outputType,
     TokenUsage? tokenUsage,
+    required bool passesCriteria,
   }) {
     return TypedToolResult._(
       result,
       outputType,
       tokenUsage ?? const TokenUsage.zero(),
+      passesCriteria,
     );
   }
 
@@ -107,11 +115,13 @@ class TypedToolResult {
     ToolResult<ToolOutput>? result,
     Type? outputType,
     TokenUsage? tokenUsage,
+    bool? passesCriteria,
   }) {
     return TypedToolResult._(
       result ?? _result,
       outputType ?? _outputType,
       tokenUsage ?? this.tokenUsage,
+      passesCriteria ?? this.passesCriteria,
     );
   }
 
@@ -124,7 +134,7 @@ class TypedToolResult {
 
   @override
   String toString() {
-    return 'TypedToolResult(toolName: $toolName, outputType: $_outputType, issues: ${issues.length}, tokens: $tokenUsage)';
+    return 'TypedToolResult(toolName: $toolName, outputType: $_outputType, issues: ${issues.length}, tokens: $tokenUsage, passesCriteria: $passesCriteria)';
   }
 
   @override
@@ -133,9 +143,10 @@ class TypedToolResult {
     return other is TypedToolResult &&
         other._result == _result &&
         other._outputType == _outputType &&
-        other.tokenUsage == tokenUsage;
+        other.tokenUsage == tokenUsage &&
+        other.passesCriteria == passesCriteria;
   }
 
   @override
-  int get hashCode => Object.hash(_result, _outputType, tokenUsage);
+  int get hashCode => Object.hash(_result, _outputType, tokenUsage, passesCriteria);
 }

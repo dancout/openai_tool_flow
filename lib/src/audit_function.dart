@@ -1,5 +1,4 @@
 import 'issue.dart';
-import 'tool_result.dart';
 import 'typed_interfaces.dart';
 
 /// Abstract base class for audit functions.
@@ -10,29 +9,23 @@ abstract class AuditFunction<T extends ToolOutput> {
   /// Name of this audit function
   String get name;
 
-  /// Executes the audit on a tool result and returns any issues found
+  /// Executes the audit on a tool output and returns any issues found
   ///
   /// This method should be implemented by subclasses to provide
   /// domain-specific audit logic.
-  List<Issue> run(ToolResult<T> result);
+  List<Issue> run(T output);
 
-  /// Executes the audit on a generic ToolResult with runtime type checking
+  /// Executes the audit on a generic ToolOutput with runtime type checking
   ///
   /// This method enables type-safe audit execution by attempting to cast
-  /// the generic `ToolResult&lt;ToolOutput&gt;` to the expected type `T`.
+  /// the generic `ToolOutput` to the expected type `T`.
   /// If the cast succeeds, the audit runs normally. If it fails,
   /// an appropriate error is returned.
-  List<Issue> runWithTypeChecking(ToolResult<ToolOutput> result) {
+  List<Issue> runWithTypeChecking(ToolOutput output) {
     try {
-      // Attempt to create a properly typed result
-      if (result.output.runtimeType.toString() == T.toString()) {
-        final typedResult = ToolResult<T>(
-          toolName: result.toolName,
-          input: result.input,
-          output: result.output as T,
-          issues: result.issues,
-        );
-        return run(typedResult);
+      // Attempt to cast the output to the expected type
+      if (output.runtimeType.toString() == T.toString()) {
+        return run(output as T);
       } else {
         // Type mismatch - create an informative error
         return [
@@ -40,16 +33,15 @@ abstract class AuditFunction<T extends ToolOutput> {
             id: 'audit_type_mismatch_$name',
             severity: IssueSeverity.critical,
             description:
-                'Audit $name expects output type $T, but received ${result.output.runtimeType}',
+                'Audit $name expects output type $T, but received ${output.runtimeType}',
             context: {
               'audit_name': name,
               'expected_type': T.toString(),
-              'actual_type': result.output.runtimeType.toString(),
-              'tool_name': result.toolName,
+              'actual_type': output.runtimeType.toString(),
             },
             suggestions: [
               'Ensure the tool produces output of type $T',
-              'Register the correct output type for tool ${result.toolName}',
+              'Register the correct output type for the tool',
               'Change audit to expect ToolOutput if it should work with any output type',
             ],
           ),
@@ -65,8 +57,7 @@ abstract class AuditFunction<T extends ToolOutput> {
           context: {
             'audit_name': name,
             'expected_type': T.toString(),
-            'actual_type': result.output.runtimeType.toString(),
-            'tool_name': result.toolName,
+            'actual_type': output.runtimeType.toString(),
             'error': e.toString(),
           },
           suggestions: [
