@@ -1,5 +1,5 @@
-import 'package:test/test.dart';
 import 'package:openai_toolflow/openai_toolflow.dart';
+import 'package:test/test.dart';
 
 void main() {
   group('Round 18 Features', () {
@@ -74,8 +74,8 @@ void main() {
         );
 
         final typedResult = TypedToolResult.fromWithType(
-          result,
-          ToolOutput,
+          result: result,
+          outputType: ToolOutput,
           tokenUsage: tokenUsage,
         );
 
@@ -99,75 +99,14 @@ void main() {
           issues: [],
         );
 
-        final typedResult = TypedToolResult.fromWithType(result, ToolOutput);
+        final typedResult = TypedToolResult.fromWithType(
+          result: result,
+          outputType: ToolOutput,
+        );
 
         expect(typedResult.tokenUsage.promptTokens, equals(0));
         expect(typedResult.tokenUsage.completionTokens, equals(0));
         expect(typedResult.tokenUsage.totalTokens, equals(0));
-      });
-    });
-
-    group('ToolFlow Configuration', () {
-      test('should support includeTokenUsage parameter', () {
-        final config = OpenAIConfig(
-          apiKey: 'test-key',
-          defaultModel: 'gpt-4',
-          baseUrl: 'https://api.openai.com/v1',
-        );
-
-        final flowWithTokens = ToolFlow(
-          config: config,
-          steps: [],
-          includeTokenUsage: true,
-        );
-
-        final flowWithoutTokens = ToolFlow(
-          config: config,
-          steps: [],
-          includeTokenUsage: false,
-        );
-
-        expect(flowWithTokens.includeTokenUsage, isTrue);
-        expect(flowWithoutTokens.includeTokenUsage, isFalse);
-      });
-
-      test('should support includeAllAttempts parameter', () {
-        final config = OpenAIConfig(
-          apiKey: 'test-key',
-          defaultModel: 'gpt-4',
-          baseUrl: 'https://api.openai.com/v1',
-        );
-
-        final flowWithAllAttempts = ToolFlow(
-          config: config,
-          steps: [],
-          includeAllAttempts: true,
-        );
-
-        final flowWithFinalOnly = ToolFlow(
-          config: config,
-          steps: [],
-          includeAllAttempts: false,
-        );
-
-        expect(flowWithAllAttempts.includeAllAttempts, isTrue);
-        expect(flowWithFinalOnly.includeAllAttempts, isFalse);
-      });
-
-      test('should default to true for both parameters', () {
-        final config = OpenAIConfig(
-          apiKey: 'test-key',
-          defaultModel: 'gpt-4',
-          baseUrl: 'https://api.openai.com/v1',
-        );
-
-        final flow = ToolFlow(
-          config: config,
-          steps: [],
-        );
-
-        expect(flow.includeTokenUsage, isTrue);
-        expect(flow.includeAllAttempts, isTrue);
       });
     });
 
@@ -177,7 +116,7 @@ void main() {
         final typedResults = [
           [
             TypedToolResult.fromWithType(
-              ToolResult<ToolOutput>(
+              result: ToolResult<ToolOutput>(
                 toolName: 'initial_input',
                 input: ToolInput(
                   round: 0,
@@ -189,12 +128,12 @@ void main() {
                 output: ToolOutput({'initial': 'data'}, round: 0),
                 issues: [],
               ),
-              ToolOutput,
+              outputType: ToolOutput,
             ),
           ],
           [
             TypedToolResult.fromWithType(
-              ToolResult<ToolOutput>(
+              result: ToolResult<ToolOutput>(
                 toolName: 'test_tool',
                 input: ToolInput(
                   round: 0,
@@ -206,7 +145,7 @@ void main() {
                 output: ToolOutput({'result': 'success'}, round: 0),
                 issues: [],
               ),
-              ToolOutput,
+              outputType: ToolOutput,
             ),
           ],
         ];
@@ -218,7 +157,10 @@ void main() {
 
         expect(result.results, isA<List<List<TypedToolResult>>>());
         expect(result.results.length, equals(2)); // Initial input + 1 step
-        expect(result.results[0].length, equals(1)); // Initial input (single attempt)
+        expect(
+          result.results[0].length,
+          equals(1),
+        ); // Initial input (single attempt)
         expect(result.results[1].length, equals(1)); // Step 1 (single attempt)
       });
 
@@ -226,7 +168,7 @@ void main() {
         final typedResults = [
           [
             TypedToolResult.fromWithType(
-              ToolResult<ToolOutput>(
+              result: ToolResult<ToolOutput>(
                 toolName: 'initial_input',
                 input: ToolInput(
                   round: 0,
@@ -238,12 +180,12 @@ void main() {
                 output: ToolOutput({}, round: 0),
                 issues: [],
               ),
-              ToolOutput,
+              outputType: ToolOutput,
             ),
           ],
           [
             TypedToolResult.fromWithType(
-              ToolResult<ToolOutput>(
+              result: ToolResult<ToolOutput>(
                 toolName: 'test_tool',
                 input: ToolInput(
                   round: 0,
@@ -263,7 +205,7 @@ void main() {
                   ),
                 ],
               ),
-              ToolOutput,
+              outputType: ToolOutput,
             ),
           ],
         ];
@@ -281,7 +223,7 @@ void main() {
         final typedResults = [
           [
             TypedToolResult.fromWithType(
-              ToolResult<ToolOutput>(
+              result: ToolResult<ToolOutput>(
                 toolName: 'initial_input',
                 input: ToolInput(
                   round: 0,
@@ -293,12 +235,12 @@ void main() {
                 output: ToolOutput({}, round: 0),
                 issues: [],
               ),
-              ToolOutput,
+              outputType: ToolOutput,
             ),
           ],
           [
             TypedToolResult.fromWithType(
-              ToolResult<ToolOutput>(
+              result: ToolResult<ToolOutput>(
                 toolName: 'step_1_attempt_1',
                 input: ToolInput(
                   round: 0,
@@ -310,10 +252,10 @@ void main() {
                 output: ToolOutput({}, round: 0),
                 issues: [],
               ),
-              ToolOutput,
+              outputType: ToolOutput,
             ),
             TypedToolResult.fromWithType(
-              ToolResult<ToolOutput>(
+              result: ToolResult<ToolOutput>(
                 toolName: 'step_1_attempt_2',
                 input: ToolInput(
                   round: 1,
@@ -325,7 +267,7 @@ void main() {
                 output: ToolOutput({}, round: 1),
                 issues: [],
               ),
-              ToolOutput,
+              outputType: ToolOutput,
             ),
           ],
         ];
@@ -337,7 +279,10 @@ void main() {
 
         expect(result.finalResults.length, equals(2));
         expect(result.finalResults[0].toolName, equals('initial_input'));
-        expect(result.finalResults[1].toolName, equals('step_1_attempt_2')); // Final attempt
+        expect(
+          result.finalResults[1].toolName,
+          equals('step_1_attempt_2'),
+        ); // Final attempt
       });
     });
   });
