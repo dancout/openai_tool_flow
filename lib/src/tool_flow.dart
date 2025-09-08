@@ -1,6 +1,5 @@
 import 'package:meta/meta.dart';
 import 'package:openai_toolflow/openai_toolflow.dart';
-import 'tool_result.dart';
 
 /// Manages ordered execution of tool call steps with internal state management.
 ///
@@ -74,13 +73,15 @@ class ToolFlow {
       toolName: 'initial_input',
       input: initialInput,
       output: initialOutput,
-      issues: [],
+      auditResults: const AuditResults(
+        issues: [],
+        passesCriteria: true,
+      ), // Initial input always passes criteria
     );
     final initialTypedResult = TypedToolResult.fromWithType(
       result: initialResult,
       outputType: ToolOutput,
       tokenUsage: const TokenUsage.zero(), // Initial input has no token usage
-      passesCriteria: true, // Initial input always passes criteria
     );
 
     // Initialize storage: index 0 is initial input, indices 1+ are step attempts
@@ -133,31 +134,36 @@ class ToolFlow {
           final errorToolResult = ToolResult<ToolOutput>(
             toolName: step.toolName,
             input: errorStepInput,
+            auditResults: AuditResults(
+              issues: [
+                Issue(
+                  id: 'error_${step.toolName}_${stepIndex + 1}_attempt_$attemptCount',
+                  severity: IssueSeverity.critical,
+                  description: 'Tool execution failed: $e',
+                  context: {
+                    'step': stepIndex + 1,
+                    'attempt': attemptCount,
+                    'toolName': step.toolName,
+                    'model': step.model,
+                  },
+                  suggestions: [
+                    'Check tool configuration and input parameters',
+                  ],
+                  round: attemptCount - 1,
+                ),
+              ],
+              passesCriteria: false,
+            ),
             output: ToolOutput({
               'error': e.toString(),
             }, round: attemptCount - 1),
-            issues: [
-              Issue(
-                id: 'error_${step.toolName}_${stepIndex + 1}_attempt_$attemptCount',
-                severity: IssueSeverity.critical,
-                description: 'Tool execution failed: $e',
-                context: {
-                  'step': stepIndex + 1,
-                  'attempt': attemptCount,
-                  'toolName': step.toolName,
-                  'model': step.model,
-                },
-                suggestions: ['Check tool configuration and input parameters'],
-                round: attemptCount - 1,
-              ),
-            ],
           );
           // Wrap error result in TypedToolResult
           stepResult = TypedToolResult.fromWithType(
             result: errorToolResult,
             outputType: ToolOutput,
-            tokenUsage: const TokenUsage.zero(), // Error cases have no token usage
-            passesCriteria: false, // Error cases do not pass criteria
+            tokenUsage:
+                const TokenUsage.zero(), // Error cases have no token usage
           );
 
           // Store this attempt (error case)
@@ -260,14 +266,13 @@ class ToolFlow {
       toolName: step.toolName,
       input: stepInput,
       output: typedOutput,
-      issues: auditResults.issues,
       auditResults: auditResults,
     );
 
     // Create TypedToolResult with type information from registry and token usage
     final outputType = ToolOutputRegistry.getOutputType(step.toolName);
     return TypedToolResult.fromWithType(
-      result: result, 
+      result: result,
       outputType: outputType,
       tokenUsage: tokenUsage,
     );
@@ -343,7 +348,10 @@ class ToolFlow {
     // Use stepConfig's pass criteria to determine overall pass/fail status
     final overallPassesCriteria = stepConfig.passedCriteria(allIssues);
 
-    return AuditResults(issues: allIssues, passesCriteria: overallPassesCriteria);
+    return AuditResults(
+      issues: allIssues,
+      passesCriteria: overallPassesCriteria,
+    );
   }
 
   /// Builds input for a step based on inputBuilder and step configuration
@@ -412,7 +420,9 @@ class ToolFlow {
     for (final index in step.includeResultsInToolcall) {
       // Get attempts for the referenced step index
       // Convert step index to storage index if needed
-      final storageIndex = index == 0 ? 0 : index; // Index 0 is initial input, others are direct
+      final storageIndex = index == 0
+          ? 0
+          : index; // Index 0 is initial input, others are direct
       if (storageIndex < _stepAttempts.length) {
         final attempts = _stepAttempts[storageIndex];
         final filteredResults = _filterAttemptsBySeverity(
@@ -481,7 +491,9 @@ class ToolFlow {
     // Get attempts for the current step using storage index
     final storageIndex = stepIndex + 1;
     if (storageIndex >= _stepAttempts.length) {
-      throw StateError('Step storage index $storageIndex is out of bounds. _stepAttempts has ${_stepAttempts.length} entries.');
+      throw StateError(
+        'Step storage index $storageIndex is out of bounds. _stepAttempts has ${_stepAttempts.length} entries.',
+      );
     }
     final attempts = _stepAttempts[storageIndex];
     return _filterAttemptsBySeverity(
@@ -489,8 +501,6 @@ class ToolFlow {
       severityFilter: severityFilter,
     );
   }
-
-
 
   /// Aggregates token usage from all steps into the state
   // TODO: Is this needed anymore since we have the tokenUsage at each TypedToolResult?
@@ -530,9 +540,11 @@ class ToolFlowResult {
   /// - Inner list: all attempts for that step (or just final attempt if includeAllAttempts=false)
   List<List<TypedToolResult>> get results {
     return List.unmodifiable(
-      _stepResults.map((stepAttempts) => 
-        List<TypedToolResult>.unmodifiable(stepAttempts)
-      ).toList()
+      _stepResults
+          .map(
+            (stepAttempts) => List<TypedToolResult>.unmodifiable(stepAttempts),
+          )
+          .toList(),
     );
   }
 
@@ -587,8 +599,12 @@ class ToolFlowResult {
   /// Converts this result to a JSON map
   Map<String, dynamic> toJson() {
     return {
-      'results': results.map((stepAttempts) => 
-          stepAttempts.map((attempt) => attempt.toJson()).toList()).toList(),
+      'results': results
+          .map(
+            (stepAttempts) =>
+                stepAttempts.map((attempt) => attempt.toJson()).toList(),
+          )
+          .toList(),
       'finalState': finalState,
       'allIssues': allIssues.map((i) => i.toJson()).toList(),
     };

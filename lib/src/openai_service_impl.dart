@@ -59,10 +59,7 @@ class DefaultOpenAiToolService implements OpenAiToolService {
       final toolOutput = _extractToolCallResult(responseData, step.toolName);
       final usage = responseData['usage'] as Map<String, dynamic>? ?? {};
 
-      return ToolCallResponse(
-        output: toolOutput,
-        usage: usage,
-      );
+      return ToolCallResponse(output: toolOutput, usage: usage);
     } finally {
       if (_httpClient == null) {
         // Only close if we created the client
@@ -134,7 +131,7 @@ class DefaultOpenAiToolService implements OpenAiToolService {
 
     // Use system message template from step if available
     final systemMessageTemplate = step.outputSchema.systemMessageTemplate;
-    
+
     if (systemMessageTemplate?.isNotEmpty == true) {
       buffer.writeln(systemMessageTemplate);
     } else {
@@ -154,9 +151,9 @@ class DefaultOpenAiToolService implements OpenAiToolService {
         buffer.writeln('    Output: ${jsonEncode(result.output.toMap())}');
 
         // Include issues associated with this specific result
-        if (result.issues.isNotEmpty) {
+        if (result.auditResults.issues.isNotEmpty) {
           buffer.writeln('    Associated issues:');
-          for (final issue in result.issues) {
+          for (final issue in result.auditResults.issues) {
             buffer.writeln(
               '      - ${issue.severity.name.toUpperCase()}: ${issue.description}',
             );
@@ -180,9 +177,9 @@ class DefaultOpenAiToolService implements OpenAiToolService {
         buffer.writeln('    Output: ${jsonEncode(result.output.toMap())}');
 
         // Include issues associated with this specific retry attempt
-        if (result.issues.isNotEmpty) {
+        if (result.auditResults.issues.isNotEmpty) {
           buffer.writeln('    Associated issues:');
-          for (final issue in result.issues) {
+          for (final issue in result.auditResults.issues) {
             buffer.writeln(
               '      - ${issue.severity.name.toUpperCase()}: ${issue.description}',
             );

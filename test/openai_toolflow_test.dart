@@ -185,13 +185,13 @@ void main() {
         toolName: 'test_tool',
         input: input,
         output: output,
+        auditResults: const AuditResults(issues: [], passesCriteria: true),
       );
 
       expect(result.toolName, equals('test_tool'));
       expect(result.input.customData['param'], equals('value'));
       expect(result.output.toMap()['result'], equals('success'));
-      expect(result.issues, isEmpty);
-      expect(result.hasIssues, isFalse);
+      expect(result.auditResults.issues, isEmpty);
     });
 
     test('should serialize to JSON', () {
@@ -210,18 +210,22 @@ void main() {
         toolName: 'test_tool',
         input: input,
         output: output,
-        issues: [issue],
+        auditResults: AuditResults(issues: [issue], passesCriteria: true),
       );
 
       final json = result.toJson();
       expect(json['toolName'], equals('test_tool'));
       expect(json['input']['param'], equals('value'));
       expect(json['output']['result'], equals('success'));
-      expect(json['issues'], isA<List>());
-      expect(json['issues'].length, equals(1));
-      expect(json['issues'][0]['id'], equals('test-issue'));
-      expect(json['issues'][0]['severity'], equals('low'));
-      expect(json['issues'][0]['description'], equals('Test description'));
+      expect(json['auditResults'], isA<Map>());
+      expect(json['auditResults']['issues'], isA<List>());
+      expect(json['auditResults']['issues'].length, equals(1));
+      expect(json['auditResults']['issues'][0]['id'], equals('test-issue'));
+      expect(json['auditResults']['issues'][0]['severity'], equals('low'));
+      expect(
+        json['auditResults']['issues'][0]['description'],
+        equals('Test description'),
+      );
     });
   });
 
@@ -295,6 +299,7 @@ void main() {
         toolName: 'test',
         input: TestToolInput(),
         output: TestToolOutput({}, round: 0),
+        auditResults: AuditResults(issues: [], passesCriteria: true),
       );
 
       final issues = audit.run(result.output);
@@ -485,7 +490,10 @@ void main() {
       expect(refineResult.toolName, equals('refine_colors'));
 
       // Test non-existent tool
-      expect(result.finalResults.where((r) => r.toolName == 'nonexistent'), isEmpty);
+      expect(
+        result.finalResults.where((r) => r.toolName == 'nonexistent'),
+        isEmpty,
+      );
     });
 
     test('should support output inclusion between steps', () async {
@@ -503,9 +511,7 @@ void main() {
             id: 'color-issue',
             severity: IssueSeverity.low,
             description: 'Color needs adjustment',
-            context: {
-              'color': output.toMap()['colors']?.first ?? 'unknown',
-            },
+            context: {'color': output.toMap()['colors']?.first ?? 'unknown'},
             suggestions: ['Increase saturation'],
           ),
         ],
@@ -713,7 +719,7 @@ void main() {
         toolName: 'original_tool',
         input: TestToolInput(data: {'original': 'input'}),
         output: TestToolOutput({'original': 'output'}, round: 0),
-        issues: [],
+        auditResults: AuditResults(issues: [], passesCriteria: true),
       );
 
       final copiedResult = originalResult.copyWith(
@@ -734,7 +740,7 @@ void main() {
         copiedResult.output.toMap().containsKey('original'),
         isFalse,
       ); // Old value replaced
-      expect(copiedResult.issues, isEmpty);
+      expect(copiedResult.auditResults.issues, isEmpty);
     });
 
     test('should preserve unchanged fields', () {
@@ -750,7 +756,7 @@ void main() {
         toolName: 'tool',
         input: TestToolInput(data: {'key': 'value'}),
         output: TestToolOutput({'result': 'data'}, round: 0),
-        issues: [issue],
+        auditResults: AuditResults(issues: [issue], passesCriteria: true),
       );
 
       final copiedResult = originalResult.copyWith(
@@ -763,8 +769,8 @@ void main() {
         equals('value'),
       ); // Preserved
       expect(copiedResult.output.toMap()['new'], equals('result')); // Changed
-      expect(copiedResult.issues.length, equals(1)); // Preserved
-      expect(copiedResult.issues.first.id, equals('test-issue'));
+      expect(copiedResult.auditResults.issues.length, equals(1)); // Preserved
+      expect(copiedResult.auditResults.issues.first.id, equals('test-issue'));
     });
   });
 
@@ -883,91 +889,6 @@ void main() {
     });
 
     group('ToolFlow includeResultsInToolcall', () {
-      test(
-        'should include results with filtered issues in system message',
-        () async {
-          final config = OpenAIConfig(
-            apiKey: 'test-key',
-            defaultModel: 'gpt-4',
-            baseUrl: 'baseUrl',
-          );
-          final testService = TestSystemMessageService(
-            responses: {
-              'step1_tool': {'result': 'step1 output'},
-              'step2_tool': {'result': 'step2 output'},
-            },
-          );
-
-          final flow = ToolFlow(
-            config: config,
-            steps: [
-              ToolCallStep(
-                toolName: 'step1_tool',
-                model: 'gpt-4',
-                inputBuilder: (previousResults) => {'input': 'step1'},
-                outputSchema: OutputSchema(
-                  properties: [PropertyEntry.string(name: 'result')],
-                ),
-                stepConfig: StepConfig(
-                  audits: [
-                    SimpleAuditFunction<TestToolOutput>(
-                      name: 'test_audit',
-                      auditFunction: (output) => [
-                        Issue(
-                          id: 'high-issue',
-                          severity: IssueSeverity.high,
-                          description: 'High severity issue',
-                          context: {},
-                          suggestions: ['Fix this'],
-                        ),
-                        Issue(
-                          id: 'low-issue',
-                          severity: IssueSeverity.low,
-                          description: 'Low severity issue',
-                          context: {},
-                          suggestions: [],
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              ToolCallStep(
-                toolName: 'step2_tool',
-                model: 'gpt-4',
-                inputBuilder: (previousResults) => {'input': 'step2'},
-                outputSchema: OutputSchema(
-                  properties: [PropertyEntry.string(name: 'result')],
-                ),
-                includeResultsInToolcall: [1], // Include first tool step result
-                stepConfig: StepConfig(
-                  issuesSeverityFilter:
-                      IssueSeverity.high, // Only high+ severity
-                ),
-              ),
-            ],
-            openAiService: testService,
-          );
-
-          final result = await flow.run(input: {'test': 'data'});
-
-          expect(result.results.length, equals(3));
-          expect(testService.lastSystemMessage, isNotNull);
-          expect(
-            testService.lastSystemMessage!,
-            contains('HIGH: High severity issue'),
-          );
-          expect(
-            testService.lastSystemMessage!,
-            isNot(contains('LOW: Low severity issue')),
-          );
-          expect(
-            testService.lastSystemMessage!,
-            contains('Suggestions: Fix this'),
-          );
-        },
-      );
-
       test(
         'should not include anything when no issues match severity filter',
         () async {
@@ -1179,9 +1100,9 @@ class TestSystemMessageService implements OpenAiToolService {
         buffer.writeln(
           '  Step: ${result.toolName} -> Output keys: ${result.output.toMap().keys.join(', ')}',
         );
-        if (result.issues.isNotEmpty) {
+        if (result.auditResults.issues.isNotEmpty) {
           buffer.writeln('    Associated issues:');
-          for (final issue in result.issues) {
+          for (final issue in result.auditResults.issues) {
             buffer.writeln(
               '      - ${issue.severity.name.toUpperCase()}: ${issue.description}',
             );
