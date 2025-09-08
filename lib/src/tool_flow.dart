@@ -73,7 +73,10 @@ class ToolFlow {
       toolName: 'initial_input',
       input: initialInput,
       output: initialOutput,
-      issues: [],
+      auditResults: const AuditResults(
+        issues: [],
+        passesCriteria: true,
+      ), // Initial input always passes criteria
     );
     final initialTypedResult = TypedToolResult.fromWithType(
       result: initialResult,
@@ -108,27 +111,17 @@ class ToolFlow {
             round: attemptCount - 1,
           );
 
-          // Run audits if configured for this step
-          if (stepConfig.hasAudits) {
-            stepResult = await _runAuditsForStep(
-              result: stepResult,
-              stepConfig: stepConfig,
-              stepIndex: stepIndex,
-            );
-          }
-
           // Store this attempt (whether it passes or fails)
           final currentStepStorageIndex = stepIndex + 1;
           _stepAttempts[currentStepStorageIndex].add(stepResult);
 
           // Check if step passed criteria
-          final allIssues = stepResult.issues;
-          stepPassed = stepConfig.passedCriteria(allIssues);
+          stepPassed = stepResult.passesCriteria;
 
           if (!stepPassed && attemptCount <= maxRetries) {
             // Log retry attempt
             print(
-              'Step ${stepIndex + 1} attempt $attemptCount failed. ${stepConfig.getFailureReason(allIssues)}. Retrying...',
+              'Step ${stepIndex + 1} attempt $attemptCount failed. ${stepConfig.getFailureReason(stepResult.issues)}. Retrying...',
             );
           }
         } catch (e) {
@@ -141,30 +134,36 @@ class ToolFlow {
           final errorToolResult = ToolResult<ToolOutput>(
             toolName: step.toolName,
             input: errorStepInput,
+            auditResults: AuditResults(
+              issues: [
+                Issue(
+                  id: 'error_${step.toolName}_${stepIndex + 1}_attempt_$attemptCount',
+                  severity: IssueSeverity.critical,
+                  description: 'Tool execution failed: $e',
+                  context: {
+                    'step': stepIndex + 1,
+                    'attempt': attemptCount,
+                    'toolName': step.toolName,
+                    'model': step.model,
+                  },
+                  suggestions: [
+                    'Check tool configuration and input parameters',
+                  ],
+                  round: attemptCount - 1,
+                ),
+              ],
+              passesCriteria: false,
+            ),
             output: ToolOutput({
               'error': e.toString(),
             }, round: attemptCount - 1),
-            issues: [
-              Issue(
-                id: 'error_${step.toolName}_${stepIndex + 1}_attempt_$attemptCount',
-                severity: IssueSeverity.critical,
-                description: 'Tool execution failed: $e',
-                context: {
-                  'step': stepIndex + 1,
-                  'attempt': attemptCount,
-                  'toolName': step.toolName,
-                  'model': step.model,
-                },
-                suggestions: ['Check tool configuration and input parameters'],
-                round: attemptCount - 1,
-              ),
-            ],
           );
           // Wrap error result in TypedToolResult
           stepResult = TypedToolResult.fromWithType(
             result: errorToolResult,
             outputType: ToolOutput,
-            tokenUsage: const TokenUsage.zero(), // Error cases have no token usage
+            tokenUsage:
+                const TokenUsage.zero(), // Error cases have no token usage
           );
 
           // Store this attempt (error case)
@@ -254,30 +253,44 @@ class ToolFlow {
       round: round,
     );
 
-    // Create initial result without issues (audits will add them)
+    // Run audits on the typed output first
+    final auditResults = _runAuditsOnOutput(
+      output: typedOutput,
+      stepConfig: step.stepConfig,
+      stepIndex: stepIndex,
+      round: round,
+    );
+
+    // Create initial result with audit results
     final result = ToolResult<ToolOutput>(
       toolName: step.toolName,
       input: stepInput,
       output: typedOutput,
-      issues: [],
+      auditResults: auditResults,
     );
 
     // Create TypedToolResult with type information from registry and token usage
     final outputType = ToolOutputRegistry.getOutputType(step.toolName);
     return TypedToolResult.fromWithType(
-      result: result, 
+      result: result,
       outputType: outputType,
       tokenUsage: tokenUsage,
     );
   }
 
-  /// Runs audits for a step and returns the result with any issues found
-  Future<TypedToolResult> _runAuditsForStep({
-    required TypedToolResult result,
+  /// Runs audits on a tool output and returns the issues and pass/fail status
+  AuditResults _runAuditsOnOutput({
+    required ToolOutput output,
     required StepConfig stepConfig,
     required int stepIndex,
-  }) async {
-    var auditedResult = result;
+    required int round,
+  }) {
+    final allIssues = <Issue>[];
+
+    // If no audits are configured, automatically pass
+    if (stepConfig.audits.isEmpty) {
+      return AuditResults(issues: [], passesCriteria: true);
+    }
 
     // Run step-specific audits only (global audits are deprecated)
     for (final audit in stepConfig.audits) {
@@ -286,7 +299,7 @@ class ToolFlow {
 
       try {
         // Use a type-safe approach to execute the audit
-        auditIssues = audit.runWithTypeChecking(result.underlyingResult);
+        auditIssues = audit.runWithTypeChecking(output);
       } catch (e) {
         // If audit execution fails, create an audit execution error
         auditIssues = [
@@ -298,18 +311,14 @@ class ToolFlow {
               'step_index': stepIndex,
               'audit_name': audit.name,
               'error': e.toString(),
-              'actual_output_type': auditedResult.outputType.toString(),
+              'actual_output_type': output.runtimeType.toString(),
             },
             suggestions: [
               'Check audit function implementation',
               'Verify tool output structure matches expectations',
               'Ensure tool output type matches audit expectations',
             ],
-            round:
-                int.tryParse(
-                  result.input.toMap()['_round']?.toString() ?? '0',
-                ) ??
-                0,
+            round: round,
           ),
         ];
       }
@@ -323,28 +332,26 @@ class ToolFlow {
               description: issue.description,
               context: issue.context,
               suggestions: issue.suggestions,
-              round:
-                  int.tryParse(
-                    result.input.toMap()['_round']?.toString() ?? '0',
-                  ) ??
-                  0,
+              round: round,
               relatedData: {
                 'step_index': stepIndex,
                 'audit_name': audit.name,
-                'tool_output': result.output,
+                'tool_output': output,
               },
             ),
           )
           .toList();
 
-      auditedResult = auditedResult.copyWith(
-        result: auditedResult.underlyingResult.copyWith(
-          issues: [...auditedResult.underlyingResult.issues, ...roundedIssues],
-        ),
-      );
+      allIssues.addAll(roundedIssues);
     }
 
-    return auditedResult;
+    // Use stepConfig's pass criteria to determine overall pass/fail status
+    final overallPassesCriteria = stepConfig.passedCriteria(allIssues);
+
+    return AuditResults(
+      issues: allIssues,
+      passesCriteria: overallPassesCriteria,
+    );
   }
 
   /// Builds input for a step based on inputBuilder and step configuration
@@ -413,7 +420,9 @@ class ToolFlow {
     for (final index in step.includeResultsInToolcall) {
       // Get attempts for the referenced step index
       // Convert step index to storage index if needed
-      final storageIndex = index == 0 ? 0 : index; // Index 0 is initial input, others are direct
+      final storageIndex = index == 0
+          ? 0
+          : index; // Index 0 is initial input, others are direct
       if (storageIndex < _stepAttempts.length) {
         final attempts = _stepAttempts[storageIndex];
         final filteredResults = _filterAttemptsBySeverity(
@@ -482,7 +491,9 @@ class ToolFlow {
     // Get attempts for the current step using storage index
     final storageIndex = stepIndex + 1;
     if (storageIndex >= _stepAttempts.length) {
-      throw StateError('Step storage index $storageIndex is out of bounds. _stepAttempts has ${_stepAttempts.length} entries.');
+      throw StateError(
+        'Step storage index $storageIndex is out of bounds. _stepAttempts has ${_stepAttempts.length} entries.',
+      );
     }
     final attempts = _stepAttempts[storageIndex];
     return _filterAttemptsBySeverity(
@@ -490,8 +501,6 @@ class ToolFlow {
       severityFilter: severityFilter,
     );
   }
-
-
 
   /// Aggregates token usage from all steps into the state
   // TODO: Is this needed anymore since we have the tokenUsage at each TypedToolResult?
@@ -531,9 +540,11 @@ class ToolFlowResult {
   /// - Inner list: all attempts for that step (or just final attempt if includeAllAttempts=false)
   List<List<TypedToolResult>> get results {
     return List.unmodifiable(
-      _stepResults.map((stepAttempts) => 
-        List<TypedToolResult>.unmodifiable(stepAttempts)
-      ).toList()
+      _stepResults
+          .map(
+            (stepAttempts) => List<TypedToolResult>.unmodifiable(stepAttempts),
+          )
+          .toList(),
     );
   }
 
@@ -573,6 +584,12 @@ class ToolFlowResult {
     return issues;
   }
 
+  /// Returns true if all final results have passed their audit criteria
+  /// Steps that do not have audits specified automatically pass by default
+  bool get passesCriteria {
+    return !finalResults.any((finalResult) => !finalResult.passesCriteria);
+  }
+
   /// Creates a ToolFlowResult from typed results
   ToolFlowResult.fromTypedResults({
     required List<List<TypedToolResult>> typedResults,
@@ -582,8 +599,12 @@ class ToolFlowResult {
   /// Converts this result to a JSON map
   Map<String, dynamic> toJson() {
     return {
-      'results': results.map((stepAttempts) => 
-          stepAttempts.map((attempt) => attempt.toJson()).toList()).toList(),
+      'results': results
+          .map(
+            (stepAttempts) =>
+                stepAttempts.map((attempt) => attempt.toJson()).toList(),
+          )
+          .toList(),
       'finalState': finalState,
       'allIssues': allIssues.map((i) => i.toJson()).toList(),
     };

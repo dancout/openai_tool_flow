@@ -43,7 +43,7 @@ void main() {
             confidence: 0.92,
             round: 1,
           ),
-          issues: [],
+          auditResults: const AuditResults(issues: [], passesCriteria: true),
         ),
         outputType: SeedColorGenerationOutput,
       );
@@ -63,7 +63,7 @@ void main() {
             },
             round: 1,
           ),
-          issues: [],
+          auditResults: const AuditResults(issues: [], passesCriteria: true),
         ),
         outputType: DesignSystemColorOutput,
       );

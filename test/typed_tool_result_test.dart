@@ -64,29 +64,10 @@ class SeedColorQualityAudit
   String get name => 'seed_color_quality_audit';
 
   @override
-  List<Issue> run(ToolResult<ToolOutput> result) {
+  List<Issue> run(SeedColorGenerationTestOutput output) {
     final issues = <Issue>[];
 
-    // Type-safe access to the output
-    if (result.output is! SeedColorGenerationTestOutput) {
-      return [
-        Issue(
-          id: 'unexpected_output_type',
-          severity: IssueSeverity.critical,
-          description:
-              'Expected SeedColorGenerationTestOutput but got ${result.output.runtimeType}',
-          context: {
-            'expected_type': 'SeedColorGenerationTestOutput',
-            'actual_type': result.output.runtimeType.toString(),
-          },
-          suggestions: ['Check tool registration and output creation'],
-          round: 0,
-        ),
-      ];
-    }
-
-    final seedOutput = result.output as SeedColorGenerationTestOutput;
-    final colors = seedOutput.colors;
+    final colors = output.colors;
 
     // Check color format
     for (int i = 0; i < colors.length; i++) {
@@ -116,29 +97,10 @@ class ColorSuiteValidationAudit
   String get name => 'color_suite_validation_audit';
 
   @override
-  List<Issue> run(ToolResult<ToolOutput> result) {
+  List<Issue> run(ColorSuiteGenerationTestOutput output) {
     final issues = <Issue>[];
 
-    // Type-safe access to the output
-    if (result.output is! ColorSuiteGenerationTestOutput) {
-      return [
-        Issue(
-          id: 'unexpected_output_type',
-          severity: IssueSeverity.critical,
-          description:
-              'Expected ColorSuiteGenerationTestOutput but got ${result.output.runtimeType}',
-          context: {
-            'expected_type': 'ColorSuiteGenerationTestOutput',
-            'actual_type': result.output.runtimeType.toString(),
-          },
-          suggestions: ['Check tool registration and output creation'],
-          round: 0,
-        ),
-      ];
-    }
-
-    final suiteOutput = result.output as ColorSuiteGenerationTestOutput;
-    final colorSuite = suiteOutput.colorSuite;
+    final colorSuite = output.colorSuite;
 
     // Check required color suite properties
     final requiredProperties = ['primary', 'secondary', 'background'];
@@ -394,10 +356,10 @@ void main() {
       final audit2 = ColorSuiteValidationAudit();
 
       final audit1Issues = audit1.run(
-        seedResult.asTyped<SeedColorGenerationTestOutput>(),
+        seedResult.output as SeedColorGenerationTestOutput,
       );
       final audit2Issues = audit2.run(
-        suiteResult.asTyped<ColorSuiteGenerationTestOutput>(),
+        suiteResult.output as ColorSuiteGenerationTestOutput,
       );
 
       expect(audit1Issues, isEmpty);
@@ -488,10 +450,10 @@ void main() {
         final audit2 = ColorSuiteValidationAudit();
 
         final audit1Issues = audit1.run(
-          seedResult.asTyped<SeedColorGenerationTestOutput>(),
+          seedResult.output as SeedColorGenerationTestOutput,
         );
         final audit2Issues = audit2.run(
-          suiteResult.asTyped<ColorSuiteGenerationTestOutput>(),
+          suiteResult.output as ColorSuiteGenerationTestOutput,
         );
 
         expect(audit1Issues, isNotEmpty);

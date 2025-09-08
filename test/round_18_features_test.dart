@@ -70,7 +70,7 @@ void main() {
             maxTokens: 1000,
           ),
           output: ToolOutput({}, round: 0),
-          issues: [],
+          auditResults: const AuditResults(issues: [], passesCriteria: true),
         );
 
         final typedResult = TypedToolResult.fromWithType(
@@ -96,7 +96,7 @@ void main() {
             maxTokens: 1000,
           ),
           output: ToolOutput({}, round: 0),
-          issues: [],
+          auditResults: const AuditResults(issues: [], passesCriteria: true),
         );
 
         final typedResult = TypedToolResult.fromWithType(
@@ -126,7 +126,10 @@ void main() {
                   maxTokens: 1000,
                 ),
                 output: ToolOutput({'initial': 'data'}, round: 0),
-                issues: [],
+                auditResults: const AuditResults(
+                  issues: [],
+                  passesCriteria: true,
+                ),
               ),
               outputType: ToolOutput,
             ),
@@ -143,7 +146,11 @@ void main() {
                   maxTokens: 1000,
                 ),
                 output: ToolOutput({'result': 'success'}, round: 0),
-                issues: [],
+
+                auditResults: const AuditResults(
+                  issues: [],
+                  passesCriteria: true,
+                ),
               ),
               outputType: ToolOutput,
             ),
@@ -178,7 +185,10 @@ void main() {
                   maxTokens: 1000,
                 ),
                 output: ToolOutput({}, round: 0),
-                issues: [],
+                auditResults: const AuditResults(
+                  issues: [],
+                  passesCriteria: true,
+                ),
               ),
               outputType: ToolOutput,
             ),
@@ -195,15 +205,19 @@ void main() {
                   maxTokens: 1000,
                 ),
                 output: ToolOutput({}, round: 0),
-                issues: [
-                  Issue(
-                    id: 'test-issue',
-                    severity: IssueSeverity.medium,
-                    description: 'Test issue',
-                    context: {},
-                    suggestions: [],
-                  ),
-                ],
+                auditResults: AuditResults(
+                  issues: [
+                    Issue(
+                      id: 'test-issue',
+                      severity: IssueSeverity.medium,
+                      description: 'Test issue',
+                      context: {},
+                      suggestions: [],
+                    ),
+                  ],
+
+                  passesCriteria: false,
+                ),
               ),
               outputType: ToolOutput,
             ),
@@ -233,7 +247,10 @@ void main() {
                   maxTokens: 1000,
                 ),
                 output: ToolOutput({}, round: 0),
-                issues: [],
+                auditResults: const AuditResults(
+                  issues: [],
+                  passesCriteria: true,
+                ),
               ),
               outputType: ToolOutput,
             ),
@@ -250,7 +267,10 @@ void main() {
                   maxTokens: 1000,
                 ),
                 output: ToolOutput({}, round: 0),
-                issues: [],
+                auditResults: const AuditResults(
+                  issues: [],
+                  passesCriteria: true,
+                ),
               ),
               outputType: ToolOutput,
             ),
@@ -265,7 +285,10 @@ void main() {
                   maxTokens: 1000,
                 ),
                 output: ToolOutput({}, round: 1),
-                issues: [],
+                auditResults: const AuditResults(
+                  issues: [],
+                  passesCriteria: true,
+                ),
               ),
               outputType: ToolOutput,
             ),

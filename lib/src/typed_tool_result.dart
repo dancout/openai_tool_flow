@@ -57,18 +57,14 @@ class TypedToolResult {
   ToolOutput get output => _result.output;
 
   /// Gets the issues from the wrapped result
-  List<Issue> get issues => _result.issues;
-
-  /// Returns true if this result has any issues
-  bool get hasIssues => _result.hasIssues;
-
-  /// Returns issues filtered by severity
-  List<Issue> issuesWithSeverity(IssueSeverity severity) {
-    return _result.issuesWithSeverity(severity);
-  }
+  List<Issue> get issues => _result.auditResults.issues;
 
   /// Gets the runtime output type
   Type get outputType => _outputType;
+
+  /// Whether this result has passed all audit criteria
+  /// Steps that do not have audits specified automatically pass by default
+  bool get passesCriteria => _result.auditResults.passesCriteria;
 
   /// Gets the underlying ToolResult for internal use
   ///
@@ -98,7 +94,7 @@ class TypedToolResult {
       toolName: _result.toolName,
       input: _result.input,
       output: _result.output as T,
-      issues: _result.issues,
+      auditResults: _result.auditResults,
     );
   }
 
@@ -124,7 +120,7 @@ class TypedToolResult {
 
   @override
   String toString() {
-    return 'TypedToolResult(toolName: $toolName, outputType: $_outputType, issues: ${issues.length}, tokens: $tokenUsage)';
+    return 'TypedToolResult(toolName: $toolName, outputType: $_outputType, issues: ${issues.length}, tokens: $tokenUsage, passesCriteria: $passesCriteria)';
   }
 
   @override

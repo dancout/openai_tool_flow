@@ -1,6 +1,25 @@
 import 'issue.dart';
 import 'typed_interfaces.dart';
 
+// Forward declaration for AuditResults
+class AuditResults {
+  /// List of issues found during audit execution
+  final List<Issue> issues;
+
+  /// Whether all audits passed their criteria
+  final bool passesCriteria;
+
+  const AuditResults({required this.issues, required this.passesCriteria});
+
+  /// Converts this AuditResults to a JSON map
+  Map<String, dynamic> toJson() {
+    return {
+      'issues': issues.map((issue) => issue.toJson()).toList(),
+      'passesCriteria': passesCriteria,
+    };
+  }
+}
+
 /// Structured output of a tool call step.
 ///
 /// This class follows a strict but extensible schema:
@@ -17,15 +36,15 @@ class ToolResult<T extends ToolOutput> {
   /// Strongly-typed output data returned by the tool
   final T output;
 
-  /// Issues identified during tool execution or subsequent audits
-  final List<Issue> issues;
+  /// Results from audit execution, if any audits were performed
+  final AuditResults auditResults;
 
   /// Creates a ToolResult with required fields
   const ToolResult({
     required this.toolName,
     required this.input,
     required this.output,
-    this.issues = const [],
+    required this.auditResults,
   });
 
   /// Converts this ToolResult to a JSON map
@@ -37,7 +56,7 @@ class ToolResult<T extends ToolOutput> {
       'toolName': toolName,
       'input': input.toMap(),
       'output': output.toMap(),
-      'issues': issues.map((issue) => issue.toJson()).toList(),
+      'auditResults': auditResults.toJson(),
     };
   }
 
@@ -47,26 +66,19 @@ class ToolResult<T extends ToolOutput> {
     ToolInput? input,
     T? output,
     List<Issue>? issues,
+    AuditResults? auditResults,
   }) {
     return ToolResult<T>(
       toolName: toolName ?? this.toolName,
       input: input ?? this.input,
       output: output ?? this.output,
-      issues: issues ?? this.issues,
+      auditResults: auditResults ?? this.auditResults,
     );
-  }
-
-  /// Returns true if this ToolResult has any issues
-  bool get hasIssues => issues.isNotEmpty;
-
-  /// Returns issues filtered by severity
-  List<Issue> issuesWithSeverity(IssueSeverity severity) {
-    return issues.where((issue) => issue.severity == severity).toList();
   }
 
   @override
   String toString() {
-    return 'ToolResult(toolName: $toolName, issues: ${issues.length})';
+    return 'ToolResult(toolName: $toolName, issues: ${auditResults.issues.length}, passesCriteria: ${auditResults.passesCriteria})';
   }
 
   @override

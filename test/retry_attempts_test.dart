@@ -1,20 +1,20 @@
-import 'package:test/test.dart';
 import 'package:openai_toolflow/openai_toolflow.dart';
+import 'package:test/test.dart';
 
 /// Simple audit function for testing
 class SimpleAuditFunction<T extends ToolOutput> extends AuditFunction<T> {
   @override
   final String name;
 
-  final List<Issue> Function(ToolResult<T>) _auditFunction;
+  final List<Issue> Function(T) _auditFunction;
 
   SimpleAuditFunction({
     required this.name,
-    required List<Issue> Function(ToolResult<T>) auditFunction,
+    required List<Issue> Function(T) auditFunction,
   }) : _auditFunction = auditFunction;
 
   @override
-  List<Issue> run(ToolResult<T> result) => _auditFunction(result);
+  List<Issue> run(T output) => _auditFunction(output);
 }
 
 /// Mock service that can simulate failures for testing retry functionality
@@ -41,8 +41,8 @@ class RetryTestService implements OpenAiToolService {
     }
 
     // Get the response for this attempt (or last response if we've exceeded the sequence)
-    final responseIndex = currentCount < sequences.length 
-        ? currentCount 
+    final responseIndex = currentCount < sequences.length
+        ? currentCount
         : sequences.length - 1;
     final response = sequences[responseIndex];
 
@@ -56,7 +56,6 @@ class RetryTestService implements OpenAiToolService {
     );
   }
 }
-
 
 /// Test service that captures system messages for verification
 class SystemMessageCaptureService implements OpenAiToolService {
@@ -76,7 +75,9 @@ class SystemMessageCaptureService implements OpenAiToolService {
     // Simulate building a system message to capture what would be sent
     final buffer = StringBuffer();
     buffer.writeln('Context: Executing tool call in a structured workflow');
-    buffer.writeln('Current Step: Tool: ${step.toolName}, Model: ${step.model}');
+    buffer.writeln(
+      'Current Step: Tool: ${step.toolName}, Model: ${step.model}',
+    );
 
     if (includedResults.isNotEmpty) {
       buffer.writeln();
@@ -85,10 +86,12 @@ class SystemMessageCaptureService implements OpenAiToolService {
         final result = includedResults[i];
         buffer.writeln('  Step: ${result.toolName}');
         buffer.writeln('    Output: ${result.output.toMap()}');
-        if (result.issues.isNotEmpty) {
+        if (result.auditResults.issues.isNotEmpty) {
           buffer.writeln('    Associated issues:');
-          for (final issue in result.issues) {
-            buffer.writeln('      - ${issue.severity.name.toUpperCase()}: ${issue.description}');
+          for (final issue in result.auditResults.issues) {
+            buffer.writeln(
+              '      - ${issue.severity.name.toUpperCase()}: ${issue.description}',
+            );
           }
         }
       }
@@ -101,10 +104,12 @@ class SystemMessageCaptureService implements OpenAiToolService {
         final result = currentStepRetries[i];
         buffer.writeln('  Attempt ${i + 1}: ${result.toolName}');
         buffer.writeln('    Output: ${result.output.toMap()}');
-        if (result.issues.isNotEmpty) {
+        if (result.auditResults.issues.isNotEmpty) {
           buffer.writeln('    Associated issues:');
-          for (final issue in result.issues) {
-            buffer.writeln('      - ${issue.severity.name.toUpperCase()}: ${issue.description}');
+          for (final issue in result.auditResults.issues) {
+            buffer.writeln(
+              '      - ${issue.severity.name.toUpperCase()}: ${issue.description}',
+            );
           }
         }
       }
@@ -182,9 +187,9 @@ void main() {
               audits: [
                 SimpleAuditFunction<ToolOutput>(
                   name: 'failure_audit',
-                  auditFunction: (result) {
-                    final output = result.output.toMap();
-                    final attempt = output['attempt'] as int? ?? 1;
+                  auditFunction: (output) {
+                    final outputMap = output.toMap();
+                    final attempt = outputMap['attempt'] as int? ?? 1;
                     return [
                       Issue(
                         id: 'test_issue_attempt_$attempt',
@@ -192,7 +197,7 @@ void main() {
                         description: 'Test failure (attempt $attempt)',
                         context: {'attempt': attempt},
                         suggestions: ['Fix the issue and retry'],
-                        round: result.input.round,
+                        round: output.round,
                       ),
                     ];
                   },
@@ -221,175 +226,198 @@ void main() {
       for (int i = 0; i < 3; i++) {
         final attempt = stepAttempts[i];
         expect(attempt.output.toMap()['attempt'], equals(i + 1));
-        expect(attempt.issues.length, equals(1)); // Each should have one issue from audit
+        expect(
+          attempt.issues.length,
+          equals(1),
+        ); // Each should have one issue from audit
         expect(attempt.issues[0].description, contains('attempt ${i + 1}'));
       }
     });
 
-    test('should include retry attempts in system message with severity filtering', () async {
-      final captureService = SystemMessageCaptureService(
-        responses: {
-          'step1': {'colors': ['red', 'blue']},
-          'step2': {'result': 'success'},
-        },
-      );
+    test(
+      'should include retry attempts in system message with severity filtering',
+      () async {
+        final captureService = SystemMessageCaptureService(
+          responses: {
+            'step1': {
+              'colors': ['red', 'blue'],
+            },
+            'step2': {'result': 'success'},
+          },
+        );
 
-      final flow = ToolFlow(
-        config: config,
-        openAiService: captureService,
-        steps: [
-          ToolCallStep(
-            toolName: 'step1',
-            stepConfig: StepConfig(
-              maxRetries: 1,
-              audits: [
-                SimpleAuditFunction<ToolOutput>(
-                  name: 'color_validation',
-                  auditFunction: (result) => [
-                    // Always create an issue so the final result will have it for includeResultsInToolcall
-                    Issue(
-                      id: 'color_issue',
-                      severity: IssueSeverity.high,
-                      description: 'Color validation issue',
-                      context: {},
-                      suggestions: ['Fix colors'],
-                      round: result.input.round,
-                    ),
-                  ],
-                ),
-              ],
-              customPassCriteria: (issues) => true, // Always pass so it doesn't retry forever
-              issuesSeverityFilter: IssueSeverity.high,
+        final flow = ToolFlow(
+          config: config,
+          openAiService: captureService,
+          steps: [
+            ToolCallStep(
+              toolName: 'step1',
+              stepConfig: StepConfig(
+                maxRetries: 1,
+                audits: [
+                  SimpleAuditFunction<ToolOutput>(
+                    name: 'color_validation',
+                    auditFunction: (output) => [
+                      // Always create an issue so the final result will have it for includeResultsInToolcall
+                      Issue(
+                        id: 'color_issue',
+                        severity: IssueSeverity.high,
+                        description: 'Color validation issue',
+                        context: {},
+                        suggestions: ['Fix colors'],
+                        round: output.round,
+                      ),
+                    ],
+                  ),
+                ],
+                customPassCriteria: (issues) =>
+                    true, // Always pass so it doesn't retry forever
+                issuesSeverityFilter: IssueSeverity.high,
+              ),
+              outputSchema: OutputSchema(
+                properties: [
+                  PropertyEntry.array(
+                    name: 'colors',
+                    description: 'Extracted colors',
+                    items: PropertyType.string,
+                  ),
+                ],
+              ),
+              inputBuilder: (previousResults) => {'input': 'extract colors'},
             ),
-            outputSchema: OutputSchema(
-              properties: [
-                PropertyEntry.array(
-                  name: 'colors',
-                  description: 'Extracted colors',
-                  items: PropertyType.string,
-                ),
-              ],
+            ToolCallStep(
+              toolName: 'step2',
+              stepConfig: StepConfig(
+                maxRetries: 0,
+                issuesSeverityFilter: IssueSeverity.high,
+              ),
+              outputSchema: OutputSchema(
+                properties: [
+                  PropertyEntry.string(name: 'result', description: 'Result'),
+                ],
+              ),
+              inputBuilder: (previousResults) => {'input': 'process'},
+              includeResultsInToolcall: [1], // Include step1 results
             ),
-            inputBuilder: (previousResults) => {'input': 'extract colors'},
-          ),
-          ToolCallStep(
-            toolName: 'step2',
-            stepConfig: StepConfig(
-              maxRetries: 0,
-              issuesSeverityFilter: IssueSeverity.high,
-            ),
-            outputSchema: OutputSchema(
-              properties: [
-                PropertyEntry.string(name: 'result', description: 'Result'),
-              ],
-            ),
-            inputBuilder: (previousResults) => {'input': 'process'},
-            includeResultsInToolcall: [1], // Include step1 results
-          ),
-        ],
-      );
+          ],
+        );
 
-      await flow.run(input: {'start': true});
+        await flow.run(input: {'start': true});
 
-      // Find the system message for step2 that should include previous results
-      final step2Messages = captureService.allSystemMessages
-          .where((msg) => msg.contains('step2'))
-          .toList();
-      
-      expect(step2Messages, isNotEmpty);
-      
-      final step2SystemMessage = step2Messages.first;
-      expect(step2SystemMessage, contains('Previous step results and associated issues:'));
-      expect(step2SystemMessage, contains('step1'));
-      expect(step2SystemMessage, contains('Color validation issue'));
-    });
+        // Find the system message for step2 that should include previous results
+        final step2Messages = captureService.allSystemMessages
+            .where((msg) => msg.contains('step2'))
+            .toList();
 
-    test('should distinguish between previous steps and current step retries in system message', () async {
-      final captureService = SystemMessageCaptureService(
-        responses: {
-          'step1': {'result': 'step1_output'},
-          'failing_step': {'attempt': 1, 'result': 'failed'},
-        },
-      );
+        expect(step2Messages, isNotEmpty);
 
-      final flow = ToolFlow(
-        config: config,
-        openAiService: captureService,
-        steps: [
-          ToolCallStep(
-            toolName: 'step1',
-            stepConfig: StepConfig(
-              maxRetries: 0,
-              audits: [
-                SimpleAuditFunction<ToolOutput>(
-                  name: 'step1_audit',
-                  auditFunction: (result) => [
-                    Issue(
-                      id: 'step1_issue',
-                      severity: IssueSeverity.high,
-                      description: 'Step1 completed with issue',
-                      context: {},
-                      suggestions: [],
-                      round: result.input.round,
-                    ),
-                  ],
-                ),
-              ],
+        final step2SystemMessage = step2Messages.first;
+        expect(
+          step2SystemMessage,
+          contains('Previous step results and associated issues:'),
+        );
+        expect(step2SystemMessage, contains('step1'));
+        expect(step2SystemMessage, contains('Color validation issue'));
+      },
+    );
+
+    test(
+      'should distinguish between previous steps and current step retries in system message',
+      () async {
+        final captureService = SystemMessageCaptureService(
+          responses: {
+            'step1': {'result': 'step1_output'},
+            'failing_step': {'attempt': 1, 'result': 'failed'},
+          },
+        );
+
+        final flow = ToolFlow(
+          config: config,
+          openAiService: captureService,
+          steps: [
+            ToolCallStep(
+              toolName: 'step1',
+              stepConfig: StepConfig(
+                maxRetries: 0,
+                audits: [
+                  SimpleAuditFunction<ToolOutput>(
+                    name: 'step1_audit',
+                    auditFunction: (output) => [
+                      Issue(
+                        id: 'step1_issue',
+                        severity: IssueSeverity.high,
+                        description: 'Step1 completed with issue',
+                        context: {},
+                        suggestions: [],
+                        round: output.round,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              outputSchema: OutputSchema(
+                properties: [
+                  PropertyEntry.string(name: 'result', description: 'Result'),
+                ],
+              ),
+              inputBuilder: (previousResults) => {'input': 'step1'},
             ),
-            outputSchema: OutputSchema(
-              properties: [
-                PropertyEntry.string(name: 'result', description: 'Result'),
-              ],
+            ToolCallStep(
+              toolName: 'failing_step',
+              stepConfig: StepConfig(
+                maxRetries: 2,
+                audits: [
+                  SimpleAuditFunction<ToolOutput>(
+                    name: 'critical_audit',
+                    auditFunction: (output) => [
+                      Issue(
+                        id: 'critical_issue',
+                        severity: IssueSeverity.critical,
+                        description: 'Critical failure',
+                        context: {},
+                        suggestions: ['Fix critical error'],
+                        round: output.round,
+                      ),
+                    ],
+                  ),
+                ],
+                customPassCriteria: (issues) => issues.isEmpty,
+                issuesSeverityFilter: IssueSeverity.high,
+              ),
+              outputSchema: OutputSchema(
+                properties: [
+                  PropertyEntry.string(name: 'result', description: 'Result'),
+                ],
+              ),
+              inputBuilder: (previousResults) => {'input': 'failing'},
+              includeResultsInToolcall: [1], // Include step1
             ),
-            inputBuilder: (previousResults) => {'input': 'step1'},
-          ),
-          ToolCallStep(
-            toolName: 'failing_step',
-            stepConfig: StepConfig(
-              maxRetries: 2,
-              audits: [
-                SimpleAuditFunction<ToolOutput>(
-                  name: 'critical_audit',
-                  auditFunction: (result) => [
-                    Issue(
-                      id: 'critical_issue',
-                      severity: IssueSeverity.critical,
-                      description: 'Critical failure',
-                      context: {},
-                      suggestions: ['Fix critical error'],
-                      round: result.input.round,
-                    ),
-                  ],
-                ),
-              ],
-              customPassCriteria: (issues) => issues.isEmpty,
-              issuesSeverityFilter: IssueSeverity.high,
-            ),
-            outputSchema: OutputSchema(
-              properties: [
-                PropertyEntry.string(name: 'result', description: 'Result'),
-              ],
-            ),
-            inputBuilder: (previousResults) => {'input': 'failing'},
-            includeResultsInToolcall: [1], // Include step1
-          ),
-        ],
-      );
+          ],
+        );
 
-      await flow.run(input: {'start': true});
+        await flow.run(input: {'start': true});
 
-      // Find the system message that has both previous results and retry attempts
-      final systemMessageWithRetries = captureService.allSystemMessages
-          .firstWhere((msg) => msg.contains('Current step retry attempts'),
-              orElse: () => '');
+        // Find the system message that has both previous results and retry attempts
+        final systemMessageWithRetries = captureService.allSystemMessages
+            .firstWhere(
+              (msg) => msg.contains('Current step retry attempts'),
+              orElse: () => '',
+            );
 
-      if (systemMessageWithRetries.isNotEmpty) {
-        expect(systemMessageWithRetries, contains('Previous step results and associated issues:'));
-        expect(systemMessageWithRetries, contains('step1'));
-        expect(systemMessageWithRetries, contains('Current step retry attempts and associated issues:'));
-        expect(systemMessageWithRetries, contains('failing_step'));
-      }
-    });
+        if (systemMessageWithRetries.isNotEmpty) {
+          expect(
+            systemMessageWithRetries,
+            contains('Previous step results and associated issues:'),
+          );
+          expect(systemMessageWithRetries, contains('step1'));
+          expect(
+            systemMessageWithRetries,
+            contains('Current step retry attempts and associated issues:'),
+          );
+          expect(systemMessageWithRetries, contains('failing_step'));
+        }
+      },
+    );
 
     test('should apply severity filtering to retry attempts', () async {
       final captureService = SystemMessageCaptureService(
@@ -409,20 +437,21 @@ void main() {
               audits: [
                 SimpleAuditFunction<ToolOutput>(
                   name: 'low_severity_audit',
-                  auditFunction: (result) => [
+                  auditFunction: (output) => [
                     Issue(
                       id: 'low_issue',
                       severity: IssueSeverity.low,
                       description: 'Low severity issue',
                       context: {},
                       suggestions: ['Minor fix needed'],
-                      round: result.input.round,
+                      round: output.round,
                     ),
                   ],
                 ),
               ],
               customPassCriteria: (issues) => false, // Force retry
-              issuesSeverityFilter: IssueSeverity.high, // Filter out low severity
+              issuesSeverityFilter:
+                  IssueSeverity.high, // Filter out low severity
             ),
             outputSchema: OutputSchema(
               properties: [
@@ -436,11 +465,13 @@ void main() {
 
       await flow.run(input: {'start': true});
 
-      // Since the low severity issues are filtered out, 
+      // Since the low severity issues are filtered out,
       // there should be no retry attempts included in the system message
       final systemMessages = captureService.allSystemMessages;
-      final hasRetrySection = systemMessages.any((msg) => 
-          msg.contains('Current step retry attempts and associated issues:'));
+      final hasRetrySection = systemMessages.any(
+        (msg) =>
+            msg.contains('Current step retry attempts and associated issues:'),
+      );
 
       // The retry section should not appear because low severity issues are filtered out
       expect(hasRetrySection, isFalse);

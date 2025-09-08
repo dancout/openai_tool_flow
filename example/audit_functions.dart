@@ -60,9 +60,9 @@ class FullColorSuiteQualityAuditFunction
   String get name => 'full_color_suite_quality_audit';
 
   @override
-  List<Issue> run(ToolResult<FullColorSuiteOutput> result) {
+  List<Issue> run(FullColorSuiteOutput output) {
     // Validate color formats
-    return _validateColorFormat(result.output.colorSuite);
+    return _validateColorFormat(output.colorSuite);
   }
 }
 
@@ -102,9 +102,9 @@ class ColorQualityAuditFunction extends AuditFunction<DesignSystemColorOutput> {
   String get name => 'color_quality_audit';
 
   @override
-  List<Issue> run(ToolResult<DesignSystemColorOutput> result) {
+  List<Issue> run(DesignSystemColorOutput output) {
     // Now we can safely access the strongly-typed output
-    final systemColors = result.output.systemColors;
+    final systemColors = output.systemColors;
     return _validateColorFormat(systemColors);
   }
 
@@ -156,11 +156,11 @@ class ColorDiversityAuditFunction
   String get name => 'color_diversity_audit';
 
   @override
-  List<Issue> run(ToolResult<SeedColorGenerationOutput> result) {
+  List<Issue> run(SeedColorGenerationOutput output) {
     final issues = <Issue>[];
 
     // Check if we have enough colors using strongly-typed access
-    final colors = result.output.seedColors;
+    final colors = output.seedColors;
     if (colors.length < minimumColors) {
       issues.add(
         Issue(
