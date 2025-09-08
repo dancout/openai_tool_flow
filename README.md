@@ -11,7 +11,6 @@ A structured way to sequentially call OpenAI tool functions, passing outputs fro
 - **Token Usage Tracking**: Monitor and aggregate token usage across all steps and retries
 - **Flexible Input Building**: Compose step inputs from any combination of previous step outputs
 - **Data Sanitization**: Clean and transform data between steps with input/output sanitizers
-- **Mock Support**: Built-in mock service injection for testing workflows
 
 ## Installation
 
@@ -30,10 +29,53 @@ dart pub get
 
 ## Quick Start
 
-Here's a simple example that generates a color palette and then creates a design system:
+Here's a simple example that generates a feature pitch and then creates a marketing plan:
 
 ```dart
 import 'package:openai_toolflow/openai_toolflow.dart';
+
+// Step 1: Generate feature pitch
+class FeaturePitchStepDefinition extends StepDefinition {
+  @override
+  String get toolName => 'generate_feature_pitch';
+
+  @override
+  String get toolDescription => 'Generate a compelling feature pitch with name, tagline, and value proposition';
+
+  @override
+  Map<String, dynamic> get outputSchema => {
+    'type': 'object',
+    'properties': {
+      'name': {'type': 'string'},
+      'tagline': {'type': 'string'},
+      'value_prop': {'type': 'string'},
+    },
+    'required': ['name', 'tagline', 'value_prop'],
+  };
+}
+
+// Step 2: Generate marketing plan  
+class MarketingPlanStepDefinition extends StepDefinition {
+  @override
+  String get toolName => 'generate_marketing_plan';
+
+  @override
+  String get toolDescription => 'Generate marketing content based on the feature pitch';
+
+  @override
+  Map<String, dynamic> get outputSchema => {
+    'type': 'object',
+    'properties': {
+      'blog_post_title': {'type': 'string'},
+      'email_campaign_body': {'type': 'string'},
+      'social_media_posts': {
+        'type': 'array',
+        'items': {'type': 'string'},
+      },
+    },
+    'required': ['blog_post_title', 'email_campaign_body', 'social_media_posts'],
+  };
+}
 
 void main() async {
   // Configure OpenAI API
@@ -44,29 +86,9 @@ void main() async {
 
   // Define the workflow steps
   final steps = [
-    ToolCallStep.fromStepDefinition(
-      SeedColorGenerationStepDefinition(),
-      stepConfig: StepConfig(maxRetries: 2),
-      inputBuilder: (previousResults) => {
-        'user_preferences': {'style': 'modern', 'mood': 'professional'},
-        'target_accessibility': 'AA'
-      },
-    ),
-    ToolCallStep.fromStepDefinition(
-      DesignSystemStepDefinition(),
-      stepConfig: StepConfig(
-        maxRetries: 2,
-        inputSanitizer: (input) {
-          // Transform seed colors for design system input
-          final sanitized = Map<String, dynamic>.from(input);
-          if (input.containsKey('seed_colors')) {
-            sanitized['base_colors'] = input['seed_colors'];
-          }
-          return sanitized;
-        },
-      ),
-      // No inputBuilder specified - uses previous step's output by default
-    ),
+    ToolCallStep.fromStepDefinition(FeaturePitchStepDefinition()),
+    ToolCallStep.fromStepDefinition(MarketingPlanStepDefinition()),
+    // Note: Step 2 automatically receives Step 1's output as input
   ];
 
   // Create and run the workflow
@@ -76,16 +98,22 @@ void main() async {
   );
 
   final result = await toolFlow.run(input: {
-    'brand_context': 'enterprise software platform'
+    'product_category': 'project management tool'
   });
 
   // Access results
   print('Generated ${result.finalResults.length} steps');
   print('Total tokens used: ${result.tokenUsage.totalTokens}');
   
+  // Access all results from all attempts across all steps
+  print('Total attempts across all steps: ${result.results.length}');
+  
   // Get specific step results
-  final designColors = result.finalResults[1].output.toMap();
-  print('Design system colors: ${designColors['system_colors']}');
+  final featurePitch = result.finalResults[0].output.toMap();
+  print('Feature name: ${featurePitch['name']}');
+  
+  final marketingPlan = result.finalResults[1].output.toMap();
+  print('Blog title: ${marketingPlan['blog_post_title']}');
 }
 ```
 
@@ -99,7 +127,6 @@ The main orchestrator that executes your workflow steps sequentially:
 final toolFlow = ToolFlow(
   config: OpenAIConfig(apiKey: 'your-key'),
   steps: [step1, step2, step3],
-  openAiService: customService, // Optional: inject custom/mock service
 );
 
 final result = await toolFlow.run(input: {'initial': 'data'});
@@ -153,11 +180,7 @@ final stepConfig = StepConfig(
 **Custom input building**: Compose inputs from multiple previous steps:
 
 ```dart
-inputBuilder: (previousResults) => {
-  'seed_colors': previousResults[0].output.toMap()['colors'],
-  'user_feedback': previousResults[1].output.toMap()['feedback'],
-  'constraints': {'accessibility': 'AA'},
-}
+inputBuilder: (previousResults) => previousResults.last.toMap(),
 ```
 
 ### Data Sanitization
@@ -173,7 +196,7 @@ inputSanitizer: (input) {
 }
 ```
 
-**Output Sanitizer**: Cleans step outputs after execution:
+**Output Sanitizer**: Cleans step outputs after execution. This is important to ensure your output matches the user's expectation and maintains data quality:
 
 ```dart
 outputSanitizer: (output) {
@@ -202,11 +225,11 @@ class ColorValidationAudit extends AuditFunction {
     final issues = <Issue>[];
     final colors = output['colors'] as List?;
     
-    if (colors == null || colors.isEmpty) {
+    if (colors == null || colors.length < 3) {
       issues.add(Issue(
-        id: 'missing_colors',
+        id: 'insufficient_colors',
         severity: IssueSeverity.critical,
-        description: 'No colors generated',
+        description: 'Not enough colors generated - need at least 3 colors',
         suggestions: ['Retry with different parameters'],
         round: round,
       ));
@@ -238,34 +261,6 @@ for (int i = 0; i < result.finalResults.length; i++) {
   final stepTokens = result.finalResults[i].tokenUsage;
   print('  Step $i tokens: ${stepTokens.totalTokens}');
 }
-```
-
-### Testing with Mock Services
-
-Inject mock responses for testing:
-
-```dart
-final mockService = MockOpenAiToolService(
-  responses: {
-    'generate_colors': {
-      'colors': ['#FF0000', '#00FF00', '#0000FF'],
-      'confidence': 0.95,
-    },
-    'create_palette': {
-      'palette': {
-        'primary': '#FF0000',
-        'secondary': '#00FF00',
-        'accent': '#0000FF',
-      }
-    },
-  },
-);
-
-final toolFlow = ToolFlow(
-  config: config,
-  steps: steps,
-  openAiService: mockService, // Use mock instead of real API
-);
 ```
 
 ## Issue Management
