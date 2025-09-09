@@ -96,7 +96,7 @@ class MarketingPlanOutput extends ToolOutput {
   }
 }
 
-class FeaturePitchStepDefinition extends StepDefinition {
+class FeaturePitchStepDefinition extends StepDefinition<FeaturePitchOutput> {
   @override
   ToolOutput fromMap(Map<String, dynamic> data, int round) {
     return FeaturePitchOutput.fromMap(data, round);
@@ -115,7 +115,7 @@ class FeaturePitchStepDefinition extends StepDefinition {
   String get stepName => 'generate_feature_pitch';
 }
 
-class MarketingPlanStepDefinition extends StepDefinition {
+class MarketingPlanStepDefinition extends StepDefinition<MarketingPlanOutput> {
   @override
   ToolOutput fromMap(Map<String, dynamic> data, int round) {
     return MarketingPlanOutput.fromMap(data, round);
