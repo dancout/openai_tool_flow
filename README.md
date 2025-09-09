@@ -231,7 +231,10 @@ final stepConfig = StepConfig(
 **Custom input building**: Compose inputs from multiple previous steps:
 
 ```dart
-inputBuilder: (previousResults) => previousResults.last.toMap(),
+inputBuilder: (previousResults) => {
+    ...previousResults.first.toMap(),
+    ...previousResults.last.toMap(),
+},
 ```
 
 ### Data Sanitization
