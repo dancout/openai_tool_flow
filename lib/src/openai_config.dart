@@ -22,10 +22,10 @@ class OpenAIConfig {
   /// Creates an OpenAIConfig with explicit values
   const OpenAIConfig({
     required this.apiKey,
+    this.baseUrl = 'https://api.openai.com/v1',
     this.defaultModel = 'gpt-4',
     this.defaultTemperature,
     this.defaultMaxTokens,
-    required this.baseUrl,
   });
 
   /// Creates an OpenAIConfig from environment variables
