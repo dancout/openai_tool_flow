@@ -117,6 +117,8 @@ class ToolOutput {
 
   /// Creates a ToolOutput for subclasses
   /// (they provide their own toMap implementation)
+  // TODO: Since we always use this subclass and this _data is set to null, do we actually need it?
+  // TODO: Should we be using subclass everywhere? That feels clunky.
   const ToolOutput.subclass({required this.round}) : _data = null;
 
   /// Creates a ToolOutput from a Map

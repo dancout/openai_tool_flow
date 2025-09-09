@@ -1,145 +1,361 @@
 # openai_toolflow
 
-TODO: LOOK AT THIS!
-check out https://pub.dev/packages/dartantic_ai and see if that is too similar to what you are doing for this to be worthwhile to pursue.
-
-`openai_toolflow` is a Dart package for orchestrating **OpenAI tool calls with audits**.  
-It allows developers to define a pipeline of tool calls (functions executed through OpenAI models) where:
-
-- Each tool call can pass structured outputs or issues to later steps.
-- Audit functions (implemented by your app) can generate issues, which feed back into the pipeline.
-- Model parameters (tokens, temperature, etc.) can be customized per call.
-- State is managed internally: no need for the super project to track intermediate results.
-- All data structures (`ToolResult`, `Issue`) are **strict but extensible classes**.  
-  You can extend them in your own project, and the pipeline will continue to forward them by serializing with `toJson()`.
-
-This package is designed to be generic and extensible, so you can define your own tools and audits, then chain them together declaratively.
-
-## Package Purpose
-
-This repository is intended to be published as a package on [pub.dev](https://pub.dev/) for use in other Dart/Flutter projects.
-
-**Note:** Audit function definitions and similar responsibilities are delegated to the super (importing) project, not this package.
-
----
+A structured way to sequentially call OpenAI tool functions, passing outputs from previous steps as inputs to subsequent steps with strong typing, retry logic, auditing, and token tracking.
 
 ## Features
-- Structured tool call execution
-- Strict but extensible classes for tool results and audit issues
-- Configurable OpenAI model parameters
-- Abstract audit hooks for domain-specific validations
-- Internal state handling across tool calls
-- All results and issues are serialized and forwarded with `toJson()`
-- Ready for Flutter and Dart backends
 
----
+- **Sequential Tool Execution**: Chain OpenAI tool calls where each step's output becomes the next step's input
+- **Strong Typing**: All step inputs and outputs are strongly typed with schema validation
+- **Configurable Retries**: Retry failed steps with configurable attempt limits per step
+- **Audit System**: Validate step outputs with custom audit functions and issue severity levels
+- **Token Usage Tracking**: Monitor and aggregate token usage across all steps and retries
+- **Flexible Input Building**: Compose step inputs from any combination of previous step outputs
+- **Data Sanitization**: Clean and transform data between steps with input/output sanitizers
 
-## Type-Safe Step Configuration
+## Installation
 
-`openai_toolflow` provides a **StepDefinition pattern** for type-safe tool configuration that eliminates error-prone string usage and automates registration:
+Add this to your package's `pubspec.yaml` file:
 
-### Step Definitions
+```yaml
+dependencies:
+  openai_toolflow: ^0.1.0
+```
 
-Define step metadata in centralized classes that encapsulate:
-- Static step name constants
-- Output schema definitions  
-- Type-safe factory methods
-- Automatic registration
+Then run:
+
+```bash
+dart pub get
+```
+
+## Quick Start
+
+Here's a simple example that generates a feature pitch and then creates a marketing plan, using strongly-typed outputs and concrete step definitions:
 
 ```dart
-class PaletteExtractionStepDefinition extends StepDefinition<PaletteExtractionOutput> {
+import 'package:openai_toolflow/openai_toolflow.dart';
+
+// Step 1: Generate feature pitch
+class FeaturePitchOutput extends ToolOutput {
+  final String name;
+  final String tagline;
+  final String valueProp;
+
+  FeaturePitchOutput({
+    required this.name,
+    required this.tagline,
+    required this.valueProp,
+    required super.round,
+  }) : super.subclass();
+
   @override
-  String get stepName => PaletteExtractionOutput.stepName;
-  
+  Map<String, dynamic> toMap() => {
+    'name': name,
+    'tagline': tagline,
+    'value_prop': valueProp,
+    '_round': round,
+  };
+
+  factory FeaturePitchOutput.fromMap(Map<String, dynamic> map, int round) {
+    return FeaturePitchOutput(
+      name: map['name'] ?? '',
+      tagline: map['tagline'] ?? '',
+      valueProp: map['value_prop'] ?? '',
+      round: round,
+    );
+  }
+}
+
+// Step 2: Generate marketing plan 
+class MarketingPlanOutput extends ToolOutput {
+  final String blogPostTitle;
+  final String emailCampaignBody;
+  final List<String> socialMediaPosts;
+
+  MarketingPlanOutput({
+    required this.blogPostTitle,
+    required this.emailCampaignBody,
+    required this.socialMediaPosts,
+    required int round,
+  }) : super.subclass(round: round);
+
   @override
-  OutputSchema get outputSchema => PaletteExtractionOutput.getOutputSchema();
-  
+  Map<String, dynamic> toMap() => {
+    'blog_post_title': blogPostTitle,
+    'email_campaign_body': emailCampaignBody,
+    'social_media_posts': socialMediaPosts,
+    '_round': round,
+  };
+
+  factory MarketingPlanOutput.fromMap(Map<String, dynamic> map, int round) {
+    return MarketingPlanOutput(
+      blogPostTitle: map['blog_post_title'] ?? '',
+      emailCampaignBody: map['email_campaign_body'] ?? '',
+      socialMediaPosts: List<String>.from(map['social_media_posts'] ?? []),
+      round: round,
+    );
+  }
+}
+
+class FeaturePitchStepDefinition extends StepDefinition<FeaturePitchOutput> {
   @override
-  PaletteExtractionOutput fromMap(Map<String, dynamic> data, int round) =>
-      PaletteExtractionOutput.fromMap(data, round);
+  ToolOutput fromMap(Map<String, dynamic> data, int round) {
+    return FeaturePitchOutput.fromMap(data, round);
+  }
+
+  @override
+  OutputSchema get outputSchema => OutputSchema(
+    properties: [
+      PropertyEntry.string(name: 'name'),
+      PropertyEntry.string(name: 'tagline'),
+      PropertyEntry.string(name: 'value_prop'),
+    ],
+  );
+
+  @override
+  String get stepName => 'generate_feature_pitch';
+}
+
+class MarketingPlanStepDefinition extends StepDefinition<MarketingPlanOutput> {
+  @override
+  ToolOutput fromMap(Map<String, dynamic> data, int round) {
+    return MarketingPlanOutput.fromMap(data, round);
+  }
+
+  @override
+  OutputSchema get outputSchema => OutputSchema(
+    properties: [
+      PropertyEntry.string(name: 'blog_post_title'),
+      PropertyEntry.string(name: 'email_campaign_body'),
+      PropertyEntry.array(
+        name: 'social_media_posts',
+        items: PropertyType.string,
+      ),
+    ],
+  );
+
+  @override
+  String get stepName => 'generate_marketing_plan';
+}
+
+void main() async {
+  final config = OpenAIConfig(
+    apiKey: 'your-openai-api-key',
+    defaultModel: 'gpt-4',
+  );
+
+  final steps = [
+    ToolCallStep.fromStepDefinition(FeaturePitchStepDefinition()),
+    ToolCallStep.fromStepDefinition(MarketingPlanStepDefinition()),
+  ];
+
+  final toolFlow = ToolFlow(config: config, steps: steps);
+
+  final result = await toolFlow.run(
+    input: {'product_category': 'project management tool'},
+  );
+
+  final encoder = JsonEncoder.withIndent('  ');
+  print('Feature Pitch:');
+  // Call toMap on vanilla output directly
+  print(
+    'Feature Pitch: ${encoder.convert(result.finalResults[1].output.toMap())}\n',
+  );
+
+  final marketingPlan = result.finalResults[2]
+      .asTyped<MarketingPlanOutput>()
+      .output; // Option to strongly type output for parameter access
+  print('Marketing Plan: ${encoder.convert(marketingPlan.toMap())}');
 }
 ```
 
-### Automatic Registration
+## Core Components
 
-Use `ToolCallStep.fromStepDefinition()` for automatic registration and type safety:
+### ToolFlow
 
-```dart
-final paletteStep = PaletteExtractionStepDefinition();
-
-final workflow = {
-  paletteStep.stepName: ToolCallStep.fromStepDefinition(
-    paletteStep,
-    model: 'gpt-4',
-    inputBuilder: (previousResults) => {'imagePath': 'assets/image.jpg'},
-    // StepConfig is automatically created with correct output schema
-    // ToolOutputRegistry registration happens automatically
-  ),
-};
-```
-
-### Benefits
-
-- **Compile-time safety**: Use `PaletteExtractionOutput.stepName` instead of error-prone strings
-- **Automatic registration**: No need to manually call `ToolOutputRegistry.register()`
-- **Single source of truth**: All step metadata centralized in one place
-- **IDE support**: Full autocomplete and refactoring support
-
----
-
-## Example: Color Theme Generator
-
-
-Below is a pseudocode example showing how you might use `openai_toolflow` to generate a color theme from an image. This is intended as a starting point for development and can be adapted to your needs.
+The main orchestrator that executes your workflow steps sequentially:
 
 ```dart
-// Pseudocode: Color Theme Generator Flow
-
-final flow = ToolFlow(
-    config: OpenAIConfig(
-        apiKey: 'YOUR_OPENAI_API_KEY',
-        defaultModel: 'gpt-4.1',
-    ),
-    steps: [
-        ToolCallStep(
-            toolName: 'extract_palette',
-            model: 'gpt-5',
-            params: {
-                'max_colors': 8,
-            },
-        ),
-        AuditStep(
-            auditName: 'palette_quality_check',
-            // Custom audit logic to ensure palette meets requirements
-        ),
-        ToolCallStep(
-            toolName: 'propose_base_colors',
-            model: 'gpt-5',
-            params: {
-                'palette_type': 'material',
-            },
-        ),
-        AuditStep(
-            auditName: 'base_color_audit',
-            // Custom audit logic for base colors
-        ),
-        ToolCallStep(
-            toolName: 'expand_families',
-            model: 'gpt-4.1',
-            params: {
-                'family_count': 5,
-            },
-        ),
-    ],
+final toolFlow = ToolFlow(
+  config: OpenAIConfig(apiKey: 'your-key'),
+  steps: [step1, step2, step3],
 );
 
-final result = await flow.run(input: {
-    'imagePath': 'assets/myimage.png',
-});
-
-print(result.toJson());
+final result = await toolFlow.run(input: {'initial': 'data'});
 ```
 
-You can extend `ToolResult` and `Issue` classes to include custom fields for your application.  
-Audit steps can be implemented to validate outputs and inject issues back into the flow.
+### ToolCallStep
+
+Defines individual steps in your workflow:
+
 ```dart
+final step = ToolCallStep.fromStepDefinition(
+  MyStepDefinition(),
+  model: 'gpt-4',                    // Optional: override default model
+  stepConfig: StepConfig(            // Optional: step-specific configuration
+    maxRetries: 3,
+    audits: [myAuditFunction],
+  ),
+  inputBuilder: (previousResults) => { // Optional: compose input from previous steps
+    'data': previousResults[0].output.toMap()['key'],
+    'context': previousResults[1].output.toMap()['context'],
+  },
+);
+```
+
+### StepConfig
+
+Configures individual step behavior:
+
+```dart
+final stepConfig = StepConfig(
+  maxRetries: 3,                      // Retry attempts for this step
+  audits: [SocialMediaPostsAudit()],  // Custom validation functions
+  
+  // Data transformation functions
+  inputSanitizer: (input) => cleanInput(input),
+  outputSanitizer: (output) => cleanOutput(output),
+  
+  // Custom validation
+  customPassCriteria: (issues) => issues.isEmpty,
+  issuesSeverityFilter: IssueSeverity.high,
+);
+```
+
+## Advanced Configuration
+
+### Input Building Strategies
+
+**Default behavior** (no `inputBuilder`): Use the previous step's output directly.
+
+**Custom input building**: Compose inputs from multiple previous steps:
+
+```dart
+inputBuilder: (previousResults) => {
+    ...previousResults.first.toMap(),
+    ...previousResults.last.toMap(),
+},
+```
+
+### Data Sanitization
+
+**Input Sanitizer**: Transforms data after `inputBuilder` but before step execution:
+
+```dart
+inputSanitizer: (input) {
+  final cleaned = Map<String, dynamic>.from(input);
+  // Remove internal fields
+  cleaned.removeWhere((key, value) => key.startsWith('_'));
+  return cleaned;
+}
+```
+
+**Output Sanitizer**: Cleans step outputs after execution. This is important to ensure your output matches the user's expectation and maintains data quality:
+
+```dart
+outputSanitizer: (output) {
+  final cleaned = Map<String, dynamic>.from(output);
+  // Ensure proper color format
+  if (cleaned['colors'] is List) {
+    cleaned['colors'] = (cleaned['colors'] as List)
+        .where((color) => RegExp(r'^#[0-9A-Fa-f]{6}$').hasMatch(color))
+        .toList();
+  }
+  return cleaned;
+}
+```
+
+### Audit Functions
+
+Create custom validation logic with configurable severity levels:
+
+```dart
+class SocialMediaPostsAudit extends AuditFunction {
+  @override
+  String get auditName => 'social_media_posts_audit';
+
+  @override
+  Future<List<Issue>> performAudit(Map<String, dynamic> output, int round) async {
+    final issues = <Issue>[];
+    final posts = output['social_media_posts'] as List?;
+
+    if (posts == null || posts.length < 3) {
+      issues.add(Issue(
+        id: 'insufficient_posts',
+        severity: IssueSeverity.critical,
+        description: 'Not enough social media posts generated - need at least 3 posts',
+        suggestions: ['Adjust your input or parameters to generate more posts'],
+        round: round,
+      ));
+    }
+
+    return issues;
+  }
+
+  @override
+  bool passedCriteria(List<Issue> issues) =>
+      !issues.any((issue) => issue.severity == IssueSeverity.critical);
+}
+```
+
+### Token Usage Tracking
+
+Monitor API usage across your entire workflow:
+
+```dart
+final result = await toolFlow.run(input: data);
+
+print('Token usage summary:');
+print('  Total tokens: ${result.tokenUsage.totalTokens}');
+print('  Prompt tokens: ${result.tokenUsage.promptTokens}');
+print('  Completion tokens: ${result.tokenUsage.completionTokens}');
+
+// Per-step token usage
+for (int i = 0; i < result.finalResults.length; i++) {
+  final stepTokens = result.finalResults[i].tokenUsage;
+  print('  Step $i tokens: ${stepTokens.totalTokens}');
+}
+```
+
+## Issue Management
+
+Issues are generated by audit functions and can be filtered by severity:
+
+- `IssueSeverity.low`: Informational issues
+- `IssueSeverity.medium`: Warnings that don't block execution  
+- `IssueSeverity.high`: Significant issues that may cause retries
+- `IssueSeverity.critical`: Blocking issues that fail the step
+
+Configure issue filtering per step:
+
+```dart
+StepConfig(
+  issuesSeverityFilter: IssueSeverity.high, // Include high and critical issues only
+  customPassCriteria: (issues) => 
+      !issues.any((issue) => issue.severity == IssueSeverity.critical),
+)
+```
+
+## Error Handling and Retries
+
+Steps automatically retry on failure with exponential backoff:
+
+```dart
+StepConfig(
+  maxRetries: 3,              // Retry up to 3 times
+  stopOnFailure: false,       // Continue to next step even if this fails
+  customFailureReason: (issues) => 
+      'Failed due to: ${issues.map((e) => e.description).join(', ')}',
+)
+```
+
+## API Reference
+
+For complete API documentation, see the [API reference](https://pub.dev/documentation/openai_toolflow/latest/).
+
+## Contributing
+
+Contributions are welcome! Please read our [Contributing Guide](CONTRIBUTING.md) for details on our code of conduct and the process for submitting pull requests.
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
