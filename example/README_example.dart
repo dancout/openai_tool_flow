@@ -121,13 +121,13 @@ void main() async {
 
   final encoder = JsonEncoder.withIndent('  ');
   print('Feature Pitch:');
-  final featurePitch = result.finalResults[1]
-      .asTyped<FeaturePitchOutput>()
-      .output;
-  print('Feature Pitch: ${encoder.convert(featurePitch.toMap())}\n');
+  // Call toMap on vanilla output directly
+  print(
+    'Feature Pitch: ${encoder.convert(result.finalResults[1].output.toMap())}\n',
+  );
 
   final marketingPlan = result.finalResults[2]
       .asTyped<MarketingPlanOutput>()
-      .output;
+      .output; // Option to strongly type output for parameter access
   print('Marketing Plan: ${encoder.convert(marketingPlan.toMap())}');
 }
