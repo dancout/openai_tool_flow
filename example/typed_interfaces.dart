@@ -660,7 +660,9 @@ class FullColorSuiteOutput extends ToolOutput {
 
 /// Step definition for seed color generation (New workflow Step 1)
 class SeedColorGenerationStepDefinition
-    extends StepDefinition<SeedColorGenerationOutput> {
+        // TODO: It would be nice to be able to FORCE the user to define the type <T> so that you don't accidentally forget and then when parsing through results you can't get one.
+        extends
+        StepDefinition<SeedColorGenerationOutput> {
   @override
   String get stepName => SeedColorGenerationOutput.stepName;
 
