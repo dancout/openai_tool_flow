@@ -208,9 +208,8 @@ Configures individual step behavior:
 
 ```dart
 final stepConfig = StepConfig(
-  maxRetries: 3,                    // Retry attempts for this step
-  audits: [colorValidationAudit],   // Custom validation functions
-  stopOnFailure: true,              // Stop workflow if step fails
+  maxRetries: 3,                      // Retry attempts for this step
+  audits: [SocialMediaPostsAudit()],  // Custom validation functions
   
   // Data transformation functions
   inputSanitizer: (input) => cleanInput(input),
@@ -270,30 +269,30 @@ outputSanitizer: (output) {
 Create custom validation logic with configurable severity levels:
 
 ```dart
-class ColorValidationAudit extends AuditFunction {
+class SocialMediaPostsAudit extends AuditFunction {
   @override
-  String get auditName => 'color_validation';
+  String get auditName => 'social_media_posts_audit';
 
   @override
   Future<List<Issue>> performAudit(Map<String, dynamic> output, int round) async {
     final issues = <Issue>[];
-    final colors = output['colors'] as List?;
-    
-    if (colors == null || colors.length < 3) {
+    final posts = output['social_media_posts'] as List?;
+
+    if (posts == null || posts.length < 3) {
       issues.add(Issue(
-        id: 'insufficient_colors',
+        id: 'insufficient_posts',
         severity: IssueSeverity.critical,
-        description: 'Not enough colors generated - need at least 3 colors',
-        suggestions: ['Retry with different parameters'],
+        description: 'Not enough social media posts generated - need at least 3 posts',
+        suggestions: ['Adjust your input or parameters to generate more posts'],
         round: round,
       ));
     }
-    
+
     return issues;
   }
 
   @override
-  bool passedCriteria(List<Issue> issues) => 
+  bool passedCriteria(List<Issue> issues) =>
       !issues.any((issue) => issue.severity == IssueSeverity.critical);
 }
 ```
