@@ -29,91 +29,142 @@ dart pub get
 
 ## Quick Start
 
-Here's a simple example that generates a feature pitch and then creates a marketing plan:
+Here's a simple example that generates a feature pitch and then creates a marketing plan, using strongly-typed outputs and concrete step definitions:
 
 ```dart
 import 'package:openai_toolflow/openai_toolflow.dart';
 
 // Step 1: Generate feature pitch
-class FeaturePitchStepDefinition extends StepDefinition {
-  @override
-  String get toolName => 'generate_feature_pitch';
+class FeaturePitchOutput extends ToolOutput {
+  final String name;
+  final String tagline;
+  final String valueProp;
+
+  FeaturePitchOutput({
+    required this.name,
+    required this.tagline,
+    required this.valueProp,
+    required super.round,
+  }) : super.subclass();
 
   @override
-  String get toolDescription => 'Generate a compelling feature pitch with name, tagline, and value proposition';
-
-  @override
-  Map<String, dynamic> get outputSchema => {
-    'type': 'object',
-    'properties': {
-      'name': {'type': 'string'},
-      'tagline': {'type': 'string'},
-      'value_prop': {'type': 'string'},
-    },
-    'required': ['name', 'tagline', 'value_prop'],
+  Map<String, dynamic> toMap() => {
+    'name': name,
+    'tagline': tagline,
+    'value_prop': valueProp,
+    '_round': round,
   };
+
+  factory FeaturePitchOutput.fromMap(Map<String, dynamic> map, int round) {
+    return FeaturePitchOutput(
+      name: map['name'] ?? '',
+      tagline: map['tagline'] ?? '',
+      valueProp: map['value_prop'] ?? '',
+      round: round,
+    );
+  }
 }
 
-// Step 2: Generate marketing plan  
+// Step 2: Generate marketing plan 
+class MarketingPlanOutput extends ToolOutput {
+  final String blogPostTitle;
+  final String emailCampaignBody;
+  final List<String> socialMediaPosts;
+
+  MarketingPlanOutput({
+    required this.blogPostTitle,
+    required this.emailCampaignBody,
+    required this.socialMediaPosts,
+    required int round,
+  }) : super.subclass(round: round);
+
+  @override
+  Map<String, dynamic> toMap() => {
+    'blog_post_title': blogPostTitle,
+    'email_campaign_body': emailCampaignBody,
+    'social_media_posts': socialMediaPosts,
+    '_round': round,
+  };
+
+  factory MarketingPlanOutput.fromMap(Map<String, dynamic> map, int round) {
+    return MarketingPlanOutput(
+      blogPostTitle: map['blog_post_title'] ?? '',
+      emailCampaignBody: map['email_campaign_body'] ?? '',
+      socialMediaPosts: List<String>.from(map['social_media_posts'] ?? []),
+      round: round,
+    );
+  }
+}
+
+class FeaturePitchStepDefinition extends StepDefinition {
+  @override
+  ToolOutput fromMap(Map<String, dynamic> data, int round) {
+    return FeaturePitchOutput.fromMap(data, round);
+  }
+
+  @override
+  OutputSchema get outputSchema => OutputSchema(
+    properties: [
+      PropertyEntry.string(name: 'name'),
+      PropertyEntry.string(name: 'tagline'),
+      PropertyEntry.string(name: 'value_prop'),
+    ],
+  );
+
+  @override
+  String get stepName => 'generate_feature_pitch';
+}
+
 class MarketingPlanStepDefinition extends StepDefinition {
   @override
-  String get toolName => 'generate_marketing_plan';
+  ToolOutput fromMap(Map<String, dynamic> data, int round) {
+    return MarketingPlanOutput.fromMap(data, round);
+  }
 
   @override
-  String get toolDescription => 'Generate marketing content based on the feature pitch';
+  OutputSchema get outputSchema => OutputSchema(
+    properties: [
+      PropertyEntry.string(name: 'blog_post_title'),
+      PropertyEntry.string(name: 'email_campaign_body'),
+      PropertyEntry.array(
+        name: 'social_media_posts',
+        items: PropertyType.string,
+      ),
+    ],
+  );
 
   @override
-  Map<String, dynamic> get outputSchema => {
-    'type': 'object',
-    'properties': {
-      'blog_post_title': {'type': 'string'},
-      'email_campaign_body': {'type': 'string'},
-      'social_media_posts': {
-        'type': 'array',
-        'items': {'type': 'string'},
-      },
-    },
-    'required': ['blog_post_title', 'email_campaign_body', 'social_media_posts'],
-  };
+  String get stepName => 'generate_marketing_plan';
 }
 
 void main() async {
-  // Configure OpenAI API
   final config = OpenAIConfig(
     apiKey: 'your-openai-api-key',
     defaultModel: 'gpt-4',
   );
 
-  // Define the workflow steps
   final steps = [
     ToolCallStep.fromStepDefinition(FeaturePitchStepDefinition()),
     ToolCallStep.fromStepDefinition(MarketingPlanStepDefinition()),
-    // Note: Step 2 automatically receives Step 1's output as input
   ];
 
-  // Create and run the workflow
-  final toolFlow = ToolFlow(
-    config: config,
-    steps: steps,
+  final toolFlow = ToolFlow(config: config, steps: steps);
+
+  final result = await toolFlow.run(
+    input: {'product_category': 'project management tool'},
   );
 
-  final result = await toolFlow.run(input: {
-    'product_category': 'project management tool'
-  });
+  final encoder = JsonEncoder.withIndent('  ');
+  print('Feature Pitch:');
+  final featurePitch = result.finalResults[1]
+      .asTyped<FeaturePitchOutput>()
+      .output;
+  print('Feature Pitch: ${encoder.convert(featurePitch.toMap())}\n');
 
-  // Access results
-  print('Generated ${result.finalResults.length} steps');
-  print('Total tokens used: ${result.tokenUsage.totalTokens}');
-  
-  // Access all results from all attempts across all steps
-  print('Total attempts across all steps: ${result.results.length}');
-  
-  // Get specific step results
-  final featurePitch = result.finalResults[0].output.toMap();
-  print('Feature name: ${featurePitch['name']}');
-  
-  final marketingPlan = result.finalResults[1].output.toMap();
-  print('Blog title: ${marketingPlan['blog_post_title']}');
+  final marketingPlan = result.finalResults[2]
+      .asTyped<MarketingPlanOutput>()
+      .output;
+  print('Marketing Plan: ${encoder.convert(marketingPlan.toMap())}');
 }
 ```
 
