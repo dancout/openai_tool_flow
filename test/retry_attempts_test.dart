@@ -215,12 +215,12 @@ void main() {
         ],
       );
 
-      await flow.run(input: {'start': true});
+      final result = await flow.run(input: {'start': true});
 
       // Verify that all attempts were stored
-      final stepAttempts = flow.getStepAttempts(0);
+      final stepAttempts = result.results[1];
       expect(stepAttempts, isNotNull);
-      expect(stepAttempts!.length, equals(3)); // 3 attempts
+      expect(stepAttempts.length, equals(3)); // 3 attempts
 
       // Verify each attempt has the expected data
       for (int i = 0; i < 3; i++) {

@@ -1,4 +1,3 @@
-import 'package:meta/meta.dart';
 import 'package:openai_toolflow/openai_toolflow.dart';
 
 /// Manages ordered execution of tool call steps with internal state management.
@@ -28,21 +27,6 @@ class ToolFlow {
   /// Each step index maps to a list of attempts (including the final successful one)
   /// Index 0 contains initial input data, indices 1+ contain step attempts
   final List<List<TypedToolResult>> _stepAttempts = [];
-
-  // TODO: Consider if these visibleForTesting are actually needed.
-
-  /// Gets all attempts for a specific step (0-indexed from steps array)
-  @visibleForTesting
-  List<TypedToolResult>? getStepAttempts(int stepIndex) {
-    // Step index maps directly to _stepAttempts index
-    // stepIndex 0 -> _stepAttempts[1], stepIndex 1 -> _stepAttempts[2], etc.
-    // Index 0 in _stepAttempts is reserved for initial input data
-    final storageIndex = stepIndex + 1;
-    if (storageIndex < _stepAttempts.length) {
-      return _stepAttempts[storageIndex];
-    }
-    return null;
-  }
 
   /// Creates a ToolFlow with configuration and steps
   ToolFlow({
