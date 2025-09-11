@@ -227,32 +227,21 @@ void _displayTokenUsageByStep(ToolFlow flow, ToolFlowResult result) {
   ) {
     final stepResult =
         result.finalResults[stepIndex + 1]; // +1 to skip initial input
-    final usage =
-        result.finalState['step_${stepIndex}_usage'] as Map<String, dynamic>?;
     final toolName = stepResult.toolName;
-    if (usage != null) {
-      final promptTokens = usage['prompt_tokens'] ?? 0;
-      final completionTokens = usage['completion_tokens'] ?? 0;
-      final stepTotalTokens = usage['total_tokens'] ?? 0;
+    final tokenUsage = stepResult.tokenUsage;
+    final promptTokens = tokenUsage.promptTokens;
+    final completionTokens = tokenUsage.completionTokens;
+    final stepTotalTokens = tokenUsage.totalTokens;
 
-      // Add to totals
-      totalPromptTokens += promptTokens is int
-          ? promptTokens
-          : int.tryParse(promptTokens.toString()) ?? 0;
-      totalCompletionTokens += completionTokens is int
-          ? completionTokens
-          : int.tryParse(completionTokens.toString()) ?? 0;
-      totalTokens += stepTotalTokens is int
-          ? stepTotalTokens
-          : int.tryParse(stepTotalTokens.toString()) ?? 0;
+    // Add to totals
+    totalPromptTokens += promptTokens;
+    totalCompletionTokens += completionTokens;
+    totalTokens += stepTotalTokens;
 
-      print('  Step ${stepIndex + 1} ($toolName):');
-      print('    Prompt tokens: $promptTokens');
-      print('    Completion tokens: $completionTokens');
-      print('    Total tokens: $stepTotalTokens');
-    } else {
-      print('  Step ${stepIndex + 1} ($toolName): No token usage data');
-    }
+    print('  Step ${stepIndex + 1} ($toolName):');
+    print('    Prompt tokens: $promptTokens');
+    print('    Completion tokens: $completionTokens');
+    print('    Total tokens: $stepTotalTokens');
   }
 
   print('\n🔢 Total Token Usage Across All Steps:');
