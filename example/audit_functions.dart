@@ -9,6 +9,42 @@ import 'package:openai_toolflow/openai_toolflow.dart';
 
 import 'typed_interfaces.dart';
 
+/// Audit for duplicate color values in a map
+List<Issue> _checkForDuplicateColorValues(
+  Map<String, String> colorMap,
+  String contextLabel,
+) {
+  final issues = <Issue>[];
+  final valueCounts = <String, List<String>>{}; // colorHex -> [keys]
+  colorMap.forEach((key, value) {
+    valueCounts.putIfAbsent(value, () => []).add(key);
+  });
+  final duplicates = valueCounts.entries
+      .where((e) => e.value.length > 1)
+      .toList();
+  if (duplicates.isNotEmpty) {
+    for (final dup in duplicates) {
+      final colorHash = dup.key;
+      final keys = dup.value;
+      final keysList = keys.join(", ");
+      issues.add(
+        Issue(
+          id: 'duplicate_colors',
+          severity: IssueSeverity.critical,
+          description:
+              'Duplicate color value "$colorHash" found for multiple keys in $contextLabel: $keysList',
+          context: {'duplicates': 'Color $colorHash used for: $keysList'},
+          suggestions: [
+            'The color "$colorHash" is used for: $keysList. These should be visually distinct. For example, make one lighter and one darker, or otherwise differentiate them to clarify their roles (e.g., border vs. icon).',
+            'Review your color generation prompt and logic. You may keep any color values in the color suite that are not mentioned in any duplicate color issues, as those are not problematic. However, for the colors listed in this issue, you must introduce some change to ensure they are visually distinct.',
+          ],
+        ),
+      );
+    }
+  }
+  return issues;
+}
+
 /// Example of extending the Issue class for custom audit needs
 class ColorQualityIssue extends Issue {
   /// The color that caused the issue
@@ -61,8 +97,12 @@ class FullColorSuiteQualityAuditFunction
 
   @override
   List<Issue> run(FullColorSuiteOutput output) {
-    // Validate color formats
-    return _validateColorFormat(output.colorSuite);
+    final issues = <Issue>[];
+    issues.addAll(_validateColorFormat(output.colorSuite));
+    issues.addAll(
+      _checkForDuplicateColorValues(output.colorSuite, 'color_suite'),
+    );
+    return issues;
   }
 }
 
@@ -103,9 +143,11 @@ class ColorQualityAuditFunction extends AuditFunction<DesignSystemColorOutput> {
 
   @override
   List<Issue> run(DesignSystemColorOutput output) {
-    // Now we can safely access the strongly-typed output
     final systemColors = output.systemColors;
-    return _validateColorFormat(systemColors);
+    final issues = <Issue>[];
+    issues.addAll(_validateColorFormat(systemColors));
+    issues.addAll(_checkForDuplicateColorValues(systemColors, 'system_colors'));
+    return issues;
   }
 
   @override
