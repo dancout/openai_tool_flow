@@ -60,6 +60,8 @@ class DefaultOpenAiToolService implements OpenAiToolService {
       final usage = responseData['usage'] as Map<String, dynamic>? ?? {};
 
       return ToolCallResponse(output: toolOutput, usage: usage);
+    } catch (e) {
+      throw Exception('Failed to execute tool call: $e');
     } finally {
       if (_httpClient == null) {
         // Only close if we created the client
@@ -224,6 +226,12 @@ class DefaultOpenAiToolService implements OpenAiToolService {
 
       final toolCalls = message['tool_calls'] as List?;
       if (toolCalls == null || toolCalls.isEmpty) {
+        final finishReason = firstChoice['finish_reason'] as String?;
+        if (finishReason == 'length') {
+          throw Exception(
+            'OpenAI Tool Call ran out of available completion tokens.',
+          );
+        }
         throw Exception('No tool calls in OpenAI response');
       }
 
@@ -245,8 +253,14 @@ class DefaultOpenAiToolService implements OpenAiToolService {
         throw Exception('No arguments in OpenAI function call');
       }
 
-      final arguments = jsonDecode(argumentsString) as Map<String, dynamic>;
-      return arguments;
+      try {
+        final arguments = jsonDecode(argumentsString) as Map<String, dynamic>;
+        return arguments;
+      } catch (e) {
+        throw Exception(
+          'Failed to decode argumentsString: \'$argumentsString\'. Error: $e',
+        );
+      }
     } catch (e) {
       throw Exception('Failed to parse OpenAI response: $e');
     }
