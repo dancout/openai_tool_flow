@@ -441,162 +441,140 @@ class FullColorSuiteOutput extends ToolOutput {
       properties: [
         PropertyEntry.object(
           name: 'color_suite',
-          description: 'Complete suite of named colors with hex codes',
+          description:
+              'Complete suite of named colors with hex codes. Avoid exact duplicates between colors that share similar hues, and use slight variations where needed.',
           properties: [
             // Text colors
             PropertyEntry.string(
               name: 'primaryText',
-              description: 'Primary text color',
+              description:
+                  'Main color for primary body text and high-emphasis content.',
             ),
             PropertyEntry.string(
               name: 'secondaryText',
-              description: 'Secondary text color',
+              description:
+                  'Used for secondary text, subheadings, and supporting information.',
             ),
             PropertyEntry.string(
               name: 'interactiveText',
-              description: 'Text color for interactive elements',
+              description:
+                  'Text color for links, buttons, and other interactive elements.',
             ),
             PropertyEntry.string(
               name: 'mutedText',
-              description: 'Muted/low emphasis text color',
+              description:
+                  'Low-emphasis text such as captions, hints, or placeholder text.',
             ),
             PropertyEntry.string(
               name: 'disabledText',
-              description: 'Disabled text color',
+              description:
+                  'Text color for disabled or non-interactive elements.',
             ),
 
             // Background colors
             PropertyEntry.string(
               name: 'primaryBackground',
-              description: 'Primary background color',
+              description:
+                  'Main background color for app screens and large surfaces.',
             ),
             PropertyEntry.string(
               name: 'secondaryBackground',
-              description: 'Secondary background color',
+              description:
+                  'Background for secondary surfaces, sidebars, or panels.',
             ),
             PropertyEntry.string(
               name: 'surfaceBackground',
-              description: 'Surface background color (e.g., cards)',
+              description:
+                  'Background for cards, sheets, and elevated surfaces.',
             ),
             PropertyEntry.string(
               name: 'cardBackground',
-              description: 'Card background color',
+              description: 'Background color specifically for card components.',
             ),
             PropertyEntry.string(
               name: 'overlayBackground',
-              description: 'Overlay background color (with opacity)',
+              description:
+                  'Background for overlays, modals, or popups (may include opacity).',
             ),
             PropertyEntry.string(
               name: 'hoverBackground',
-              description: 'Background color for hover state',
+              description:
+                  'Background color shown on hover for interactive elements.',
             ),
 
             // Status backgrounds
             PropertyEntry.string(
               name: 'errorBackground',
-              description: 'Background color for error states',
+              description:
+                  'Background for error messages, banners, or error states.',
             ),
             PropertyEntry.string(
               name: 'warningBackground',
-              description: 'Background color for warning states',
+              description:
+                  'Background for highlighting important UI elements or selections.',
             ),
             PropertyEntry.string(
               name: 'successBackground',
-              description: 'Background color for success states',
+              description:
+                  'Background for success messages, confirmations, or positive states.',
             ),
             PropertyEntry.string(
               name: 'infoBackground',
-              description: 'Background color for informational states',
-            ),
-
-            // Border colors
-            PropertyEntry.string(
-              name: 'primaryBorder',
-              description: 'Primary border color',
-            ),
-            PropertyEntry.string(
-              name: 'secondaryBorder',
-              description: 'Secondary border color',
-            ),
-            PropertyEntry.string(
-              name: 'focusBorder',
-              description: 'Border color for focus state',
-            ),
-            PropertyEntry.string(
-              name: 'errorBorder',
-              description: 'Border color for error state',
-            ),
-            PropertyEntry.string(
-              name: 'warningBorder',
-              description: 'Border color for warning state',
+              description:
+                  'Background for informational messages, banners, or neutral states.',
             ),
 
             // Interactive colors
             PropertyEntry.string(
               name: 'primaryButton',
-              description: 'Primary button color',
+              description: 'Background color for primary action buttons.',
             ),
             PropertyEntry.string(
               name: 'secondaryButton',
-              description: 'Secondary button color',
+              description:
+                  'Background color for secondary or less prominent buttons.',
             ),
             PropertyEntry.string(
               name: 'disabledButton',
-              description: 'Disabled button color',
+              description:
+                  'Button color for disabled or non-interactive buttons.',
             ),
             PropertyEntry.string(
               name: 'primaryLink',
-              description: 'Primary link color',
+              description:
+                  'Color for primary hyperlinks and main navigation links.',
             ),
             PropertyEntry.string(
               name: 'visitedLink',
-              description: 'Visited link color',
+              description: 'Color for visited hyperlinks.',
             ),
 
             // Icon colors
             PropertyEntry.string(
               name: 'primaryIcon',
-              description: 'Primary icon color',
+              description: 'Icon color for main actions or primary UI icons.',
             ),
             PropertyEntry.string(
               name: 'secondaryIcon',
-              description: 'Secondary icon color',
+              description:
+                  'Icon color for secondary actions or less prominent icons.',
             ),
             PropertyEntry.string(
-              name: 'warningIcon',
-              description: 'Warning icon color',
+              name: 'selectionIcon',
+              description:
+                  'Icon color for selected or active states (e.g., checkmarks, toggles).',
             ),
             PropertyEntry.string(
               name: 'errorIcon',
-              description: 'Error icon color',
+              description: 'Icon color for error or critical indicators.',
             ),
             PropertyEntry.string(
               name: 'successIcon',
-              description: 'Success icon color',
+              description: 'Icon color for success or positive indicators.',
             ),
           ],
         ),
-        PropertyEntry.object(
-          name: 'color_families',
-          description: 'Grouping of colors by family or purpose',
-          properties: [
-            PropertyEntry.array(
-              name: 'blues',
-              items: PropertyType.string,
-              description: 'Array of blue color hex codes',
-            ),
-            PropertyEntry.array(
-              name: 'purples',
-              items: PropertyType.string,
-              description: 'Array of purple color hex codes',
-            ),
-            PropertyEntry.array(
-              name: 'neutrals',
-              items: PropertyType.string,
-              description: 'Array of neutral color hex codes',
-            ),
-          ],
-        ),
+
         PropertyEntry.object(
           name: 'brand_guidelines',
           description: 'Brand-specific color usage guidelines',

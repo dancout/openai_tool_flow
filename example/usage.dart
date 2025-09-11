@@ -95,13 +95,6 @@ void main() async {
           'successBackground': '#F0FDF4',
           'infoBackground': '#EFF6FF',
 
-          // Border colors
-          'primaryBorder': '#E2E8F0',
-          'secondaryBorder': '#F1F5F9',
-          'focusBorder': '#2563EB',
-          'errorBorder': '#EF4444',
-          'warningBorder': '#F59E0B',
-
           // Interactive colors
           'primaryButton': '#2563EB',
           'secondaryButton': '#7C3AED',
@@ -112,45 +105,9 @@ void main() async {
           // Icon colors
           'primaryIcon': '#1E293B',
           'secondaryIcon': '#475569',
-          'warningIcon': '#F59E0B',
+          'selectionIcon': '#2563EB',
           'errorIcon': '#EF4444',
           'successIcon': '#059669',
-        },
-        'color_families': {
-          'blues': [
-            '#EFF6FF',
-            '#DBEAFE',
-            '#BFDBFE',
-            '#93C5FD',
-            '#60A5FA',
-            '#3B82F6',
-            '#2563EB',
-            '#1D4ED8',
-            '#1E40AF',
-          ],
-          'purples': [
-            '#FAF5FF',
-            '#F3E8FF',
-            '#E9D5FF',
-            '#D8B4FE',
-            '#C084FC',
-            '#A855F7',
-            '#9333EA',
-            '#7C3AED',
-            '#6D28D9',
-          ],
-          'neutrals': [
-            '#FFFFFF',
-            '#F8FAFC',
-            '#F1F5F9',
-            '#E2E8F0',
-            '#CBD5E1',
-            '#94A3B8',
-            '#64748B',
-            '#475569',
-            '#334155',
-            '#1E293B',
-          ],
         },
         'brand_guidelines': {
           'primary_usage': 'Call-to-action buttons, links, key highlights',
