@@ -29,7 +29,16 @@ class DefaultOpenAiToolService implements OpenAiToolService {
     final client = _httpClient ?? http.Client();
 
     try {
-      // Build the OpenAI request with included results and retry attempts
+      // Check if this is an image generation request
+      if (step.toolName == 'generate_image') {
+        return await _executeImageGeneration(
+          step: step,
+          input: input,
+          client: client,
+        );
+      }
+
+      // Standard tool call handling for chat completions
       final request = _buildOpenAiRequest(
         step: step,
         input: input,
@@ -68,6 +77,65 @@ class DefaultOpenAiToolService implements OpenAiToolService {
         client.close();
       }
     }
+  }
+
+  /// Executes an image generation request using OpenAI's images API
+  Future<ToolCallResponse> _executeImageGeneration({
+    required ToolCallStep step,
+    required ToolInput input,
+    required http.Client client,
+  }) async {
+    // Build image generation request from input
+    final imageRequest = _buildImageGenerationRequest(input);
+    
+    final response = await client.post(
+      Uri.parse('${config.baseUrl}/images/generations'),
+      headers: {
+        'Authorization': 'Bearer ${config.apiKey}',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode(imageRequest),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception(
+        'OpenAI Images API error: ${response.statusCode} - ${response.body}',
+      );
+    }
+
+    final responseData = jsonDecode(response.body) as Map<String, dynamic>;
+    
+    // The image generation API returns the data directly, not wrapped in a tool call
+    final usage = responseData['usage'] as Map<String, dynamic>? ?? {};
+    
+    // Remove usage from response data to create clean output
+    final outputData = Map<String, dynamic>.from(responseData);
+    
+    return ToolCallResponse(output: outputData, usage: usage);
+  }
+
+  /// Builds an image generation request from ToolInput
+  Map<String, dynamic> _buildImageGenerationRequest(ToolInput input) {
+    final inputData = input.getCleanToolInput();
+    final request = <String, dynamic>{};
+
+    // Required field
+    final prompt = inputData['prompt'];
+    if (prompt == null) {
+      throw Exception('prompt is required for image generation');
+    }
+    request['prompt'] = prompt;
+
+    // Optional fields - use the actual model field names from the image API
+    if (inputData['model'] != null) request['model'] = inputData['model'];
+    if (inputData['n'] != null) request['n'] = inputData['n'];
+    if (inputData['quality'] != null) request['quality'] = inputData['quality'];
+    if (inputData['response_format'] != null) request['response_format'] = inputData['response_format'];
+    if (inputData['size'] != null) request['size'] = inputData['size'];
+    if (inputData['style'] != null) request['style'] = inputData['style'];
+    if (inputData['user'] != null) request['user'] = inputData['user'];
+
+    return request;
   }
 
   /// Builds the OpenAI request from step and input
@@ -294,6 +362,11 @@ class MockOpenAiToolService implements OpenAiToolService {
   }) async {
     final inputJson = input.toMap();
 
+    // Special handling for image generation
+    if (step.toolName == 'generate_image') {
+      return _mockImageGeneration(input);
+    }
+
     // Return predefined response if available
     if (responses.containsKey(step.toolName)) {
       final response = Map<String, dynamic>.from(responses[step.toolName]!);
@@ -337,6 +410,32 @@ class MockOpenAiToolService implements OpenAiToolService {
           'audio_tokens': 0,
           'accepted_prediction_tokens': 0,
           'rejected_prediction_tokens': 0,
+        },
+      },
+    );
+  }
+
+  /// Mock image generation response
+  ToolCallResponse _mockImageGeneration(ToolInput input) {
+    final inputData = input.getCleanToolInput();
+    final prompt = inputData['prompt'] as String? ?? 'default prompt';
+    
+    return ToolCallResponse(
+      output: {
+        'created': DateTime.now().millisecondsSinceEpoch ~/ 1000,
+        'data': [
+          {
+            'b64_json': 'mock_base64_encoded_image_data_for_prompt_${prompt.replaceAll(' ', '_')}',
+          },
+        ],
+      },
+      usage: {
+        'total_tokens': 100,
+        'input_tokens': 50,
+        'output_tokens': 50,
+        'input_tokens_details': {
+          'text_tokens': 10,
+          'image_tokens': 40,
         },
       },
     );
