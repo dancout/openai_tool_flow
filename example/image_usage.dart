@@ -183,13 +183,3 @@ ImageGenerationInput createImageInput({
   return input;
 }
 
-/// Example of a multi-step workflow that uses image generation
-/// This could be extended to first generate an image and then analyze it
-void exampleMultiStepWithImage() {
-  print('Example: Multi-step workflow with image generation');
-  print('This could include:');
-  print('1. Generate image based on prompt');
-  print('2. Analyze the generated image');
-  print('3. Provide feedback or modifications');
-  print('');
-}

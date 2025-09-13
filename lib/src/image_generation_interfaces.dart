@@ -203,7 +203,10 @@ class ImageData {
     this.b64Json,
     this.url,
     this.revisedPrompt,
-  });
+  }) : assert(
+         b64Json != null || url != null,
+         'ImageData must have either b64Json or url'
+       );
 
   factory ImageData.fromMap(Map<String, dynamic> map) {
     return ImageData(
