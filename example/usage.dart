@@ -215,6 +215,7 @@ List<Issue> issuesWithSeverity(List<Issue> allIssues, IssueSeverity severity) {
 /// Display enhanced execution summary
 void _displayExecutionSummary(ToolFlowResult result) {
   print('📊 Enhanced Execution Summary:');
+  print('Successful ToolFlowResult: ${result.passesCriteria}');
   print('Steps executed: ${result.results.length}');
   print(
     'Tools used: ${result.finalResults.map((r) => r.toolName).toSet().join(', ')}\n',
