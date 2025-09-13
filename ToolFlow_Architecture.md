@@ -4,7 +4,13 @@ This document explains how the ToolFlow pipeline works from user input to tool c
 
 ## Overview
 
-ToolFlow is a Dart package for orchestrating OpenAI tool calls with audits, enabling chaining of tool calls where each step can pass structured outputs or issues to later steps. The architecture provides type safety, audit functions, retry logic, and comprehensive state management.
+ToolFlow is a Dart package for orchestrating OpenAI tool calls and API requests with audits, enabling chaining of tool calls where each step can pass structured outputs or issues to later steps. The architecture provides type safety, audit functions, retry logic, and comprehensive state management.
+
+**Supported OpenAI APIs:**
+- **Chat Completions**: Traditional tool calling via `/chat/completions` endpoint
+- **Image Generation**: Direct image generation via `/images/generations` endpoint
+
+Both APIs are seamlessly integrated within the same ToolFlow pipeline, using the same infrastructure for retry logic, audits, state management, and result tracking.
 
 ## Core Components
 
@@ -33,10 +39,17 @@ Defines a single tool call step in a ToolFlow:
   - `outputSchema`: Schema definition for expected tool output
 
 ### 3. OpenAiToolService (API Interface)
-Abstract interface for OpenAI tool execution with two implementations:
+Abstract interface for OpenAI API execution with two implementations:
 
 - **DefaultOpenAiToolService**: Makes actual API calls to OpenAI
-- **MockOpenAiToolService**: Returns predefined responses for testing
+  - **Chat Completions**: Routes to `/chat/completions` for standard tool calls
+  - **Image Generation**: Routes to `/images/generations` for image generation (detected by `toolName == 'generate_image'`)
+- **MockOpenAiToolService**: Returns predefined responses for testing both APIs
+
+**API Detection Logic:**
+The service automatically detects the API to use based on the tool name:
+- `generate_image` → Images API (`/images/generations`)
+- All other tools → Chat Completions API (`/chat/completions`)
 
 ### 4. StepConfig (Step Configuration)
 Configuration for individual steps including:
@@ -54,6 +67,12 @@ Type-safe interfaces for inputs and outputs:
 - **ToolOutput**: Base class for typed tool outputs
 - **StepDefinition**: Interface for defining tool metadata and factory methods
 - **ToolOutputRegistry**: Registry for creating typed outputs from results
+
+**Image Generation Interfaces:**
+- **ImageGenerationInput**: Typed input for image generation with validation
+- **ImageGenerationOutput**: Typed output containing image data and usage
+- **ImageData**: Individual image result (b64_json, URL, revised prompt)
+- **ImageGenerationStepDefinition**: Step definition for image generation tools
 
 ## Execution Flow
 
@@ -92,9 +111,23 @@ For each ToolCallStep in the workflow:
    - Include current step retry attempts for context
 
 #### 3.3 API Execution
-1. **Tool Call Execution**: OpenAI service executes the tool call
-2. **Response Processing**: Extract tool output and usage information
-3. **Output Sanitization**: Apply `outputSanitizer` if configured
+1. **API Route Detection**: Service detects the target API based on tool name
+2. **Conditional Execution**:
+   - **Image Generation** (`generate_image`): Direct POST to `/images/generations` with image parameters
+   - **Chat Completions** (all other tools): POST to `/chat/completions` with tool call structure
+3. **Response Processing**: Extract output and usage information from API response
+4. **Output Sanitization**: Apply `outputSanitizer` if configured
+
+**Image Generation Flow:**
+- Input validation for image parameters (prompt, model, size, quality, etc.)
+- Direct API call to OpenAI Images endpoint
+- Response contains image data (base64 or URLs) and usage statistics
+- No tool call wrapping - direct API response processing
+
+**Chat Completions Flow:**
+- Tool definition creation from output schema
+- System/user message building with context
+- Tool call extraction from chat completion response
 
 #### 3.4 Type Safety & Validation
 1. **Typed Output Creation**: Use ToolOutputRegistry to create typed output
@@ -158,13 +191,26 @@ ToolInput sanitizedInput
 ### 3. OpenAI API Call
 ```dart
 ToolCallStep + ToolInput
-↓ (build tool definition)
-Map<String, dynamic> toolDefinition
-↓ (build system/user messages)
-OpenAiRequest request
-↓ (HTTP POST to OpenAI)
-Map<String, dynamic> apiResponse
-↓ (extract tool call)
+↓ (API detection by tool name)
+┌─────────────────────────┬─────────────────────────┐
+│     Image Generation    │    Chat Completions     │
+│   (generate_image)      │    (all other tools)    │
+├─────────────────────────┼─────────────────────────┤
+│ (build image request)   │ (build tool definition) │
+│ Map<String, dynamic>    │ Map<String, dynamic>    │
+│ imageRequest            │ toolDefinition          │
+│ ↓                       │ ↓                       │
+│ (POST /images/          │ (build system/user      │
+│  generations)           │  messages)              │
+│ ↓                       │ OpenAiRequest request   │
+│ Map<String, dynamic>    │ ↓                       │
+│ imageResponse           │ (POST /chat/            │
+│                         │  completions)           │
+│                         │ ↓                       │
+│                         │ Map<String, dynamic>    │
+│                         │ chatResponse            │
+└─────────────────────────┴─────────────────────────┘
+↓ (extract output + usage)
 ToolCallResponse (output + usage)
 ```
 
@@ -185,31 +231,50 @@ TypedToolResult finalResult
 
 ## Key Architectural Patterns
 
-### 1. Dependency Injection
+### 1. Multi-API Integration Pattern
+The architecture uses a **Conditional Routing Pattern** to support multiple OpenAI APIs within a single pipeline:
+
+**Detection Strategy:**
+- Tool name-based routing (`generate_image` → Images API)
+- Fallback to Chat Completions for all other tools
+- Same service interface for both APIs
+
+**Unified Response Format:**
+- Both APIs return `ToolCallResponse` with `output` and `usage`
+- Image API responses are wrapped to match the expected format
+- Token usage tracking works consistently across both APIs
+
+**Benefits:**
+- Single workflow can combine chat completions and image generation
+- Consistent retry logic, audit functions, and state management
+- No need for separate pipeline implementations
+- Easy to extend to additional OpenAI APIs (embeddings, speech, etc.)
+
+### 2. Dependency Injection
 - OpenAI service can be injected for testing
 - Enables mock responses and API call isolation
 
-### 2. Type Safety with Backward Compatibility
+### 3. Type Safety with Backward Compatibility
 - Strongly typed interfaces (ToolInput/ToolOutput)
 - Registry pattern for type-safe output creation
 - Graceful fallbacks for edge cases
 
-### 3. Audit-Driven Validation
+### 4. Audit-Driven Validation
 - Configurable audit functions per step
 - Issue tracking with severity levels
 - Custom pass/fail criteria
 
-### 4. Comprehensive Retry Logic
+### 5. Comprehensive Retry Logic
 - Per-step retry configuration
 - Context-aware retry attempts
 - Issue forwarding between attempts
 
-### 5. State Accumulation
+### 6. State Accumulation
 - Internal state management across steps
 - Token usage tracking
 - Result history preservation
 
-### 6. Flexible Input Composition
+### 7. Flexible Input Composition
 - Dynamic input building from previous results
 - Selective result inclusion in tool calls
 - Input/output sanitization hooks
@@ -254,3 +319,46 @@ TypedToolResult finalResult
 - Usage tracking for cost monitoring
 
 This architecture provides a robust, type-safe, and extensible framework for orchestrating complex OpenAI tool call workflows while maintaining clear separation of concerns and comprehensive error handling.
+
+## Example Workflows
+
+### Single-Step Image Generation
+```dart
+final imageStep = ToolCallStep.fromStepDefinition(
+  ImageGenerationStepDefinition(),
+  model: 'dall-e-3',
+);
+
+final result = await ToolFlow(
+  config: config,
+  steps: [imageStep],
+).run(input: {
+  'prompt': 'A serene mountain landscape',
+  'size': '1024x1024',
+  'quality': 'hd',
+});
+```
+
+### Multi-Step Mixed Workflow
+```dart
+// Step 1: Generate concept (chat completion)
+final conceptStep = ToolCallStep.fromStepDefinition(
+  ConceptGenerationStepDefinition(),
+);
+
+// Step 2: Create image from concept (image generation)
+final imageStep = ToolCallStep.fromStepDefinition(
+  ImageGenerationStepDefinition(),
+  inputBuilder: (previousResults) {
+    final concept = previousResults.last.output.toMap()['concept'];
+    return {'prompt': concept};
+  },
+);
+
+final result = await ToolFlow(
+  config: config,
+  steps: [conceptStep, imageStep],
+).run(input: {'theme': 'futuristic city'});
+```
+
+This demonstrates how both APIs work seamlessly together within the same pipeline infrastructure.
