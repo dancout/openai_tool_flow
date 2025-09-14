@@ -38,6 +38,9 @@ I need your help with the following content.
     - The intention is not to create an entirely new pipeline for image edits, but rather for image edits to be another option within the existing pipeline
         - With this being said, there will likely need to be some new pieces put in place to support image edits, and that is alright.
             - Be sure to create an ADR document explictily explaining any changes or new piepline features you add for supporting image edits
+- [ ] You likely will need to update the process of determining if a step is meant for image generation, image edits, or chat completions to be more sophisticated than simply looking at the model used
+    - For context, solely based on dall-e-2, how would you know that the steps intention is for image generation vs image editing?
+    - It may be a good idea to consider making factory methods at the StepDefinition, or ToolCallStep, or ToolInput layer (I'm not sure which one, so please investigate). The thought there is that we can then have some parameter on the object that specifies which of the 3 types of tool call requests we are dealing with, but the factory method removes the possibility of a user making a mistake when building the object. The factory methods would be intended to make the actual constructor private (probably) and only expose chat, imageGen, or imageEdit options.
 - [ ] Update the image_usage.dart file so that we are creating an image and then the second step should be running an edit on it
 
 #### Do this last
