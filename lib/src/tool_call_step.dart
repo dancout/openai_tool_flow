@@ -111,6 +111,82 @@ class ToolCallStep {
     );
   }
 
+  /// Factory method for creating image generation steps
+  /// This provides type safety and ensures correct configuration for image generation
+  static ToolCallStep forImageGeneration({
+    String model = 'dall-e-3',
+    Map<String, dynamic> Function(List<TypedToolResult>)? inputBuilder,
+    List<Issue> issues = const [],
+    StepConfig? stepConfig,
+    List<int> includeResultsInToolcall = const [],
+    String? toolDescription,
+  }) {
+    final stepDefinition = ImageGenerationStepDefinition();
+    ToolOutputRegistry.registerStepDefinition(stepDefinition);
+
+    return ToolCallStep(
+      toolName: stepDefinition.stepName,
+      toolDescription: toolDescription ?? 'Generate images based on text prompts using OpenAI\'s image generation API',
+      model: model,
+      inputBuilder: inputBuilder,
+      issues: issues,
+      outputSchema: stepDefinition.outputSchema,
+      stepConfig: stepConfig ?? StepConfig(),
+      includeResultsInToolcall: includeResultsInToolcall,
+    );
+  }
+
+  /// Factory method for creating image editing steps
+  /// This provides type safety and ensures correct configuration for image editing
+  static ToolCallStep forImageEditing({
+    String model = 'dall-e-2',
+    Map<String, dynamic> Function(List<TypedToolResult>)? inputBuilder,
+    List<Issue> issues = const [],
+    StepConfig? stepConfig,
+    List<int> includeResultsInToolcall = const [],
+    String? toolDescription,
+  }) {
+    final stepDefinition = ImageEditStepDefinition();
+    ToolOutputRegistry.registerStepDefinition(stepDefinition);
+
+    return ToolCallStep(
+      toolName: stepDefinition.stepName,
+      toolDescription: toolDescription ?? 'Edit existing images based on text prompts using OpenAI\'s image editing API',
+      model: model,
+      inputBuilder: inputBuilder,
+      issues: issues,
+      outputSchema: stepDefinition.outputSchema,
+      stepConfig: stepConfig ?? StepConfig(),
+      includeResultsInToolcall: includeResultsInToolcall,
+    );
+  }
+
+  /// Factory method for creating chat completion steps
+  /// This provides type safety and ensures correct configuration for chat completions
+  static ToolCallStep forChatCompletion<T extends ToolOutput>(
+    StepDefinition<T> stepDefinition, {
+    String model = 'gpt-4',
+    Map<String, dynamic> Function(List<TypedToolResult>)? inputBuilder,
+    List<Issue> issues = const [],
+    StepConfig? stepConfig,
+    List<int> includeResultsInToolcall = const [],
+    String? toolDescription,
+  }) {
+    // Auto-register the step definition
+    ToolOutputRegistry.registerStepDefinition(stepDefinition);
+
+    return ToolCallStep(
+      toolName: stepDefinition.stepName,
+      toolDescription: toolDescription,
+      model: model,
+      inputBuilder: inputBuilder,
+      issues: issues,
+      outputSchema: stepDefinition.outputSchema,
+      stepConfig: stepConfig ?? StepConfig(),
+      includeResultsInToolcall: includeResultsInToolcall,
+    );
+  }
+
   /// Creates a copy of this ToolCallStep with updated parameters
   ToolCallStep copyWith({
     String? toolName,

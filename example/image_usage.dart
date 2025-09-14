@@ -1,15 +1,15 @@
-/// Image generation usage example.
+/// Image generation and editing usage example.
 ///
-/// This example demonstrates the image generation functionality using OpenAI's
-/// images/generations API within the ToolFlow pipeline. This is a single-step
-/// workflow showcasing image generation capabilities.
+/// This example demonstrates both image generation and editing functionality 
+/// using OpenAI's images APIs within the ToolFlow pipeline. This is a two-step
+/// workflow showcasing image generation followed by image editing capabilities.
 library;
 
 import 'package:openai_toolflow/openai_toolflow.dart';
 
 void main() async {
-  print('🎨 OpenAI Image Generation Example');
-  print('==================================\n');
+  print('🎨 OpenAI Image Generation & Editing Example');
+  print('===========================================\n');
 
   // Create configuration - use test values if .env is not available
   late OpenAIConfig config;
@@ -28,30 +28,57 @@ void main() async {
     );
   }
 
-  // Register the image generation step definition
-  final imageStepDefinition = ImageGenerationStepDefinition();
-
-  // Create a tool call step for image generation
-  final imageStep = ToolCallStep.fromStepDefinition(
-    imageStepDefinition,
-    model: 'dall-e-3', // or 'dall-e-2' or 'gpt-image-1'
+  // Step 1: Create image generation step using new factory method
+  final imageGenerationStep = ToolCallStep.forImageGeneration(
+    model: 'dall-e-3',
     stepConfig: StepConfig(maxRetries: 2, stopOnFailure: true),
   );
 
-  // Create a mock service for demonstration
-  final mockService = MockOpenAiToolService();
+  // Step 2: Create image editing step that takes the generated image and modifies it
+  final imageEditingStep = ToolCallStep.forImageEditing(
+    model: 'dall-e-2',
+    stepConfig: StepConfig(maxRetries: 2, stopOnFailure: true),
+    inputBuilder: (previousResults) {
+      // Get the image generated in the previous step
+      final generationResult = previousResults.last;
+      final generationOutput = generationResult.output.toMap();
+      final imageData = generationOutput['data'] as List;
+      
+      // Extract the first image's URL or base64 data
+      String imageSource;
+      if (imageData.isNotEmpty) {
+        final firstImage = imageData.first as Map<String, dynamic>;
+        // For this example, we'll assume we have a URL or base64 data
+        imageSource = firstImage['url'] ?? firstImage['b64_json'] ?? 'placeholder_image_path';
+      } else {
+        imageSource = 'placeholder_image_path';
+      }
+      
+      return {
+        'prompt': 'Add a rainbow arching over the mountain landscape',
+        'images': [imageSource], // The image to edit
+        'model': 'dall-e-2',
+        'n': 1,
+        'size': '1024x1024',
+        'response_format': 'url',
+      };
+    },
+  );
 
-  // Create the tool flow with service injection
+  // Create a mock service for demonstration
+  // final mockService = MockOpenAiToolService();
+
+  // Create the tool flow with both generation and editing steps
   final flow = ToolFlow(
     config: config,
-    steps: [imageStep],
+    steps: [imageGenerationStep, imageEditingStep],
     // openAiService:
     //     mockService, // Use real service: DefaultOpenAiToolService(config: config)
   );
 
   // Execute the flow with image generation input
   try {
-    print('🚀 Starting image generation...\n');
+    print('🚀 Starting image generation and editing workflow...\n');
 
     final result = await flow.run(
       input: {
@@ -66,18 +93,21 @@ void main() async {
       },
     );
 
-    print('✅ Image generation completed!\n');
+    print('✅ Image generation and editing workflow completed!\n');
 
     // Display execution summary
     _displayExecutionSummary(result);
 
     // Display image generation output
-    _displayImageOutput(result);
+    _displayImageGenerationOutput(result);
+
+    // Display image editing output
+    _displayImageEditingOutput(result);
 
     // Display token usage
     _displayTokenUsage(result);
   } catch (e) {
-    print('❌ Image generation failed: $e');
+    print('❌ Image workflow failed: $e');
   }
 }
 
@@ -91,14 +121,17 @@ void _displayExecutionSummary(ToolFlowResult result) {
   );
 }
 
-/// Display image generation output
-void _displayImageOutput(ToolFlowResult result) {
-  print('🖼️ Image Generation Output:');
+/// Display image generation output (Step 1)
+void _displayImageGenerationOutput(ToolFlowResult result) {
+  if (result.finalResults.isEmpty) return;
+  
+  print('🖼️ Image Generation Output (Step 1):');
 
-  // Get the image generation result
-  final imageResult = result.finalResults.last; // Last step is image generation
+  // Get the first step result (image generation)
+  final imageResult = result.finalResults.first;
   final outputMap = imageResult.output.toMap();
 
+  print('  Tool: ${imageResult.toolName}');
   print('  Created: ${outputMap['created']}');
 
   final data = outputMap['data'] as List?;
@@ -126,41 +159,82 @@ void _displayImageOutput(ToolFlowResult result) {
     }
   }
 
-  // Display usage information if available
-  final usage = outputMap['usage'] as Map<String, dynamic>?;
-  if (usage != null) {
-    print('  Usage Statistics:');
-    if (usage['total_tokens'] != null) {
-      print('    Total tokens: ${usage['total_tokens']}');
-    }
-    if (usage['input_tokens'] != null) {
-      print('    Input tokens: ${usage['input_tokens']}');
-    }
-    if (usage['output_tokens'] != null) {
-      print('    Output tokens: ${usage['output_tokens']}');
+  print('');
+}
+
+/// Display image editing output (Step 2)
+void _displayImageEditingOutput(ToolFlowResult result) {
+  if (result.finalResults.length < 2) return;
+  
+  print('✏️ Image Editing Output (Step 2):');
+
+  // Get the second step result (image editing)
+  final editResult = result.finalResults[1];
+  final outputMap = editResult.output.toMap();
+
+  print('  Tool: ${editResult.toolName}');
+  print('  Created: ${outputMap['created']}');
+
+  final data = outputMap['data'] as List?;
+  if (data != null && data.isNotEmpty) {
+    print('  Edited Images: ${data.length}');
+
+    for (int i = 0; i < data.length; i++) {
+      final imageData = data[i] as Map<String, dynamic>;
+      print('    Edited Image ${i + 1}:');
+
+      if (imageData['url'] != null) {
+        print('      URL: ${imageData['url']}');
+      }
+
+      if (imageData['b64_json'] != null) {
+        final b64Data = imageData['b64_json'] as String;
+        print(
+          '      Base64 data: ${b64Data.substring(0, 50)}... (${b64Data.length} characters)',
+        );
+      }
+
+      if (imageData['revised_prompt'] != null) {
+        print('      Revised prompt: ${imageData['revised_prompt']}');
+      }
     }
   }
 
   print('');
 }
 
-/// Display token usage
+/// Display token usage across all steps
 void _displayTokenUsage(ToolFlowResult result) {
-  print('🔢 Token Usage:');
+  print('🔢 Token Usage Summary:');
 
-  // Get token usage from the final result
-  final imageResult = result.finalResults.last;
-  final tokenUsage = imageResult.tokenUsage;
+  int totalPromptTokens = 0;
+  int totalCompletionTokens = 0;
+  int totalTokens = 0;
 
-  print('  Prompt tokens: ${tokenUsage.promptTokens}');
-  print('  Completion tokens: ${tokenUsage.completionTokens}');
-  print('  Total tokens: ${tokenUsage.totalTokens}');
+  for (int i = 0; i < result.finalResults.length; i++) {
+    final stepResult = result.finalResults[i];
+    final tokenUsage = stepResult.tokenUsage;
+    
+    print('  Step ${i + 1} (${stepResult.toolName}):');
+    print('    Prompt tokens: ${tokenUsage.promptTokens}');
+    print('    Completion tokens: ${tokenUsage.completionTokens}');
+    print('    Total tokens: ${tokenUsage.totalTokens}');
+    
+    totalPromptTokens += tokenUsage.promptTokens;
+    totalCompletionTokens += tokenUsage.completionTokens;
+    totalTokens += tokenUsage.totalTokens;
+  }
+
+  print('  Overall Total:');
+  print('    Prompt tokens: $totalPromptTokens');
+  print('    Completion tokens: $totalCompletionTokens');
+  print('    Total tokens: $totalTokens');
 
   print('');
 }
 
 /// Example of creating an image generation input with validation
-ImageGenerationInput createImageInput({
+ImageGenerationInput createImageGenerationInput({
   required String prompt,
   String? imageModel,
   int? n,
@@ -175,6 +249,36 @@ ImageGenerationInput createImageInput({
     quality: quality ?? 'standard',
     size: size ?? '1024x1024',
     style: style ?? 'vivid',
+    responseFormat: 'b64_json',
+  );
+
+  // Validate the input
+  final validationIssues = input.validate();
+  if (validationIssues.isNotEmpty) {
+    throw ArgumentError('Invalid input: ${validationIssues.join(', ')}');
+  }
+
+  return input;
+}
+
+/// Example of creating an image editing input with validation
+ImageEditInput createImageEditInput({
+  required String prompt,
+  required List<String> images,
+  String? imageModel,
+  String? mask,
+  int? n,
+  String? quality,
+  String? size,
+}) {
+  final input = ImageEditInput(
+    prompt: prompt,
+    images: images,
+    imageModel: imageModel ?? 'dall-e-2',
+    mask: mask,
+    n: n ?? 1,
+    quality: quality ?? 'standard',
+    size: size ?? '1024x1024',
     responseFormat: 'b64_json',
   );
 
