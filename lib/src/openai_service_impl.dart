@@ -121,7 +121,7 @@ class DefaultOpenAiToolService implements OpenAiToolService {
       return ToolCallResponse(output: outputData, usage: usage);
     } catch (e) {
       // Re-throw the exception to be handled by the calling code
-      rethrow;
+      throw Exception('Failed to execute image generation: $e');
     } finally {
       if (_httpClient == null) {
         // Only close if we created the client
