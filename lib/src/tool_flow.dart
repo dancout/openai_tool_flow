@@ -382,12 +382,12 @@ class ToolFlow {
     ToolInput stepInput;
     
     // If this is an image generation model, create ImageGenerationInput
-    if (isImageGenerationModel(modelToUse)) {
-      stepInput = ImageGenerationInput.fromMap({
-        ...customData,
-        '_round': round,
-        '_model': modelToUse,
-      });
+    if (isImageGenerationModel(modelToUse)) { //
+      stepInput = ImageGenerationInput.fromMap({ //
+        ...customData, //
+        '_round': round, //
+        '_model': modelToUse, //
+      }); //
     } else {
       // Otherwise create standard ToolInput
       stepInput = ToolInput(
