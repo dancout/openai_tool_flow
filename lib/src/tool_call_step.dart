@@ -1,6 +1,16 @@
 import 'package:meta/meta.dart';
 import 'package:openai_toolflow/openai_toolflow.dart';
 
+/// Enum to specify the type of operation for a ToolCallStep
+enum ToolCallStepOperation {
+  /// Standard chat completion operation using OpenAI's chat models
+  chatCompletion,
+  /// Image generation operation using OpenAI's image generation API
+  imageGeneration,
+  /// Image editing operation using OpenAI's image editing API
+  imageEditing,
+}
+
 /// Defines a single tool call step in a ToolFlow.
 ///
 /// Contains the tool name, OpenAI model to use, dynamic input builder function,
@@ -70,6 +80,9 @@ class ToolCallStep {
   /// This defines the structure that OpenAI tool calls should conform to.
   final OutputSchema outputSchema;
 
+  /// The type of operation this step performs (chatCompletion, imageGeneration, imageEditing)
+  final ToolCallStepOperation operation;
+
   /// Creates a ToolCallStep
   @visibleForTesting
   const ToolCallStep({
@@ -81,6 +94,7 @@ class ToolCallStep {
     this.issues = const [],
     required this.stepConfig,
     required this.outputSchema,
+    this.operation = ToolCallStepOperation.chatCompletion,
   });
 
   /// Creates a ToolCallStep from a StepDefinition
@@ -90,6 +104,88 @@ class ToolCallStep {
   static ToolCallStep fromStepDefinition<T extends ToolOutput>(
     StepDefinition<T> stepDefinition, {
     String? model,
+    Map<String, dynamic> Function(List<TypedToolResult>)? inputBuilder,
+    List<Issue> issues = const [],
+    StepConfig? stepConfig,
+    List<int> includeResultsInToolcall = const [],
+    String? toolDescription,
+    ToolCallStepOperation operation = ToolCallStepOperation.chatCompletion,
+  }) {
+    // Auto-register the step definition
+    ToolOutputRegistry.registerStepDefinition(stepDefinition);
+
+    return ToolCallStep(
+      toolName: stepDefinition.stepName,
+      toolDescription: toolDescription,
+      model: model,
+      inputBuilder: inputBuilder,
+      issues: issues,
+      outputSchema: stepDefinition.outputSchema,
+      stepConfig: stepConfig ?? StepConfig(),
+      includeResultsInToolcall: includeResultsInToolcall,
+      operation: operation,
+    );
+  }
+
+  /// Factory method for creating image generation steps
+  /// This provides type safety and ensures correct configuration for image generation
+  static ToolCallStep forImageGeneration({
+    String model = 'dall-e-3',
+    Map<String, dynamic> Function(List<TypedToolResult>)? inputBuilder,
+    List<Issue> issues = const [],
+    StepConfig? stepConfig,
+    List<int> includeResultsInToolcall = const [],
+    String? toolDescription,
+    ImageGenerationStepDefinition? stepDefinition,
+  }) {
+    final definition = stepDefinition ?? ImageGenerationStepDefinition();
+    ToolOutputRegistry.registerStepDefinition(definition);
+
+    return ToolCallStep(
+      toolName: definition.stepName,
+      toolDescription: toolDescription ?? 'Generate images based on text prompts using OpenAI\'s image generation API',
+      model: model,
+      inputBuilder: inputBuilder,
+      issues: issues,
+      outputSchema: definition.outputSchema,
+      stepConfig: stepConfig ?? StepConfig(),
+      includeResultsInToolcall: includeResultsInToolcall,
+      operation: ToolCallStepOperation.imageGeneration,
+    );
+  }
+
+  /// Factory method for creating image editing steps
+  /// This provides type safety and ensures correct configuration for image editing
+  static ToolCallStep forImageEditing({
+    String model = 'dall-e-2',
+    Map<String, dynamic> Function(List<TypedToolResult>)? inputBuilder,
+    List<Issue> issues = const [],
+    StepConfig? stepConfig,
+    List<int> includeResultsInToolcall = const [],
+    String? toolDescription,
+    ImageEditStepDefinition? stepDefinition,
+  }) {
+    final definition = stepDefinition ?? ImageEditStepDefinition();
+    ToolOutputRegistry.registerStepDefinition(definition);
+
+    return ToolCallStep(
+      toolName: definition.stepName,
+      toolDescription: toolDescription ?? 'Edit existing images based on text prompts using OpenAI\'s image editing API',
+      model: model,
+      inputBuilder: inputBuilder,
+      issues: issues,
+      outputSchema: definition.outputSchema,
+      stepConfig: stepConfig ?? StepConfig(),
+      includeResultsInToolcall: includeResultsInToolcall,
+      operation: ToolCallStepOperation.imageEditing,
+    );
+  }
+
+  /// Factory method for creating chat completion steps
+  /// This provides type safety and ensures correct configuration for chat completions
+  static ToolCallStep forChatCompletion<T extends ToolOutput>(
+    StepDefinition<T> stepDefinition, {
+    String model = 'gpt-4',
     Map<String, dynamic> Function(List<TypedToolResult>)? inputBuilder,
     List<Issue> issues = const [],
     StepConfig? stepConfig,
@@ -108,6 +204,7 @@ class ToolCallStep {
       outputSchema: stepDefinition.outputSchema,
       stepConfig: stepConfig ?? StepConfig(),
       includeResultsInToolcall: includeResultsInToolcall,
+      operation: ToolCallStepOperation.chatCompletion,
     );
   }
 
@@ -122,6 +219,7 @@ class ToolCallStep {
     int? maxRetries,
     StepConfig? stepConfig,
     OutputSchema? outputSchema,
+    ToolCallStepOperation? operation,
   }) {
     return ToolCallStep(
       toolName: toolName ?? this.toolName,
@@ -132,12 +230,27 @@ class ToolCallStep {
       issues: issues ?? this.issues,
       stepConfig: stepConfig ?? this.stepConfig,
       outputSchema: outputSchema ?? this.outputSchema,
+      operation: operation ?? this.operation,
     );
   }
 
   @override
   String toString() {
-    return 'ToolCallStep(toolName: $toolName, model: $model)';
+    return 'ToolCallStep(toolName: $toolName, model: $model, operation: $operation)';
+  }
+
+  /// Converts this ToolCallStep to a Map for serialization
+  Map<String, dynamic> toMap() {
+    return {
+      'toolName': toolName,
+      if (toolDescription != null) 'toolDescription': toolDescription,
+      if (model != null) 'model': model,
+      'includeResultsInToolcall': includeResultsInToolcall,
+      'issues': issues.map((issue) => issue.toString()).toList(),
+      'operation': operation.toString().split('.').last,
+      // Note: inputBuilder function cannot be serialized
+      // Note: stepConfig and outputSchema are complex objects not serialized here
+    };
   }
 
   @override

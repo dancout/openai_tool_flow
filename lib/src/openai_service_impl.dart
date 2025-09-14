@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:openai_toolflow/src/typed_interfaces.dart';
 import 'package:openai_toolflow/src/image_generation_interfaces.dart';
+import 'package:openai_toolflow/src/image_editing_interfaces.dart';
 
 import 'openai_config.dart';
 import 'openai_service.dart';
@@ -33,6 +34,15 @@ class DefaultOpenAiToolService implements OpenAiToolService {
       // Check if this is an image generation request based on input type
       if (input is ImageGenerationInput) {
         return await _executeImageGeneration(
+          step: step,
+          input: input,
+          client: client,
+        );
+      }
+
+      // Check if this is an image editing request based on input type
+      if (input is ImageEditInput) {
+        return await _executeImageEditing(
           step: step,
           input: input,
           client: client,
@@ -125,6 +135,51 @@ class DefaultOpenAiToolService implements OpenAiToolService {
     }
   }
 
+  /// Executes an image editing request using OpenAI's images API
+  Future<ToolCallResponse> _executeImageEditing({
+    required ToolCallStep step,
+    required ImageEditInput input,
+    required http.Client client,
+  }) async {
+    try {
+      // Build image editing request from input
+      final imageRequest = await _buildImageEditRequest(input);
+      
+      final response = await client.post(
+        Uri.parse('${config.baseUrl}/images/edits'),
+        headers: {
+          'Authorization': 'Bearer ${config.apiKey}',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode(imageRequest),
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception(
+          'OpenAI Images Edit API error: ${response.statusCode} - ${response.body}',
+        );
+      }
+
+      final responseData = jsonDecode(response.body) as Map<String, dynamic>;
+      
+      // The image editing API returns the data directly, not wrapped in a tool call
+      final usage = responseData['usage'] as Map<String, dynamic>? ?? {};
+      
+      // Remove usage from response data to create clean output
+      final outputData = Map<String, dynamic>.from(responseData);
+      
+      return ToolCallResponse(output: outputData, usage: usage);
+    } catch (e) {
+      // Re-throw the exception to be handled by the calling code
+      throw Exception('Failed to execute image editing: $e');
+    } finally {
+      if (_httpClient == null) {
+        // Only close if we created the client
+        client.close();
+      }
+    }
+  }
+
   /// Builds an image generation request from ImageGenerationInput
   Map<String, dynamic> _buildImageGenerationRequest(ImageGenerationInput input) {
     final request = <String, dynamic>{
@@ -138,6 +193,31 @@ class DefaultOpenAiToolService implements OpenAiToolService {
     if (input.responseFormat != null) request['response_format'] = input.responseFormat;
     if (input.size != null) request['size'] = input.size;
     if (input.style != null) request['style'] = input.style;
+    if (input.user != null) request['user'] = input.user;
+    
+    return request;
+  }
+
+  /// Builds an image editing request from ImageEditInput
+  Future<Map<String, dynamic>> _buildImageEditRequest(ImageEditInput input) async {
+    final request = <String, dynamic>{
+      'prompt': input.prompt,
+      'image': input.images, // Note: API expects images array or single image
+    };
+    
+    // Add optional fields if they are set
+    if (input.imageModel != null) request['model'] = input.imageModel;
+    if (input.background != null) request['background'] = input.background;
+    if (input.inputFidelity != null) request['input_fidelity'] = input.inputFidelity;
+    if (input.mask != null) request['mask'] = input.mask;
+    if (input.n != null) request['n'] = input.n;
+    if (input.outputCompression != null) request['output_compression'] = input.outputCompression;
+    if (input.outputFormat != null) request['output_format'] = input.outputFormat;
+    if (input.partialImages != null) request['partial_images'] = input.partialImages;
+    if (input.quality != null) request['quality'] = input.quality;
+    if (input.responseFormat != null) request['response_format'] = input.responseFormat;
+    if (input.size != null) request['size'] = input.size;
+    if (input.stream != null) request['stream'] = input.stream;
     if (input.user != null) request['user'] = input.user;
     
     return request;

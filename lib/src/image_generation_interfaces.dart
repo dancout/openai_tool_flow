@@ -6,6 +6,8 @@
 library;
 
 import 'package:openai_toolflow/openai_toolflow.dart';
+import 'package:openai_toolflow/src/image_output_base.dart';
+import 'package:openai_toolflow/src/image_input_base.dart';
 
 /// Checks if the given model is an image generation model
 bool isImageGenerationModel(String model) {
@@ -13,25 +15,18 @@ bool isImageGenerationModel(String model) {
 }
 
 /// Input for OpenAI image generation
-class ImageGenerationInput extends ToolInput {
-  final String prompt;
-  final String? imageModel;
-  final int? n;
-  final String? quality;
-  final String? responseFormat;
-  final String? size;
+class ImageGenerationInput extends ImageInputBase {
   final String? style;
-  final String? user;
 
   const ImageGenerationInput({
-    required this.prompt,
-    this.imageModel,
-    this.n,
-    this.quality,
-    this.responseFormat,
-    this.size,
+    required super.prompt,
+    super.imageModel,
+    super.n,
+    super.quality,
+    super.responseFormat,
+    super.size,
     this.style,
-    this.user,
+    super.user,
     super.round = 0,
     super.model = 'dall-e-3',
   });
@@ -58,18 +53,11 @@ class ImageGenerationInput extends ToolInput {
 
   @override
   Map<String, dynamic> toMap() {
-    final result = <String, dynamic>{
-      'prompt': prompt,
-    };
-
-    if (imageModel != null) result['model'] = imageModel;
-    if (n != null) result['n'] = n;
-    if (quality != null) result['quality'] = quality;
-    if (responseFormat != null) result['response_format'] = responseFormat;
-    if (size != null) result['size'] = size;
+    final result = <String, dynamic>{};
+    
+    addCommonFieldsToMap(result);
+    
     if (style != null) result['style'] = style;
-    if (user != null) result['user'] = user;
-    if (round > 0) result['_round'] = round;
     if (model != 'dall-e-3') result['_model'] = model;
 
     return result;
@@ -77,28 +65,18 @@ class ImageGenerationInput extends ToolInput {
 
   @override
   List<String> validate() {
-    final issues = <String>[];
+    final issues = validateCommonFields();
 
-    if (prompt.isEmpty) {
-      issues.add('prompt cannot be empty');
-    }
-
+    // Add generation-specific validation
     if (prompt.length > 4000) {
       issues.add('prompt cannot exceed 4000 characters');
     }
 
-    if (n != null && (n! < 1 || n! > 10)) {
-      issues.add('n must be between 1 and 10');
+    if (style != null && !['vivid', 'natural'].contains(style)) {
+      issues.add('style must be vivid or natural');
     }
 
-    if (quality != null && !['auto', 'hd', 'standard', 'high', 'medium', 'low'].contains(quality)) {
-      issues.add('quality must be one of: auto, hd, standard, high, medium, low');
-    }
-
-    if (responseFormat != null && !['url', 'b64_json'].contains(responseFormat)) {
-      issues.add('response_format must be url or b64_json');
-    }
-
+    // Override common validation with more specific sizes for generation
     if (size != null) {
       final validSizes = [
         '1024x1024', '1536x1024', '1024x1536', // gpt-image-1
@@ -111,28 +89,20 @@ class ImageGenerationInput extends ToolInput {
       }
     }
 
-    if (style != null && !['vivid', 'natural'].contains(style)) {
-      issues.add('style must be vivid or natural');
-    }
-
     return issues;
   }
 }
 
 /// Output for OpenAI image generation
-class ImageGenerationOutput extends ToolOutput {
+class ImageGenerationOutput extends ImageOutputBase {
   static const String stepName = 'generate_image';
 
-  final int created;
-  final List<ImageData> data;
-  final Map<String, dynamic>? usage;
-
   const ImageGenerationOutput({
-    required this.created,
-    required this.data,
-    this.usage,
+    required super.created,
+    required super.data,
+    super.usage,
     required super.round,
-  }) : super.subclass();
+  });
 
   factory ImageGenerationOutput.fromMap(Map<String, dynamic> map, int round) {
     final created = map['created'] as int? ?? DateTime.now().millisecondsSinceEpoch ~/ 1000;
@@ -147,53 +117,10 @@ class ImageGenerationOutput extends ToolOutput {
     );
   }
 
-  @override
-  Map<String, dynamic> toMap() {
-    final result = <String, dynamic>{
-      'created': created,
-      'data': data.map((item) => item.toMap()).toList(),
-    };
-
-    if (usage != null) {
-      result['usage'] = usage;
-    }
-
-    return result;
-  }
-
   static OutputSchema getOutputSchema() {
-    return OutputSchema(
-      properties: [
-        PropertyEntry.number(
-          name: 'created',
-          description: 'The Unix timestamp (in seconds) of when the image was created',
-        ),
-        PropertyEntry.array(
-          name: 'data',
-          items: PropertyType.object,
-          description: 'A list of image objects',
-        ),
-        PropertyEntry.object(
-          name: 'usage',
-          description: 'Usage statistics for the request',
-          properties: [
-            PropertyEntry.number(
-              name: 'total_tokens',
-              description: 'Total tokens used in the request',
-            ),
-            PropertyEntry.number(
-              name: 'input_tokens',
-              description: 'Input tokens used in the request',
-            ),
-            PropertyEntry.number(
-              name: 'output_tokens',
-              description: 'Output tokens used in the request',
-            ),
-          ],
-        ),
-      ],
-      systemMessageTemplate:
-          'You are an AI image generation tool that creates images based on text prompts. Generate detailed, high-quality images that accurately reflect the given prompt.',
+    return ImageOutputBase.createImageOutputSchema(
+      dataDescription: 'A list of image objects',
+      systemMessageTemplate: 'You are an AI image generation tool that creates images based on text prompts. Generate detailed, high-quality images that accurately reflect the given prompt.',
     );
   }
 }

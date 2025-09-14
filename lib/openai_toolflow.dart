@@ -10,7 +10,10 @@
 library;
 
 export 'src/audit_function.dart';
+export 'src/image_editing_interfaces.dart';
 export 'src/image_generation_interfaces.dart';
+export 'src/image_input_base.dart';
+export 'src/image_output_base.dart';
 export 'src/issue.dart';
 export 'src/openai_config.dart';
 export 'src/openai_service.dart';

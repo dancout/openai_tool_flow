@@ -1,5 +1,4 @@
 import 'package:openai_toolflow/openai_toolflow.dart';
-import 'image_generation_interfaces.dart';
 
 /// Manages ordered execution of tool call steps with internal state management.
 ///
@@ -382,22 +381,32 @@ class ToolFlow {
     
     ToolInput stepInput;
     
-    // If this is an image generation model, create ImageGenerationInput
-    if (isImageGenerationModel(modelToUse)) {
-      stepInput = ImageGenerationInput.fromMap({
-        ...customData,
-        '_round': round,
-        '_model': modelToUse,
-      });
-    } else {
-      // Otherwise create standard ToolInput
-      stepInput = ToolInput(
-        round: round,
-        customData: customData,
-        model: modelToUse,
-        temperature: config.defaultTemperature,
-        maxTokens: step.stepConfig.maxTokens ?? config.defaultMaxTokens,
-      );
+    // Determine the input type based on the step operation
+    switch (step.operation) {
+      case ToolCallStepOperation.imageGeneration:
+        stepInput = ImageGenerationInput.fromMap({
+          ...customData,
+          '_round': round,
+          '_model': modelToUse,
+        });
+        break;
+      case ToolCallStepOperation.imageEditing:
+        stepInput = ImageEditInput.fromMap({
+          ...customData,
+          '_round': round,
+          '_model': modelToUse,
+        });
+        break;
+      case ToolCallStepOperation.chatCompletion:
+        // Create standard ToolInput for chat completions
+        stepInput = ToolInput(
+          round: round,
+          customData: customData,
+          model: modelToUse,
+          temperature: config.defaultTemperature,
+          maxTokens: step.stepConfig.maxTokens ?? config.defaultMaxTokens,
+        );
+        break;
     }
 
     // Apply input sanitization if configured (before execution)
@@ -405,10 +414,17 @@ class ToolFlow {
       final sanitizedInput = step.stepConfig.sanitizeInput(stepInput.toMap());
       
       // Recreate the appropriate input type after sanitization
-      if (isImageGenerationModel(modelToUse)) {
-        stepInput = ImageGenerationInput.fromMap(sanitizedInput);
-      } else {
-        stepInput = ToolInput.fromMap(sanitizedInput);
+      switch (step.operation) {
+        case ToolCallStepOperation.imageGeneration:
+          stepInput = ImageGenerationInput.fromMap(sanitizedInput);
+          break;
+        case ToolCallStepOperation.imageEditing:
+          stepInput = ImageEditInput.fromMap(sanitizedInput);
+          break;
+        case ToolCallStepOperation.chatCompletion:
+          stepInput = ToolInput.fromMap(sanitizedInput);
+          break;
+      }
       }
     }
 
