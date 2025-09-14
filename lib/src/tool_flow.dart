@@ -381,13 +381,21 @@ class ToolFlow {
     
     ToolInput stepInput;
     
-    // If this is an image generation model, create ImageGenerationInput
-    if (isImageGenerationModel(modelToUse)) { //
-      stepInput = ImageGenerationInput.fromMap({ //
-        ...customData, //
-        '_round': round, //
-        '_model': modelToUse, //
-      }); //
+    // Determine the image operation type based on the tool name
+    final imageOperation = _getImageOperation(step.toolName);
+    
+    if (imageOperation == ImageOperation.generation) {
+      stepInput = ImageGenerationInput.fromMap({
+        ...customData,
+        '_round': round,
+        '_model': modelToUse,
+      });
+    } else if (imageOperation == ImageOperation.editing) {
+      stepInput = ImageEditInput.fromMap({
+        ...customData,
+        '_round': round,
+        '_model': modelToUse,
+      });
     } else {
       // Otherwise create standard ToolInput
       stepInput = ToolInput(
@@ -404,8 +412,10 @@ class ToolFlow {
       final sanitizedInput = step.stepConfig.sanitizeInput(stepInput.toMap());
       
       // Recreate the appropriate input type after sanitization
-      if (isImageGenerationModel(modelToUse)) {
+      if (imageOperation == ImageOperation.generation) {
         stepInput = ImageGenerationInput.fromMap(sanitizedInput);
+      } else if (imageOperation == ImageOperation.editing) {
+        stepInput = ImageEditInput.fromMap(sanitizedInput);
       } else {
         stepInput = ToolInput.fromMap(sanitizedInput);
       }
@@ -528,6 +538,18 @@ class ToolFlow {
       'total_completion_tokens': totalCompletionTokens,
       'total_tokens': totalTokens,
     };
+  }
+
+  /// Determines the image operation type based on the tool name
+  ImageOperation? _getImageOperation(String toolName) {
+    switch (toolName) {
+      case 'generate_image':
+        return ImageOperation.generation;
+      case 'edit_image':
+        return ImageOperation.editing;
+      default:
+        return null; // Not an image operation
+    }
   }
 }
 

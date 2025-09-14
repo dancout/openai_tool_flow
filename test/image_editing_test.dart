@@ -1,6 +1,50 @@
 import 'package:test/test.dart';
 import 'package:openai_toolflow/openai_toolflow.dart';
 
+/// Mock service to capture input types for testing
+class MockOpenAiService implements OpenAiToolService {
+  ImageEditInput? lastEditInput;
+  ImageGenerationInput? lastGenerationInput;
+
+  @override
+  Future<ToolCallResponse> executeToolCall(
+    ToolCallStep step,
+    ToolInput input, {
+    List<ToolResult> includedResults = const [],
+    List<ToolResult> currentStepRetries = const [],
+  }) async {
+    // Capture the input types
+    if (input is ImageEditInput) {
+      lastEditInput = input;
+    } else if (input is ImageGenerationInput) {
+      lastGenerationInput = input;
+    }
+
+    // Return a mock response
+    Map<String, dynamic> output;
+    if (step.toolName == 'edit_image') {
+      output = {
+        'images': [{'url': 'test-edited-image-url.png'}],
+      };
+    } else if (step.toolName == 'generate_image') {
+      output = {
+        'images': [{'url': 'test-generated-image-url.png'}],
+      };
+    } else {
+      output = {'result': 'test'};
+    }
+
+    return ToolCallResponse(
+      output: output,
+      usage: {
+        'prompt_tokens': 100,
+        'completion_tokens': 50,
+        'total_tokens': 150,
+      },
+    );
+  }
+}
+
 void main() {
   group('Image Editing Features', () {
     setUpAll(() {
@@ -314,6 +358,62 @@ void main() {
         partialImages: 5, // Out of range
       );
       expect(invalidPartialInput.validate(), contains('partial_images must be between 0 and 3'));
+    });
+
+    test('should create correct input type in ToolFlow based on tool name', () async {
+      // Mock service to capture the input types
+      final mockService = MockOpenAiService();
+      
+      // Create ToolFlow with image editing step
+      final editFlow = ToolFlow(
+        config: OpenAIConfig(apiKey: 'test-key'),
+        steps: [
+          ToolCallStep.forImageEditing(
+            model: 'dall-e-2',
+            inputBuilder: (previousResults) => {
+              'prompt': 'Edit this image',
+              'images': ['test.png'],
+            },
+          ),
+        ],
+        openAiService: mockService,
+      );
+
+      // Create ToolFlow with image generation step
+      final genFlow = ToolFlow(
+        config: OpenAIConfig(apiKey: 'test-key'),
+        steps: [
+          ToolCallStep.forImageGeneration(
+            model: 'dall-e-3',
+            inputBuilder: (previousResults) => {
+              'prompt': 'Generate an image',
+            },
+          ),
+        ],
+        openAiService: mockService,
+      );
+
+      // Execute both flows and verify the input types are created correctly
+      try {
+        await editFlow.run(input: {});
+      } catch (e) {
+        // Expected to fail due to mock, but input should be created
+      }
+
+      try {
+        await genFlow.run(input: {});
+      } catch (e) {
+        // Expected to fail due to mock, but input should be created
+      }
+
+      // Verify that the mock service received the correct input types
+      expect(mockService.lastEditInput, isA<ImageEditInput>());
+      expect(mockService.lastGenerationInput, isA<ImageGenerationInput>());
+      
+      // Verify the inputs have the expected data
+      expect(mockService.lastEditInput?.prompt, equals('Edit this image'));
+      expect(mockService.lastEditInput?.images, equals(['test.png']));
+      expect(mockService.lastGenerationInput?.prompt, equals('Generate an image'));
     });
   });
 }

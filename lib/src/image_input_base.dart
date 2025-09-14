@@ -6,6 +6,14 @@ library;
 
 import 'package:openai_toolflow/openai_toolflow.dart';
 
+/// Enum to distinguish between different image operations
+enum ImageOperation { 
+  /// Image generation operation
+  generation, 
+  /// Image editing operation
+  editing 
+}
+
 /// Base class for OpenAI image operation inputs (generation and editing)
 abstract class ImageInputBase extends ToolInput {
   final String prompt;
