@@ -1,4 +1,5 @@
 import 'package:openai_toolflow/openai_toolflow.dart';
+import 'image_generation_interfaces.dart';
 
 /// Manages ordered execution of tool call steps with internal state management.
 ///
@@ -377,19 +378,38 @@ class ToolFlow {
     }
 
     // Create structured input with previous results
-    ToolInput stepInput = ToolInput(
-      round: round,
-      customData: customData,
-      model: step.model ?? config.defaultModel,
-      temperature: config.defaultTemperature,
-      maxTokens: step.stepConfig.maxTokens ?? config.defaultMaxTokens,
-    );
+    final modelToUse = step.model ?? config.defaultModel;
+    
+    ToolInput stepInput;
+    
+    // If this is an image generation model, create ImageGenerationInput
+    if (isImageGenerationModel(modelToUse)) {
+      stepInput = ImageGenerationInput.fromMap({
+        ...customData,
+        '_round': round,
+        '_model': modelToUse,
+      });
+    } else {
+      // Otherwise create standard ToolInput
+      stepInput = ToolInput(
+        round: round,
+        customData: customData,
+        model: modelToUse,
+        temperature: config.defaultTemperature,
+        maxTokens: step.stepConfig.maxTokens ?? config.defaultMaxTokens,
+      );
+    }
 
     // Apply input sanitization if configured (before execution)
     if (step.stepConfig.hasInputSanitizer) {
-      // So, I'm not certain it works as expected.
       final sanitizedInput = step.stepConfig.sanitizeInput(stepInput.toMap());
-      stepInput = ToolInput.fromMap(sanitizedInput);
+      
+      // Recreate the appropriate input type after sanitization
+      if (isImageGenerationModel(modelToUse)) {
+        stepInput = ImageGenerationInput.fromMap(sanitizedInput);
+      } else {
+        stepInput = ToolInput.fromMap(sanitizedInput);
+      }
     }
 
     return stepInput;

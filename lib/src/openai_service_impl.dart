@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 import 'package:openai_toolflow/src/typed_interfaces.dart';
+import 'package:openai_toolflow/src/image_generation_interfaces.dart';
 
 import 'openai_config.dart';
 import 'openai_service.dart';
@@ -29,7 +30,16 @@ class DefaultOpenAiToolService implements OpenAiToolService {
     final client = _httpClient ?? http.Client();
 
     try {
-      // Build the OpenAI request with included results and retry attempts
+      // Check if this is an image generation request based on input type
+      if (input is ImageGenerationInput) {
+        return await _executeImageGeneration(
+          step: step,
+          input: input,
+          client: client,
+        );
+      }
+
+      // Standard tool call handling for chat completions
       final request = _buildOpenAiRequest(
         step: step,
         input: input,
@@ -68,6 +78,69 @@ class DefaultOpenAiToolService implements OpenAiToolService {
         client.close();
       }
     }
+  }
+
+  /// Executes an image generation request using OpenAI's images API
+  Future<ToolCallResponse> _executeImageGeneration({
+    required ToolCallStep step,
+    required ImageGenerationInput input,
+    required http.Client client,
+  }) async {
+    try {
+      // Build image generation request from input
+      final imageRequest = _buildImageGenerationRequest(input);
+      
+      final response = await client.post(
+        Uri.parse('${config.baseUrl}/images/generations'),
+        headers: {
+          'Authorization': 'Bearer ${config.apiKey}',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode(imageRequest),
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception(
+          'OpenAI Images API error: ${response.statusCode} - ${response.body}',
+        );
+      }
+
+      final responseData = jsonDecode(response.body) as Map<String, dynamic>;
+      
+      // The image generation API returns the data directly, not wrapped in a tool call
+      final usage = responseData['usage'] as Map<String, dynamic>? ?? {};
+      
+      // Remove usage from response data to create clean output
+      final outputData = Map<String, dynamic>.from(responseData);
+      
+      return ToolCallResponse(output: outputData, usage: usage);
+    } catch (e) {
+      // Re-throw the exception to be handled by the calling code
+      throw Exception('Failed to execute image generation: $e');
+    } finally {
+      if (_httpClient == null) {
+        // Only close if we created the client
+        client.close();
+      }
+    }
+  }
+
+  /// Builds an image generation request from ImageGenerationInput
+  Map<String, dynamic> _buildImageGenerationRequest(ImageGenerationInput input) {
+    final request = <String, dynamic>{
+      'prompt': input.prompt,
+    };
+    
+    // Add optional fields if they are set
+    if (input.imageModel != null) request['model'] = input.imageModel;
+    if (input.n != null) request['n'] = input.n;
+    if (input.quality != null) request['quality'] = input.quality;
+    if (input.responseFormat != null) request['response_format'] = input.responseFormat;
+    if (input.size != null) request['size'] = input.size;
+    if (input.style != null) request['style'] = input.style;
+    if (input.user != null) request['user'] = input.user;
+    
+    return request;
   }
 
   /// Builds the OpenAI request from step and input
@@ -294,6 +367,11 @@ class MockOpenAiToolService implements OpenAiToolService {
   }) async {
     final inputJson = input.toMap();
 
+    // Special handling for image generation based on input type
+    if (input is ImageGenerationInput) {
+      return _mockImageGeneration(input);
+    }
+
     // Return predefined response if available
     if (responses.containsKey(step.toolName)) {
       final response = Map<String, dynamic>.from(responses[step.toolName]!);
@@ -337,6 +415,31 @@ class MockOpenAiToolService implements OpenAiToolService {
           'audio_tokens': 0,
           'accepted_prediction_tokens': 0,
           'rejected_prediction_tokens': 0,
+        },
+      },
+    );
+  }
+
+  /// Mock image generation response
+  ToolCallResponse _mockImageGeneration(ImageGenerationInput input) {
+    final prompt = input.prompt;
+    
+    return ToolCallResponse(
+      output: {
+        'created': DateTime.now().millisecondsSinceEpoch ~/ 1000,
+        'data': [
+          {
+            'b64_json': 'mock_base64_encoded_image_data_for_prompt_${prompt.replaceAll(' ', '_')}',
+          },
+        ],
+      },
+      usage: {
+        'total_tokens': 100,
+        'input_tokens': 50,
+        'output_tokens': 50,
+        'input_tokens_details': {
+          'text_tokens': 10,
+          'image_tokens': 40,
         },
       },
     );
