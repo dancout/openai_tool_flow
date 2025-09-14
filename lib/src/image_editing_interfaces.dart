@@ -6,6 +6,9 @@
 library;
 
 import 'package:openai_toolflow/openai_toolflow.dart';
+import 'package:openai_toolflow/src/image_generation_interfaces.dart'; // For ImageData
+import 'package:openai_toolflow/src/image_output_base.dart';
+import 'package:openai_toolflow/src/image_input_base.dart';
 
 /// Checks if the given model is an image editing model
 bool isImageEditingModel(String model) {
@@ -13,39 +16,32 @@ bool isImageEditingModel(String model) {
 }
 
 /// Input for OpenAI image editing
-class ImageEditInput extends ToolInput {
-  final String prompt;
+class ImageEditInput extends ImageInputBase {
   final List<String> images; // Array of image paths or base64 strings
-  final String? imageModel;
   final String? background;
   final String? inputFidelity;
   final String? mask; // Path to mask file
-  final int? n;
   final int? outputCompression;
   final String? outputFormat;
   final int? partialImages;
-  final String? quality;
-  final String? responseFormat;
-  final String? size;
   final bool? stream;
-  final String? user;
 
   const ImageEditInput({
-    required this.prompt,
+    required super.prompt,
     required this.images,
-    this.imageModel,
+    super.imageModel,
     this.background,
     this.inputFidelity,
     this.mask,
-    this.n,
+    super.n,
     this.outputCompression,
     this.outputFormat,
     this.partialImages,
-    this.quality,
-    this.responseFormat,
-    this.size,
+    super.quality,
+    super.responseFormat,
+    super.size,
     this.stream,
-    this.user,
+    super.user,
     super.round = 0,
     super.model = 'dall-e-2',
   });
@@ -89,25 +85,18 @@ class ImageEditInput extends ToolInput {
 
   @override
   Map<String, dynamic> toMap() {
-    final result = <String, dynamic>{
-      'prompt': prompt,
-      'images': images,
-    };
-
-    if (imageModel != null) result['model'] = imageModel;
+    final result = <String, dynamic>{};
+    
+    addCommonFieldsToMap(result);
+    result['images'] = images;
+    
     if (background != null) result['background'] = background;
     if (inputFidelity != null) result['input_fidelity'] = inputFidelity;
     if (mask != null) result['mask'] = mask;
-    if (n != null) result['n'] = n;
     if (outputCompression != null) result['output_compression'] = outputCompression;
     if (outputFormat != null) result['output_format'] = outputFormat;
     if (partialImages != null) result['partial_images'] = partialImages;
-    if (quality != null) result['quality'] = quality;
-    if (responseFormat != null) result['response_format'] = responseFormat;
-    if (size != null) result['size'] = size;
     if (stream != null) result['stream'] = stream;
-    if (user != null) result['user'] = user;
-    if (round > 0) result['_round'] = round;
     if (model != 'dall-e-2') result['_model'] = model;
 
     return result;
@@ -115,12 +104,9 @@ class ImageEditInput extends ToolInput {
 
   @override
   List<String> validate() {
-    final issues = <String>[];
+    final issues = validateCommonFields();
 
-    if (prompt.isEmpty) {
-      issues.add('prompt cannot be empty');
-    }
-
+    // Add editing-specific validation
     if (prompt.length > 32000) {
       issues.add('prompt cannot exceed 32000 characters for gpt-image-1, 1000 for dall-e-2');
     }
@@ -131,10 +117,6 @@ class ImageEditInput extends ToolInput {
 
     if (images.length > 16) {
       issues.add('maximum 16 images allowed for gpt-image-1, 1 for dall-e-2');
-    }
-
-    if (n != null && (n! < 1 || n! > 10)) {
-      issues.add('n must be between 1 and 10');
     }
 
     if (background != null && !['transparent', 'opaque', 'auto'].contains(background)) {
@@ -157,14 +139,7 @@ class ImageEditInput extends ToolInput {
       issues.add('partial_images must be between 0 and 3');
     }
 
-    if (quality != null && !['auto', 'high', 'medium', 'low', 'standard'].contains(quality)) {
-      issues.add('quality must be one of: auto, high, medium, low, standard');
-    }
-
-    if (responseFormat != null && !['url', 'b64_json'].contains(responseFormat)) {
-      issues.add('response_format must be url or b64_json');
-    }
-
+    // Override common validation with more specific sizes for editing
     if (size != null) {
       final validSizes = [
         '1024x1024', '1536x1024', '1024x1536', 'auto', // gpt-image-1
@@ -180,19 +155,15 @@ class ImageEditInput extends ToolInput {
 }
 
 /// Output for OpenAI image editing
-class ImageEditOutput extends ToolOutput {
+class ImageEditOutput extends ImageOutputBase {
   static const String stepName = 'edit_image';
 
-  final int created;
-  final List<ImageData> data;
-  final Map<String, dynamic>? usage;
-
   const ImageEditOutput({
-    required this.created,
-    required this.data,
-    this.usage,
+    required super.created,
+    required super.data,
+    super.usage,
     required super.round,
-  }) : super.subclass();
+  });
 
   factory ImageEditOutput.fromMap(Map<String, dynamic> map, int round) {
     final created = map['created'] as int? ?? DateTime.now().millisecondsSinceEpoch ~/ 1000;
@@ -207,53 +178,10 @@ class ImageEditOutput extends ToolOutput {
     );
   }
 
-  @override
-  Map<String, dynamic> toMap() {
-    final result = <String, dynamic>{
-      'created': created,
-      'data': data.map((item) => item.toMap()).toList(),
-    };
-
-    if (usage != null) {
-      result['usage'] = usage;
-    }
-
-    return result;
-  }
-
   static OutputSchema getOutputSchema() {
-    return OutputSchema(
-      properties: [
-        PropertyEntry.number(
-          name: 'created',
-          description: 'The Unix timestamp (in seconds) of when the image was created',
-        ),
-        PropertyEntry.array(
-          name: 'data',
-          items: PropertyType.object,
-          description: 'A list of edited image objects',
-        ),
-        PropertyEntry.object(
-          name: 'usage',
-          description: 'Usage statistics for the request',
-          properties: [
-            PropertyEntry.number(
-              name: 'total_tokens',
-              description: 'Total tokens used in the request',
-            ),
-            PropertyEntry.number(
-              name: 'input_tokens',
-              description: 'Input tokens used in the request',
-            ),
-            PropertyEntry.number(
-              name: 'output_tokens',
-              description: 'Output tokens used in the request',
-            ),
-          ],
-        ),
-      ],
-      systemMessageTemplate:
-          'You are an AI image editing tool that modifies existing images based on text prompts. Edit images accurately according to the provided instructions while maintaining the quality and style of the original.',
+    return ImageOutputBase.createImageOutputSchema(
+      dataDescription: 'A list of edited image objects',
+      systemMessageTemplate: 'You are an AI image editing tool that modifies existing images based on text prompts. Edit images accurately according to the provided instructions while maintaining the quality and style of the original.',
     );
   }
 }

@@ -120,17 +120,18 @@ class ToolCallStep {
     StepConfig? stepConfig,
     List<int> includeResultsInToolcall = const [],
     String? toolDescription,
+    ImageGenerationStepDefinition? stepDefinition,
   }) {
-    final stepDefinition = ImageGenerationStepDefinition();
-    ToolOutputRegistry.registerStepDefinition(stepDefinition);
+    final definition = stepDefinition ?? ImageGenerationStepDefinition();
+    ToolOutputRegistry.registerStepDefinition(definition);
 
     return ToolCallStep(
-      toolName: stepDefinition.stepName,
+      toolName: definition.stepName,
       toolDescription: toolDescription ?? 'Generate images based on text prompts using OpenAI\'s image generation API',
       model: model,
       inputBuilder: inputBuilder,
       issues: issues,
-      outputSchema: stepDefinition.outputSchema,
+      outputSchema: definition.outputSchema,
       stepConfig: stepConfig ?? StepConfig(),
       includeResultsInToolcall: includeResultsInToolcall,
     );
@@ -145,17 +146,18 @@ class ToolCallStep {
     StepConfig? stepConfig,
     List<int> includeResultsInToolcall = const [],
     String? toolDescription,
+    ImageEditStepDefinition? stepDefinition,
   }) {
-    final stepDefinition = ImageEditStepDefinition();
-    ToolOutputRegistry.registerStepDefinition(stepDefinition);
+    final definition = stepDefinition ?? ImageEditStepDefinition();
+    ToolOutputRegistry.registerStepDefinition(definition);
 
     return ToolCallStep(
-      toolName: stepDefinition.stepName,
+      toolName: definition.stepName,
       toolDescription: toolDescription ?? 'Edit existing images based on text prompts using OpenAI\'s image editing API',
       model: model,
       inputBuilder: inputBuilder,
       issues: issues,
-      outputSchema: stepDefinition.outputSchema,
+      outputSchema: definition.outputSchema,
       stepConfig: stepConfig ?? StepConfig(),
       includeResultsInToolcall: includeResultsInToolcall,
     );

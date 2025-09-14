@@ -172,6 +172,11 @@ class DefaultOpenAiToolService implements OpenAiToolService {
     } catch (e) {
       // Re-throw the exception to be handled by the calling code
       throw Exception('Failed to execute image editing: $e');
+    } finally {
+      if (_httpClient == null) {
+        // Only close if we created the client
+        client.close();
+      }
     }
   }
 
