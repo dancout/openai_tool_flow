@@ -1,5 +1,4 @@
 import 'package:openai_toolflow/openai_toolflow.dart';
-import 'image_generation_interfaces.dart';
 
 /// Manages ordered execution of tool call steps with internal state management.
 ///
