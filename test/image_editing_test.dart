@@ -293,14 +293,14 @@ void main() {
       expect(step.toolDescription, contains('Generate images'));
     });
 
-    test('should distinguish between different step types by tool name', () {
+    test('should distinguish between different step types by operation', () {
       final genStep = ToolCallStep.forImageGeneration();
       final editStep = ToolCallStep.forImageEditing();
       final chatStep = ToolCallStep.forChatCompletion(TestStepDefinition());
 
-      expect(genStep.toolName, equals('generate_image'));
-      expect(editStep.toolName, equals('edit_image'));
-      expect(chatStep.toolName, equals('test_tool'));
+      expect(genStep.operation, equals(ToolCallStepOperation.imageGeneration));
+      expect(editStep.operation, equals(ToolCallStepOperation.imageEditing));
+      expect(chatStep.operation, equals(ToolCallStepOperation.chatCompletion));
     });
 
     test('should handle gpt-image-1 specific parameters', () {
@@ -360,7 +360,7 @@ void main() {
       expect(invalidPartialInput.validate(), contains('partial_images must be between 0 and 3'));
     });
 
-    test('should create correct input type in ToolFlow based on tool name', () async {
+    test('should create correct input type in ToolFlow based on operation type', () async {
       // Mock service to capture the input types
       final mockService = MockOpenAiService();
       
@@ -414,6 +414,73 @@ void main() {
       expect(mockService.lastEditInput?.prompt, equals('Edit this image'));
       expect(mockService.lastEditInput?.images, equals(['test.png']));
       expect(mockService.lastGenerationInput?.prompt, equals('Generate an image'));
+    });
+
+    test('should support custom tool names with operation types', () async {
+      // Mock service to capture the input types
+      final mockService = MockOpenAiService();
+      
+      // Create steps with custom tool names but specific operation types
+      final customEditStep = ToolCallStep(
+        toolName: 'my_custom_image_editor',
+        operation: ToolCallStepOperation.imageEditing,
+        stepConfig: StepConfig(),
+        outputSchema: ImageEditStepDefinition().outputSchema,
+        inputBuilder: (previousResults) => {
+          'prompt': 'Custom edit prompt',
+          'images': ['custom.png'],
+        },
+      );
+      
+      final customGenStep = ToolCallStep(
+        toolName: 'my_custom_image_generator', 
+        operation: ToolCallStepOperation.imageGeneration,
+        stepConfig: StepConfig(),
+        outputSchema: ImageGenerationStepDefinition().outputSchema,
+        inputBuilder: (previousResults) => {
+          'prompt': 'Custom generation prompt',
+        },
+      );
+
+      // Register the step definitions for custom tools
+      ToolOutputRegistry.register<ImageEditOutput>('my_custom_image_editor', ImageEditOutput.fromMap);
+      ToolOutputRegistry.register<ImageGenerationOutput>('my_custom_image_generator', ImageGenerationOutput.fromMap);
+
+      // Create ToolFlow with custom edit step
+      final editFlow = ToolFlow(
+        config: OpenAIConfig(apiKey: 'test-key'),
+        steps: [customEditStep],
+        openAiService: mockService,
+      );
+
+      // Create ToolFlow with custom generation step  
+      final genFlow = ToolFlow(
+        config: OpenAIConfig(apiKey: 'test-key'),
+        steps: [customGenStep],
+        openAiService: mockService,
+      );
+
+      // Execute both flows
+      try {
+        await editFlow.run(input: {});
+      } catch (e) {
+        // Expected to fail due to mock, but input should be created
+      }
+
+      try {
+        await genFlow.run(input: {});
+      } catch (e) {
+        // Expected to fail due to mock, but input should be created
+      }
+
+      // Verify that the correct input types are created based on operation, not tool name
+      expect(mockService.lastEditInput, isA<ImageEditInput>());
+      expect(mockService.lastGenerationInput, isA<ImageGenerationInput>());
+      
+      // Verify the inputs have the expected data from custom tools
+      expect(mockService.lastEditInput?.prompt, equals('Custom edit prompt'));
+      expect(mockService.lastEditInput?.images, equals(['custom.png']));
+      expect(mockService.lastGenerationInput?.prompt, equals('Custom generation prompt'));
     });
   });
 }

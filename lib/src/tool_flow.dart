@@ -381,30 +381,32 @@ class ToolFlow {
     
     ToolInput stepInput;
     
-    // Determine the image operation type based on the tool name
-    final imageOperation = _getImageOperation(step.toolName);
-    
-    if (imageOperation == ImageOperation.generation) {
-      stepInput = ImageGenerationInput.fromMap({
-        ...customData,
-        '_round': round,
-        '_model': modelToUse,
-      });
-    } else if (imageOperation == ImageOperation.editing) {
-      stepInput = ImageEditInput.fromMap({
-        ...customData,
-        '_round': round,
-        '_model': modelToUse,
-      });
-    } else {
-      // Otherwise create standard ToolInput
-      stepInput = ToolInput(
-        round: round,
-        customData: customData,
-        model: modelToUse,
-        temperature: config.defaultTemperature,
-        maxTokens: step.stepConfig.maxTokens ?? config.defaultMaxTokens,
-      );
+    // Determine the input type based on the step operation
+    switch (step.operation) {
+      case ToolCallStepOperation.imageGeneration:
+        stepInput = ImageGenerationInput.fromMap({
+          ...customData,
+          '_round': round,
+          '_model': modelToUse,
+        });
+        break;
+      case ToolCallStepOperation.imageEditing:
+        stepInput = ImageEditInput.fromMap({
+          ...customData,
+          '_round': round,
+          '_model': modelToUse,
+        });
+        break;
+      case ToolCallStepOperation.chatCompletion:
+        // Create standard ToolInput for chat completions
+        stepInput = ToolInput(
+          round: round,
+          customData: customData,
+          model: modelToUse,
+          temperature: config.defaultTemperature,
+          maxTokens: step.stepConfig.maxTokens ?? config.defaultMaxTokens,
+        );
+        break;
     }
 
     // Apply input sanitization if configured (before execution)
@@ -412,12 +414,17 @@ class ToolFlow {
       final sanitizedInput = step.stepConfig.sanitizeInput(stepInput.toMap());
       
       // Recreate the appropriate input type after sanitization
-      if (imageOperation == ImageOperation.generation) {
-        stepInput = ImageGenerationInput.fromMap(sanitizedInput);
-      } else if (imageOperation == ImageOperation.editing) {
-        stepInput = ImageEditInput.fromMap(sanitizedInput);
-      } else {
-        stepInput = ToolInput.fromMap(sanitizedInput);
+      switch (step.operation) {
+        case ToolCallStepOperation.imageGeneration:
+          stepInput = ImageGenerationInput.fromMap(sanitizedInput);
+          break;
+        case ToolCallStepOperation.imageEditing:
+          stepInput = ImageEditInput.fromMap(sanitizedInput);
+          break;
+        case ToolCallStepOperation.chatCompletion:
+          stepInput = ToolInput.fromMap(sanitizedInput);
+          break;
+      }
       }
     }
 
@@ -538,18 +545,6 @@ class ToolFlow {
       'total_completion_tokens': totalCompletionTokens,
       'total_tokens': totalTokens,
     };
-  }
-
-  /// Determines the image operation type based on the tool name
-  ImageOperation? _getImageOperation(String toolName) {
-    switch (toolName) {
-      case 'generate_image':
-        return ImageOperation.generation;
-      case 'edit_image':
-        return ImageOperation.editing;
-      default:
-        return null; // Not an image operation
-    }
   }
 }
 
