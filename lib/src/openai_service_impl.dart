@@ -30,8 +30,8 @@ class DefaultOpenAiToolService implements OpenAiToolService {
     final client = _httpClient ?? http.Client();
 
     try {
-      // Check if this is an image generation request based on model
-      if (_isImageGenerationModel(input.model)) {
+      // Check if this is an image generation request based on input type
+      if (input is ImageGenerationInput) {
         return await _executeImageGeneration(
           step: step,
           input: input,
@@ -80,15 +80,10 @@ class DefaultOpenAiToolService implements OpenAiToolService {
     }
   }
 
-  /// Checks if the given model is an image generation model
-  bool _isImageGenerationModel(String model) {
-    return model.startsWith('dall-e');
-  }
-
   /// Executes an image generation request using OpenAI's images API
   Future<ToolCallResponse> _executeImageGeneration({
     required ToolCallStep step,
-    required ToolInput input,
+    required ImageGenerationInput input,
     required http.Client client,
   }) async {
     try {
@@ -130,46 +125,21 @@ class DefaultOpenAiToolService implements OpenAiToolService {
     }
   }
 
-  /// Builds an image generation request from ToolInput
-  Map<String, dynamic> _buildImageGenerationRequest(ToolInput input) {
-    // If we have a strongly typed ImageGenerationInput, use its properties directly
-    if (input is ImageGenerationInput) {
-      final request = <String, dynamic>{
-        'prompt': input.prompt,
-      };
-      
-      // Add optional fields if they are set
-      if (input.imageModel != null) request['model'] = input.imageModel;
-      if (input.n != null) request['n'] = input.n;
-      if (input.quality != null) request['quality'] = input.quality;
-      if (input.responseFormat != null) request['response_format'] = input.responseFormat;
-      if (input.size != null) request['size'] = input.size;
-      if (input.style != null) request['style'] = input.style;
-      if (input.user != null) request['user'] = input.user;
-      
-      return request;
-    }
+  /// Builds an image generation request from ImageGenerationInput
+  Map<String, dynamic> _buildImageGenerationRequest(ImageGenerationInput input) {
+    final request = <String, dynamic>{
+      'prompt': input.prompt,
+    };
     
-    // Fallback to generic map-based approach for backward compatibility
-    final inputData = input.getCleanToolInput();
-    final request = <String, dynamic>{};
-
-    // Required field
-    final prompt = inputData['prompt'];
-    if (prompt == null) {
-      throw Exception('prompt is required for image generation');
-    }
-    request['prompt'] = prompt;
-
-    // Optional fields - use the actual model field names from the image API
-    if (inputData['model'] != null) request['model'] = inputData['model'];
-    if (inputData['n'] != null) request['n'] = inputData['n'];
-    if (inputData['quality'] != null) request['quality'] = inputData['quality'];
-    if (inputData['response_format'] != null) request['response_format'] = inputData['response_format'];
-    if (inputData['size'] != null) request['size'] = inputData['size'];
-    if (inputData['style'] != null) request['style'] = inputData['style'];
-    if (inputData['user'] != null) request['user'] = inputData['user'];
-
+    // Add optional fields if they are set
+    if (input.imageModel != null) request['model'] = input.imageModel;
+    if (input.n != null) request['n'] = input.n;
+    if (input.quality != null) request['quality'] = input.quality;
+    if (input.responseFormat != null) request['response_format'] = input.responseFormat;
+    if (input.size != null) request['size'] = input.size;
+    if (input.style != null) request['style'] = input.style;
+    if (input.user != null) request['user'] = input.user;
+    
     return request;
   }
 
@@ -397,8 +367,8 @@ class MockOpenAiToolService implements OpenAiToolService {
   }) async {
     final inputJson = input.toMap();
 
-    // Special handling for image generation based on model
-    if (_isImageGenerationModel(input.model)) {
+    // Special handling for image generation based on input type
+    if (input is ImageGenerationInput) {
       return _mockImageGeneration(input);
     }
 
@@ -450,15 +420,9 @@ class MockOpenAiToolService implements OpenAiToolService {
     );
   }
 
-  /// Checks if the given model is an image generation model
-  bool _isImageGenerationModel(String model) {
-    return model.startsWith('dall-e');
-  }
-
   /// Mock image generation response
-  ToolCallResponse _mockImageGeneration(ToolInput input) {
-    final inputData = input.getCleanToolInput();
-    final prompt = inputData['prompt'] as String? ?? 'default prompt';
+  ToolCallResponse _mockImageGeneration(ImageGenerationInput input) {
+    final prompt = input.prompt;
     
     return ToolCallResponse(
       output: {

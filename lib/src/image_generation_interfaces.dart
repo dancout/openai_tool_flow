@@ -7,6 +7,11 @@ library;
 
 import 'package:openai_toolflow/openai_toolflow.dart';
 
+/// Checks if the given model is an image generation model
+bool isImageGenerationModel(String model) {
+  return model.startsWith('dall-e');
+}
+
 /// Input for OpenAI image generation
 class ImageGenerationInput extends ToolInput {
   final String prompt;
