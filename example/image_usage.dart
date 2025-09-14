@@ -16,7 +16,9 @@ void main() async {
   try {
     config = OpenAIConfig.fromDotEnv();
   } catch (e) {
-    print('⚠️  No .env file found, using test configuration for demonstration\n');
+    print(
+      '⚠️  No .env file found, using test configuration for demonstration\n',
+    );
     config = OpenAIConfig(
       apiKey: 'test-api-key',
       baseUrl: 'https://api.openai.com/v1',
@@ -28,15 +30,12 @@ void main() async {
 
   // Register the image generation step definition
   final imageStepDefinition = ImageGenerationStepDefinition();
-  
+
   // Create a tool call step for image generation
   final imageStep = ToolCallStep.fromStepDefinition(
     imageStepDefinition,
     model: 'dall-e-3', // or 'dall-e-2' or 'gpt-image-1'
-    stepConfig: StepConfig(
-      maxRetries: 2,
-      stopOnFailure: true,
-    ),
+    stepConfig: StepConfig(maxRetries: 2, stopOnFailure: true),
   );
 
   // Create a mock service for demonstration
@@ -46,7 +45,8 @@ void main() async {
   final flow = ToolFlow(
     config: config,
     steps: [imageStep],
-    openAiService: mockService, // Use real service: DefaultOpenAiToolService(config: config)
+    // openAiService:
+    //     mockService, // Use real service: DefaultOpenAiToolService(config: config)
   );
 
   // Execute the flow with image generation input
@@ -55,13 +55,14 @@ void main() async {
 
     final result = await flow.run(
       input: {
-        'prompt': 'A majestic mountain landscape at sunset with snow-capped peaks, reflected in a crystal-clear alpine lake, painted in impressionist style',
+        'prompt':
+            'A majestic mountain landscape at sunset with snow-capped peaks, reflected in a crystal-clear alpine lake, painted in impressionist style',
         'model': 'dall-e-3',
         'n': 1,
         'size': '1024x1024',
         'quality': 'hd',
         'style': 'vivid',
-        'response_format': 'b64_json',
+        'response_format': 'url',
       },
     );
 
@@ -75,7 +76,6 @@ void main() async {
 
     // Display token usage
     _displayTokenUsage(result);
-
   } catch (e) {
     print('❌ Image generation failed: $e');
   }
@@ -86,42 +86,46 @@ void _displayExecutionSummary(ToolFlowResult result) {
   print('📊 Execution Summary:');
   print('Successful execution: ${result.passesCriteria}');
   print('Steps executed: ${result.results.length}');
-  print('Tools used: ${result.finalResults.map((r) => r.toolName).join(', ')}\n');
+  print(
+    'Tools used: ${result.finalResults.map((r) => r.toolName).join(', ')}\n',
+  );
 }
 
 /// Display image generation output
 void _displayImageOutput(ToolFlowResult result) {
   print('🖼️ Image Generation Output:');
-  
+
   // Get the image generation result
   final imageResult = result.finalResults.last; // Last step is image generation
   final outputMap = imageResult.output.toMap();
-  
+
   print('  Created: ${outputMap['created']}');
-  
+
   final data = outputMap['data'] as List?;
   if (data != null && data.isNotEmpty) {
     print('  Generated Images: ${data.length}');
-    
+
     for (int i = 0; i < data.length; i++) {
       final imageData = data[i] as Map<String, dynamic>;
       print('    Image ${i + 1}:');
-      
+
       if (imageData['url'] != null) {
         print('      URL: ${imageData['url']}');
       }
-      
+
       if (imageData['b64_json'] != null) {
         final b64Data = imageData['b64_json'] as String;
-        print('      Base64 data: ${b64Data.substring(0, 50)}... (${b64Data.length} characters)');
+        print(
+          '      Base64 data: ${b64Data.substring(0, 50)}... (${b64Data.length} characters)',
+        );
       }
-      
+
       if (imageData['revised_prompt'] != null) {
         print('      Revised prompt: ${imageData['revised_prompt']}');
       }
     }
   }
-  
+
   // Display usage information if available
   final usage = outputMap['usage'] as Map<String, dynamic>?;
   if (usage != null) {
@@ -136,22 +140,22 @@ void _displayImageOutput(ToolFlowResult result) {
       print('    Output tokens: ${usage['output_tokens']}');
     }
   }
-  
+
   print('');
 }
 
 /// Display token usage
 void _displayTokenUsage(ToolFlowResult result) {
   print('🔢 Token Usage:');
-  
+
   // Get token usage from the final result
   final imageResult = result.finalResults.last;
   final tokenUsage = imageResult.tokenUsage;
-  
+
   print('  Prompt tokens: ${tokenUsage.promptTokens}');
   print('  Completion tokens: ${tokenUsage.completionTokens}');
   print('  Total tokens: ${tokenUsage.totalTokens}');
-  
+
   print('');
 }
 
@@ -173,13 +177,12 @@ ImageGenerationInput createImageInput({
     style: style ?? 'vivid',
     responseFormat: 'b64_json',
   );
-  
+
   // Validate the input
   final validationIssues = input.validate();
   if (validationIssues.isNotEmpty) {
     throw ArgumentError('Invalid input: ${validationIssues.join(', ')}');
   }
-  
+
   return input;
 }
-
