@@ -33,7 +33,7 @@ Key constraints:
 Implement image editing support through input type-based detection and dedicated factory methods, creating:
 
 1. **ImageEditInput/ImageEditOutput/ImageEditStepDefinition** classes following existing patterns
-2. **Input type-based API routing** in DefaultOpenAiToolService 
+2. **Tool name-based API routing** in DefaultOpenAiToolService using ImageOperation enum 
 3. **Factory methods** for type-safe step creation: `forImageGeneration()`, `forImageEditing()`, `forChatCompletion()`
 4. **Comprehensive validation** for image editing parameters including gpt-image-1 and dall-e-2 specific features
 
@@ -43,7 +43,7 @@ Implement image editing support through input type-based detection and dedicated
 
 - **POS-001**: Type safety prevents runtime errors by distinguishing operation types at compile time through dedicated input classes
 - **POS-002**: Factory methods eliminate user errors in step configuration and provide clear intent
-- **POS-003**: Input type detection is more reliable than tool name detection for distinguishing between image operations
+- **POS-003**: Tool name-based detection using ImageOperation enum is more reliable and intuitive than model-based detection for distinguishing between image operations
 - **POS-004**: Reuses existing pipeline infrastructure (retry logic, audit functions, state management) for image editing
 - **POS-005**: Comprehensive validation prevents invalid API calls and provides clear error messages
 - **POS-006**: Architecture supports future OpenAI API additions through the same pattern
@@ -52,14 +52,14 @@ Implement image editing support through input type-based detection and dedicated
 
 - **NEG-001**: Increases codebase size with new interface files and validation logic
 - **NEG-002**: Requires users to learn new factory methods instead of generic constructors
-- **NEG-003**: Input type detection adds conditional logic in service implementation
+- **NEG-003**: Tool name-based detection adds conditional logic but is more intuitive than input type detection
 - **NEG-004**: Multipart form data handling may require future enhancement for file uploads
 
 ## Alternatives Considered
 
-### Tool Name-Based Detection
+### Model-Based Detection
 
-- **ALT-001**: **Description**: Use tool names like 'edit_image' vs 'generate_image' for API routing
+- **ALT-001**: **Description**: Use model names like 'dall-e-2' vs 'dall-e-3' for API routing
 - **ALT-002**: **Rejection Reason**: Same model (dall-e-2) used for both generation and editing makes this approach ambiguous and error-prone
 
 ### Separate Service Classes
@@ -74,11 +74,12 @@ Implement image editing support through input type-based detection and dedicated
 
 ## Implementation Notes
 
-- **IMP-001**: Input type detection in executeToolCall() method routes to appropriate API endpoints
-- **IMP-002**: Factory methods automatically register step definitions in ToolOutputRegistry
+- **IMP-001**: Tool name-based detection using ImageOperation enum in _buildStepInput() method routes to appropriate input type creation
+- **IMP-002**: Factory methods automatically register step definitions and assign distinct tool names ('generate_image', 'edit_image')
 - **IMP-003**: Validation covers both dall-e-2 and gpt-image-1 specific parameters
 - **IMP-004**: Example updated to demonstrate two-step workflow: generation followed by editing
-- **IMP-005**: Future multipart form data support can be added to _buildImageEditRequest() method
+- **IMP-005**: ImageOperation enum provides type-safe distinction between 'generation' and 'editing' operations
+- **IMP-006**: Future multipart form data support can be added to _buildImageEditRequest() method
 
 ## References
 
