@@ -4,8 +4,8 @@ library;
 import 'package:openai_toolflow/openai_toolflow.dart';
 import 'package:test/test.dart';
 
-import '../example/step_configs.dart';
-import '../example/typed_interfaces.dart';
+import '../example/dart_example/step_configs.dart';
+import '../example/dart_example/typed_interfaces.dart';
 
 void main() {
   group('Professional Color Workflow Tests', () {

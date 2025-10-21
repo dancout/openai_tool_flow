@@ -1,6 +1,6 @@
 import 'package:test/test.dart';
 
-import '../example/typed_interfaces.dart';
+import '../example/dart_example/typed_interfaces.dart';
 
 void main() {
   group('Professional Color Workflow Typed Interfaces', () {
