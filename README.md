@@ -168,6 +168,20 @@ void main() async {
 }
 ```
 
+## Examples
+
+This package includes a comprehensive working example to help you get started:
+
+### Professional Color Theme Generator
+A complete professional color theme generator workflow is available in [`example/usage.dart`](example/usage.dart). This example demonstrates:
+- 3-step sequential workflow with expert guidance
+- Strongly-typed interfaces for each step
+- Retry logic and audit functions
+- Token usage tracking
+- Issues analysis and reporting
+
+The example shows how to create a complete color design system for enterprise applications, with each step building upon the previous one's output.
+
 ## Core Components
 
 ### ToolFlow
