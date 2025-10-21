@@ -130,7 +130,7 @@ Map<String, ToolCallStep> createProfessionalColorWorkflow() {
 
     fullSuiteStep.stepName: ToolCallStep.fromStepDefinition(
       fullSuiteStep,
-      model: 'gpt-4.1-mini',
+      model: 'gpt-5-mini',
       toolDescription:
           'Create a complete professional color suite with granular tokens for all interface states (text variants, backgrounds, interactive elements, status indicators) following design system best practices',
       inputBuilder: (previousResults) {
@@ -146,10 +146,12 @@ Map<String, ToolCallStep> createProfessionalColorWorkflow() {
         ).toMap();
         return input;
       },
-      includeResultsInToolcall: [2], // Reference design system step result by index
+      includeResultsInToolcall: [
+        2,
+      ], // Reference design system step result by index
       stepConfig: StepConfig(
         audits: [fullColorSuiteQualityAuditFunction],
-        stopOnFailure: false,
+        maxTokens: 5000,
         maxRetries: 3, // Explicitly set to 3 as required
         inputSanitizer: ExampleSanitizers.designSystemToFullSuiteInputSanitizer,
       ),
