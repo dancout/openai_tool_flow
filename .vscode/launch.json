@@ -9,19 +9,13 @@
             "name": "usage example",
             "request": "launch",
             "type": "dart",
-            "program": "${workspaceFolder}/example/dart_example/usage.dart"
+            "program": "${workspaceFolder}/example/usage.dart"
         },
         {
             "name": "README example",
             "request": "launch",
             "type": "dart",
-            "program": "${workspaceFolder}/example/dart_example/README_example.dart"
-        },
-        {
-            "name": "image usage example",
-            "request": "launch",
-            "type": "dart",
-            "program": "${workspaceFolder}/example/dart_example/image_usage.dart"
+            "program": "${workspaceFolder}/example/README_example.dart"
         }
     ]
 }
