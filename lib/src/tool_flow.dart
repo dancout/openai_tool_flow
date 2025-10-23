@@ -1,5 +1,4 @@
 import 'package:openai_toolflow/openai_toolflow.dart';
-import 'image_generation_interfaces.dart';
 
 /// Manages ordered execution of tool call steps with internal state management.
 ///
@@ -76,7 +75,7 @@ class ToolFlow {
       final step = steps[stepIndex];
       final stepConfig = step.stepConfig;
 
-      TypedToolResult? stepResult;
+      late TypedToolResult stepResult;
       bool stepPassed = false;
       int attemptCount = 0;
       final maxRetries = stepConfig.maxRetries;
@@ -102,13 +101,6 @@ class ToolFlow {
 
           // Check if step passed criteria
           stepPassed = stepResult.passesCriteria;
-
-          if (!stepPassed && attemptCount <= maxRetries) {
-            // Log retry attempt
-            print(
-              'Step ${stepIndex + 1} attempt $attemptCount failed. ${stepConfig.getFailureReason(stepResult.issues)}. Retrying...',
-            );
-          }
         } catch (e) {
           // Create an error result - build step input for error case
           final errorStepInput = _buildStepInput(
@@ -155,6 +147,22 @@ class ToolFlow {
           final currentStepStorageIndex = stepIndex + 1;
           _stepAttempts[currentStepStorageIndex].add(stepResult);
           stepPassed = false;
+        } finally {
+          if (!stepPassed) {
+            final failureReason = stepConfig.getFailureReason(
+              stepResult.issues,
+            );
+            final retryingText = attemptCount <= maxRetries
+                ? ' Retrying...'
+                : '';
+            print(
+              'Step ${stepIndex + 1} attempt $attemptCount failed. $failureReason.$retryingText',
+            );
+          } else {
+            print(
+              'Step ${stepIndex + 1} completed successfully on attempt $attemptCount.',
+            );
+          }
         }
       }
 
@@ -379,9 +387,9 @@ class ToolFlow {
 
     // Create structured input with previous results
     final modelToUse = step.model ?? config.defaultModel;
-    
+
     ToolInput stepInput;
-    
+
     // If this is an image generation model, create ImageGenerationInput
     if (isImageGenerationModel(modelToUse)) {
       stepInput = ImageGenerationInput.fromMap({
@@ -403,7 +411,7 @@ class ToolFlow {
     // Apply input sanitization if configured (before execution)
     if (step.stepConfig.hasInputSanitizer) {
       final sanitizedInput = step.stepConfig.sanitizeInput(stepInput.toMap());
-      
+
       // Recreate the appropriate input type after sanitization
       if (isImageGenerationModel(modelToUse)) {
         stepInput = ImageGenerationInput.fromMap(sanitizedInput);
