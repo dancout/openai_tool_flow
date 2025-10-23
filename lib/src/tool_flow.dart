@@ -166,12 +166,9 @@ class ToolFlow {
         }
       }
 
-      // Check if step completed successfully
-      if (stepResult != null) {
-        // Update state with step results
-        _state['step_${stepIndex}_result'] = stepResult.toJson();
-        _state.addAll(stepResult.output.toMap());
-      }
+      // Update state with step results
+      _state['step_${stepIndex}_result'] = stepResult.toJson();
+      _state.addAll(stepResult.output.toMap());
 
       // Check if we should stop on failure
       if (!stepPassed && stepConfig.stopOnFailure) {
