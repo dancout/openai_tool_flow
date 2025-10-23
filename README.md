@@ -1,6 +1,6 @@
 # openai_toolflow
 
-A structured way to sequentially call OpenAI tool functions, passing outputs from previous steps as inputs to subsequent steps with strong typing, retry logic, auditing, and token tracking.
+A structured way to sequentially call OpenAI tool functions, passing outputs from previous steps as inputs to subsequent steps with strong typing, retry logic, auditing, sanitation, and token tracking.
 
 ## Features
 
@@ -18,7 +18,7 @@ Add this to your package's `pubspec.yaml` file:
 
 ```yaml
 dependencies:
-  openai_toolflow: ^0.1.0
+  openai_toolflow: ^0.0.1
 ```
 
 Then run:
