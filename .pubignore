@@ -17,8 +17,8 @@ COLOR_THEME_EXAMPLE.md
 CONTEXTUAL_COLOR_THEME_EXAMPLE.md
 
 # Exclude environment files
+!/.env.example
 .env
-.env.*
 *.log
 
 # Exclude example subdirectories that aren't needed
