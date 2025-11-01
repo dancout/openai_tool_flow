@@ -5,6 +5,7 @@ A structured way to sequentially call OpenAI tool functions, passing outputs fro
 ## Features
 
 - **Sequential Tool Execution**: Chain OpenAI tool calls where each step's output becomes the next step's input
+- **Local Step Execution**: Execute deterministic computations locally without LLM calls for token efficiency
 - **Strong Typing**: All step inputs and outputs are strongly typed with schema validation
 - **Configurable Retries**: Retry failed steps with configurable attempt limits per step
 - **Audit System**: Validate step outputs with custom audit functions and issue severity levels
@@ -199,7 +200,7 @@ final result = await toolFlow.run(input: {'initial': 'data'});
 
 ### ToolCallStep
 
-Defines individual steps in your workflow:
+Defines individual LLM-powered steps in your workflow:
 
 ```dart
 final step = ToolCallStep.fromStepDefinition(
@@ -215,6 +216,54 @@ final step = ToolCallStep.fromStepDefinition(
   },
 );
 ```
+
+### LocalStep
+
+Defines steps that execute locally without LLM API calls. Perfect for deterministic operations like mathematical transformations, data formatting, or generating variations:
+
+```dart
+// Define a local computation step
+class ColorVariationsStepDefinition extends LocalStepDefinition<ColorVariationsOutput> {
+  @override
+  String get stepName => 'generate_color_variations';
+
+  @override
+  OutputSchema get outputSchema => OutputSchema(
+    properties: [
+      PropertyEntry.string(name: 'base_color'),
+      PropertyEntry.array(name: 'variations', items: PropertyType.string),
+    ],
+  );
+
+  @override
+  ColorVariationsOutput fromMap(Map<String, dynamic> data, int round) {
+    return ColorVariationsOutput.fromMap(data, round);
+  }
+
+  @override
+  Future<Map<String, dynamic>> computeFunction(Map<String, dynamic> input) async {
+    final baseColor = input['color'] as String;
+    final variations = _generateColorVariations(baseColor); // Your local computation
+    return {'base_color': baseColor, 'variations': variations};
+  }
+}
+
+// Use in workflow
+final localStep = LocalStep.fromStepDefinition(
+  ColorVariationsStepDefinition(),
+  stepConfig: StepConfig(audits: [myAuditFunction]),  // Full audit support
+  inputBuilder: (previousResults) => {...},            // Full input builder support
+);
+```
+
+**Benefits of LocalStep:**
+- 🎯 Zero token usage - no API calls
+- ⚡ Faster execution - no network latency
+- 🎲 No LLM hallucinations - deterministic results
+- 💰 Lower costs - compute locally for free
+- 🔄 Full feature parity - audits, retries, input builders all work
+
+See [`example/local_step_example.dart`](example/local_step_example.dart) for a complete working example.
 
 ### StepConfig
 
