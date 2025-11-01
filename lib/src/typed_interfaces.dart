@@ -168,6 +168,20 @@ abstract class StepDefinition<T extends ToolOutput> {
   Type get outputType => T;
 }
 
+/// Interface for defining local computation step metadata and functionality
+///
+/// Extends StepDefinition to include a local computation function that
+/// executes without making LLM API calls. Used with LocalStep for
+/// deterministic operations like mathematical transformations.
+abstract class LocalStepDefinition<T extends ToolOutput>
+    extends StepDefinition<T> {
+  /// The local computation function to execute
+  ///
+  /// Takes the input map and returns the computed output map.
+  /// Should be async to maintain consistency with the overall async flow.
+  Future<Map<String, dynamic>> computeFunction(Map<String, dynamic> input);
+}
+
 /// Registry for creating typed outputs from tool results
 class ToolOutputRegistry {
   /// Clears all registered creators and output types (for test isolation)

@@ -12,6 +12,7 @@ library;
 export 'src/audit_function.dart';
 export 'src/image_generation_interfaces.dart';
 export 'src/issue.dart';
+export 'src/local_step.dart';
 export 'src/openai_config.dart';
 export 'src/openai_service.dart';
 export 'src/openai_service_impl.dart';
