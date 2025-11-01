@@ -73,11 +73,11 @@ class ColorVariationStepDefinition extends LocalStepDefinition<ColorVariationOut
     final g = int.parse(hex.substring(2, 4), radix: 16);
     final b = int.parse(hex.substring(4, 6), radix: 16);
     
-    // Generate 3 variations
+    // Generate 3 variations with proper clamping
     return [
-      _rgbToHex((r * 0.8).round(), (g * 0.8).round(), (b * 0.8).round()), // Darker
+      _rgbToHex((r * 0.8).clamp(0, 255).round(), (g * 0.8).clamp(0, 255).round(), (b * 0.8).clamp(0, 255).round()), // Darker
       _rgbToHex((r * 1.2).clamp(0, 255).round(), (g * 1.2).clamp(0, 255).round(), (b * 1.2).clamp(0, 255).round()), // Lighter
-      _rgbToHex(r, (g * 0.9).round(), (b * 1.1).clamp(0, 255).round()), // Adjusted
+      _rgbToHex(r, (g * 0.9).clamp(0, 255).round(), (b * 1.1).clamp(0, 255).round()), // Adjusted
     ];
   }
 

@@ -122,13 +122,31 @@ class LocalStep {
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
-    return other is LocalStep &&
-        other.toolName == toolName &&
-        other.includeResultsInToolcall.toString() ==
-            includeResultsInToolcall.toString();
+    if (other is! LocalStep) return false;
+    
+    // Compare tool name
+    if (other.toolName != toolName) return false;
+    
+    // Compare includeResultsInToolcall lists
+    if (other.includeResultsInToolcall.length != includeResultsInToolcall.length) {
+      return false;
+    }
+    for (int i = 0; i < includeResultsInToolcall.length; i++) {
+      if (other.includeResultsInToolcall[i] != includeResultsInToolcall[i]) {
+        return false;
+      }
+    }
+    
+    return true;
     // Note: computeFunction and inputBuilder functions cannot be compared
   }
 
   @override
-  int get hashCode => Object.hash(toolName, includeResultsInToolcall);
+  int get hashCode {
+    int hash = toolName.hashCode;
+    for (final item in includeResultsInToolcall) {
+      hash = hash ^ item.hashCode;
+    }
+    return hash;
+  }
 }

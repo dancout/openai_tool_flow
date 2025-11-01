@@ -74,24 +74,10 @@ class ToolFlow {
     for (int stepIndex = 0; stepIndex < steps.length; stepIndex++) {
       final step = steps[stepIndex];
       
-      // Extract common properties from either step type
-      final StepConfig stepConfig;
-      final String toolName;
-      final String? model;
-      
-      if (step is ToolCallStep) {
-        stepConfig = step.stepConfig;
-        toolName = step.toolName;
-        model = step.model;
-      } else if (step is LocalStep) {
-        stepConfig = step.stepConfig;
-        toolName = step.toolName;
-        model = null;
-      } else {
-        throw ArgumentError(
-          'Step must be either ToolCallStep or LocalStep, got ${step.runtimeType}',
-        );
-      }
+      // Extract common properties using helper methods
+      final stepConfig = _getStepConfig(step);
+      final toolName = _getToolName(step);
+      final model = _getModel(step);
 
       late TypedToolResult stepResult;
       bool stepPassed = false;
@@ -466,27 +452,11 @@ class ToolFlow {
     required int stepIndex,
     required int round,
   }) {
-    // Extract common properties from either step type
-    final String toolName;
-    final Map<String, dynamic> Function(List<TypedToolResult>)? inputBuilder;
-    final StepConfig stepConfig;
-    final String? model;
-
-    if (step is ToolCallStep) {
-      toolName = step.toolName;
-      inputBuilder = step.inputBuilder;
-      stepConfig = step.stepConfig;
-      model = step.model;
-    } else if (step is LocalStep) {
-      toolName = step.toolName;
-      inputBuilder = step.inputBuilder;
-      stepConfig = step.stepConfig;
-      model = null; // LocalSteps don't have a model
-    } else {
-      throw ArgumentError(
-        'Step must be either ToolCallStep or LocalStep, got ${step.runtimeType}',
-      );
-    }
+    // Extract common properties using helper methods
+    final toolName = _getToolName(step);
+    final stepConfig = _getStepConfig(step);
+    final model = _getModel(step);
+    final inputBuilder = _getInputBuilder(step);
 
     // Get the results to pass to the inputBuilder (final attempt of each step)
     final inputBuilderResults = _getFinalAttemptsForInputBuilder();
@@ -661,6 +631,58 @@ class ToolFlow {
       'total_completion_tokens': totalCompletionTokens,
       'total_tokens': totalTokens,
     };
+  }
+
+  /// Helper to extract StepConfig from either step type
+  StepConfig _getStepConfig(Object step) {
+    if (step is ToolCallStep) {
+      return step.stepConfig;
+    } else if (step is LocalStep) {
+      return step.stepConfig;
+    } else {
+      throw ArgumentError(
+        'Step must be either ToolCallStep or LocalStep, got ${step.runtimeType}',
+      );
+    }
+  }
+
+  /// Helper to extract tool name from either step type
+  String _getToolName(Object step) {
+    if (step is ToolCallStep) {
+      return step.toolName;
+    } else if (step is LocalStep) {
+      return step.toolName;
+    } else {
+      throw ArgumentError(
+        'Step must be either ToolCallStep or LocalStep, got ${step.runtimeType}',
+      );
+    }
+  }
+
+  /// Helper to extract model from step (null for LocalStep)
+  String? _getModel(Object step) {
+    if (step is ToolCallStep) {
+      return step.model;
+    } else if (step is LocalStep) {
+      return null; // LocalSteps don't have a model
+    } else {
+      throw ArgumentError(
+        'Step must be either ToolCallStep or LocalStep, got ${step.runtimeType}',
+      );
+    }
+  }
+
+  /// Helper to extract inputBuilder from either step type
+  Map<String, dynamic> Function(List<TypedToolResult>)? _getInputBuilder(Object step) {
+    if (step is ToolCallStep) {
+      return step.inputBuilder;
+    } else if (step is LocalStep) {
+      return step.inputBuilder;
+    } else {
+      throw ArgumentError(
+        'Step must be either ToolCallStep or LocalStep, got ${step.runtimeType}',
+      );
+    }
   }
 }
 
