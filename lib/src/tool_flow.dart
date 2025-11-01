@@ -3,7 +3,7 @@ import 'package:openai_toolflow/openai_toolflow.dart';
 /// Manages ordered execution of tool call steps with internal state management.
 ///
 /// The ToolFlow orchestrator:
-/// - Executes steps in order
+/// - Executes steps in order (both ToolCallStep and LocalStep)
 /// - Manages internal state across steps
 /// - Collects issues from audits
 /// - Supports per-step audit configuration
@@ -14,8 +14,8 @@ class ToolFlow {
   /// Configuration for OpenAI API access
   final OpenAIConfig config;
 
-  /// Ordered list of tool call steps to execute
-  final List<ToolCallStep> steps;
+  /// Ordered list of steps to execute (ToolCallStep or LocalStep)
+  final List<Object> steps;
 
   /// OpenAI service for making tool calls (can be injected for testing)
   final OpenAiToolService openAiService;
@@ -73,7 +73,11 @@ class ToolFlow {
 
     for (int stepIndex = 0; stepIndex < steps.length; stepIndex++) {
       final step = steps[stepIndex];
-      final stepConfig = step.stepConfig;
+      
+      // Extract common properties using helper methods
+      final stepConfig = _getStepConfig(step);
+      final toolName = _getToolName(step);
+      final model = _getModel(step);
 
       late TypedToolResult stepResult;
       bool stepPassed = false;
@@ -109,19 +113,19 @@ class ToolFlow {
             round: attemptCount,
           );
           final errorToolResult = ToolResult<ToolOutput>(
-            toolName: step.toolName,
+            toolName: toolName,
             input: errorStepInput,
             auditResults: AuditResults(
               issues: [
                 Issue(
-                  id: 'error_${step.toolName}_${stepIndex + 1}_attempt_$attemptCount',
+                  id: 'error_${toolName}_${stepIndex + 1}_attempt_$attemptCount',
                   severity: IssueSeverity.critical,
                   description: 'Tool execution failed: $e',
                   context: {
                     'step': stepIndex + 1,
                     'attempt': attemptCount,
-                    'toolName': step.toolName,
-                    'model': step.model,
+                    'toolName': toolName,
+                    'model': model,
                   },
                   suggestions: [
                     'Check tool configuration and input parameters',
@@ -188,8 +192,33 @@ class ToolFlow {
     );
   }
 
-  /// Executes a single step
+  /// Executes a single step (either ToolCallStep or LocalStep)
   Future<TypedToolResult> _executeStep({
+    required Object step,
+    required int stepIndex,
+    required int round,
+  }) async {
+    if (step is ToolCallStep) {
+      return _executeToolCallStep(
+        step: step,
+        stepIndex: stepIndex,
+        round: round,
+      );
+    } else if (step is LocalStep) {
+      return _executeLocalStep(
+        step: step,
+        stepIndex: stepIndex,
+        round: round,
+      );
+    } else {
+      throw ArgumentError(
+        'Step must be either ToolCallStep or LocalStep, got ${step.runtimeType}',
+      );
+    }
+  }
+
+  /// Executes a ToolCallStep (LLM API call)
+  Future<TypedToolResult> _executeToolCallStep({
     required ToolCallStep step,
     required int stepIndex,
     required int round,
@@ -264,6 +293,68 @@ class ToolFlow {
       result: result,
       outputType: outputType,
       tokenUsage: tokenUsage,
+    );
+  }
+
+  /// Executes a LocalStep (local computation)
+  Future<TypedToolResult> _executeLocalStep({
+    required LocalStep step,
+    required int stepIndex,
+    required int round,
+  }) async {
+    ToolInput stepInput = _buildStepInput(
+      step: step,
+      stepIndex: stepIndex,
+      round: round,
+    );
+
+    // Execute the local computation function
+    final rawOutput = await step.computeFunction(stepInput.getCleanToolInput());
+
+    // Store zero token usage for local steps
+    _state['step_${stepIndex}_usage'] = const TokenUsage.zero().toMap();
+
+    // Apply output sanitization first if configured
+    final sanitizedOutput = step.stepConfig.hasOutputSanitizer
+        ? step.stepConfig.sanitizeOutput(rawOutput)
+        : rawOutput;
+
+    // Try to create typed interfaces if available
+    late ToolOutput typedOutput;
+
+    if (!ToolOutputRegistry.hasTypedOutput(step.toolName)) {
+      throw Exception('No typed output registered for ${step.toolName}');
+    }
+
+    // Create typed output using registry with round information
+    typedOutput = ToolOutputRegistry.create(
+      toolName: step.toolName,
+      data: sanitizedOutput,
+      round: round,
+    );
+
+    // Run audits on the typed output first
+    final auditResults = _runAuditsOnOutput(
+      output: typedOutput,
+      stepConfig: step.stepConfig,
+      stepIndex: stepIndex,
+      round: round,
+    );
+
+    // Create initial result with audit results
+    final result = ToolResult<ToolOutput>(
+      toolName: step.toolName,
+      input: stepInput,
+      output: typedOutput,
+      auditResults: auditResults,
+    );
+
+    // Create TypedToolResult with type information from registry and zero token usage
+    final outputType = ToolOutputRegistry.getOutputType(step.toolName);
+    return TypedToolResult.fromWithType(
+      result: result,
+      outputType: outputType,
+      tokenUsage: const TokenUsage.zero(), // Local steps use zero tokens
     );
   }
 
@@ -357,18 +448,24 @@ class ToolFlow {
   }
 
   ToolInput _buildStepInput({
-    required ToolCallStep step,
+    required Object step,
     required int stepIndex,
     required int round,
   }) {
+    // Extract common properties using helper methods
+    final toolName = _getToolName(step);
+    final stepConfig = _getStepConfig(step);
+    final model = _getModel(step);
+    final inputBuilder = _getInputBuilder(step);
+
     // Get the results to pass to the inputBuilder (final attempt of each step)
     final inputBuilderResults = _getFinalAttemptsForInputBuilder();
 
     // Execute the inputBuilder to get custom input data
     Map<String, dynamic> customData;
     try {
-      if (step.inputBuilder != null) {
-        customData = step.inputBuilder!(inputBuilderResults);
+      if (inputBuilder != null) {
+        customData = inputBuilder(inputBuilderResults);
       } else {
         // TODO: Do we need to consider pulling forward all the issues and all attempts on previous results, not just the final one without any issues? Maybe that's already how it works. I'm not sure.
         /// I think yes, we probably should.
@@ -378,12 +475,12 @@ class ToolFlow {
       }
     } catch (e) {
       throw Exception(
-        'Failed to execute inputBuilder for step "${step.toolName}": $e',
+        'Failed to execute inputBuilder for step "$toolName": $e',
       );
     }
 
     // Create structured input with previous results
-    final modelToUse = step.model ?? config.defaultModel;
+    final modelToUse = model ?? config.defaultModel;
 
     ToolInput stepInput;
 
@@ -401,13 +498,13 @@ class ToolFlow {
         customData: customData,
         model: modelToUse,
         temperature: config.defaultTemperature,
-        maxTokens: step.stepConfig.maxTokens ?? config.defaultMaxTokens,
+        maxTokens: stepConfig.maxTokens ?? config.defaultMaxTokens,
       );
     }
 
     // Apply input sanitization if configured (before execution)
-    if (step.stepConfig.hasInputSanitizer) {
-      final sanitizedInput = step.stepConfig.sanitizeInput(stepInput.toMap());
+    if (stepConfig.hasInputSanitizer) {
+      final sanitizedInput = stepConfig.sanitizeInput(stepInput.toMap());
 
       // Recreate the appropriate input type after sanitization
       if (isImageGenerationModel(modelToUse)) {
@@ -534,6 +631,58 @@ class ToolFlow {
       'total_completion_tokens': totalCompletionTokens,
       'total_tokens': totalTokens,
     };
+  }
+
+  /// Helper to extract StepConfig from either step type
+  StepConfig _getStepConfig(Object step) {
+    if (step is ToolCallStep) {
+      return step.stepConfig;
+    } else if (step is LocalStep) {
+      return step.stepConfig;
+    } else {
+      throw ArgumentError(
+        'Step must be either ToolCallStep or LocalStep, got ${step.runtimeType}',
+      );
+    }
+  }
+
+  /// Helper to extract tool name from either step type
+  String _getToolName(Object step) {
+    if (step is ToolCallStep) {
+      return step.toolName;
+    } else if (step is LocalStep) {
+      return step.toolName;
+    } else {
+      throw ArgumentError(
+        'Step must be either ToolCallStep or LocalStep, got ${step.runtimeType}',
+      );
+    }
+  }
+
+  /// Helper to extract model from step (null for LocalStep)
+  String? _getModel(Object step) {
+    if (step is ToolCallStep) {
+      return step.model;
+    } else if (step is LocalStep) {
+      return null; // LocalSteps don't have a model
+    } else {
+      throw ArgumentError(
+        'Step must be either ToolCallStep or LocalStep, got ${step.runtimeType}',
+      );
+    }
+  }
+
+  /// Helper to extract inputBuilder from either step type
+  Map<String, dynamic> Function(List<TypedToolResult>)? _getInputBuilder(Object step) {
+    if (step is ToolCallStep) {
+      return step.inputBuilder;
+    } else if (step is LocalStep) {
+      return step.inputBuilder;
+    } else {
+      throw ArgumentError(
+        'Step must be either ToolCallStep or LocalStep, got ${step.runtimeType}',
+      );
+    }
   }
 }
 
